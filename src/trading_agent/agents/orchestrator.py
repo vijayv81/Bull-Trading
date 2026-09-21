@@ -7,7 +7,7 @@ from pathlib import Path
 from claude_agent_sdk import ClaudeAgentOptions, query
 
 from trading_agent.agents.tools import trading_tools_server
-from trading_agent.config import MODEL
+from trading_agent.config import load_agent_config
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -19,7 +19,7 @@ def _read_prompt(name: str) -> str:
 def research_options() -> ClaudeAgentOptions:
     return ClaudeAgentOptions(
         system_prompt=_read_prompt("research_system_prompt.md"),
-        model=MODEL,
+        model=load_agent_config()["model"],
         mcp_servers={"trading": trading_tools_server},
         allowed_tools=["mcp__trading__get_price_history", "mcp__trading__save_recommendation"],
         permission_mode="acceptEdits",

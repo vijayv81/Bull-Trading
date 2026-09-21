@@ -1,0 +1,5 @@
+{
+  "_comment": "Seeded with neutral defaults. Populating this from realized outcomes (did a recommendation's price move as predicted within its holding window) is plan build-sequence phase 8 and isn't implemented yet — see CLAUDE.md. Until then, scoring/recommendation_engine.py:historical_hitrate() reads a flat 0.5 for any ticker/signal not listed here.",
+  "by_ticker": {},
+  "by_signal_type": {}
+}

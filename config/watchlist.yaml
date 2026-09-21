@@ -1,0 +1,12 @@
+# Core names scanned at every checkpoint. Edit directly to add/remove permanently.
+tickers:
+  - TSLA
+  - GOOG
+  - IREN
+  - HIMS
+  - SPY
+
+# Populated at runtime by the movers/screening step — left here so a run's
+# discovered candidates are visible and diffable in git history, not just
+# buried in a JSON dump. Safe to clear by hand between weeks.
+dynamic_candidates: []

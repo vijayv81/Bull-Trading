@@ -1,0 +1,62 @@
+# Checkpoint schedule (plan §2). Times are ET; the actual cron/scheduler lives
+# in routines/ (see /schedule) — this is the source of truth the pipeline code
+# reads to know which checkpoint it's running as, not a scheduler itself.
+checkpoints:
+  pre_open:
+    time_et: "08:45"
+    emphasis: overnight_news
+  market_open:
+    time_et: "09:40"
+    emphasis: opening_momentum
+  midday:
+    time_et: "12:30"
+    emphasis: intraday_movers
+  pre_close:
+    time_et: "15:45"
+    emphasis: eod_repositioning
+
+# Model used for any Claude-agent-driven research (src/trading_agent/agents/) —
+# separate from the automated Perplexity/Alpaca pipeline, which calls those
+# APIs directly rather than going through a Claude agent loop.
+model: claude-opus-5
+
+# Names of required environment variables — values are NEVER stored in this
+# file or any other file. See config.require_env() (plan §7.1, hard requirement).
+credentials:
+  perplexity_api_key_env_var: PERPLEXITY_API_KEY
+  alpaca_key_id_env_var: APCA_API_KEY_ID
+  alpaca_secret_key_env_var: APCA_API_SECRET_KEY
+  github_token_env_var: GITHUB_TOKEN
+
+# Confidence formula weights (plan §6.2) — must sum to 1.0. Changing these is a
+# strategy change: commit it with a message, and see scoring/recommendation_engine.py
+# propose_weight_adjustments() for the human-reviewed weekly proposal step (§6.3) —
+# nothing here is ever auto-adjusted.
+scoring_weights:
+  sentiment: 0.25
+  technical: 0.30
+  fundamental: 0.15
+  catalyst: 0.20
+  historical_hitrate: 0.10
+
+# plan §12 open decision — intraday | swing | longer_horizon. Currently informational
+# (used in reports/rationale text); wire it into stop/target sizing in
+# scoring/recommendation_engine.py if you want it to change position math.
+holding_period: swing
+
+notifications:
+  # plan §12 open decision. "console" prints to stdout; "file" relies on the
+  # recommendation JSON itself (already written either way). Swap in a real
+  # sender (webhook/SMTP/etc.) in notify/approval_gateway.py:notify() once
+  # you've picked a channel — that function is the single integration point.
+  channel: console
+
+# Alpaca's own fundamentals/screener coverage is limited (plan §5) — no
+# secondary data vendor is wired up yet (plan §12 open decision). Fundamental
+# score currently defaults to neutral (0.5) in orchestrator.py until one is.
+secondary_data_vendor: null
+
+# plan §3 — data/raw is high-volume and gitignored; this is documentation of
+# intent, not yet enforced by code. Revisit if data/raw grows large enough to
+# need active pruning.
+raw_data_retention_days: 90

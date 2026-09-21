@@ -1,0 +1,31 @@
+# Every value here is a deliberate default per plan §9 / §12 — tune to your own
+# risk tolerance. Changes to this file should be committed with a message
+# explaining why (plan §7 commit triggers).
+
+position:
+  max_position_pct_of_portfolio: 5.0
+  min_position_pct_of_portfolio: 1.0
+  max_concurrent_positions: 10
+  mandatory_stop_loss: true
+  min_confidence_to_notify: 50 # below this, don't even surface a notification
+
+portfolio:
+  starting_paper_capital_usd: 100000 # plan §12 open decision — set to your actual paper account size
+  max_daily_drawdown_pct: 5.0 # halt new recommendations for the day past this
+  max_sector_concentration_pct: 25.0
+  max_new_proposals_per_checkpoint: 5 # ranked by confidence, avoids notification fatigue
+
+operational:
+  # Kill switch: order_manager.submit_approved_order() checks this FIRST, before
+  # anything else. Flip to true only when you're ready to let approved paper
+  # orders actually submit.
+  trading_enabled: false
+
+  # Must stay false. Alpaca client construction refuses outright if this is
+  # true — flipping it is intentionally not enough on its own to reach a live
+  # endpoint; see data/alpaca_client.py for the deliberate code-level guard.
+  allow_live_trading: false
+
+  # A recommendation with no approve/reject response within this window
+  # expires rather than auto-executing or auto-rejecting (plan §8.6).
+  approval_expiry_hours: 2

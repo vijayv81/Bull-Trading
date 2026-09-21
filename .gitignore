@@ -6,14 +6,21 @@ venv/
 build/
 dist/
 
-# secrets
+# secrets — app code never reads a .env (plan §7.1: env vars only), this is
+# defense-in-depth in case one gets created by habit
 .env
 
-# generated data — keep the tree, not the contents
+# high-volume/low-signal — gitignored per plan §7. Everything else under
+# data/ (recommendations, approvals, trades, performance) IS tracked: it's
+# the plan's audit trail and is meant to be committed daily.
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
+
+# run logs
+logs/*
+!logs/.gitkeep
 
 # claude agent sdk session logs, if written locally
 .claude_sessions/

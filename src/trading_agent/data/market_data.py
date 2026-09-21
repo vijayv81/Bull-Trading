@@ -1,4 +1,10 @@
-"""Market data ingestion: pull OHLCV history and cache it locally as parquet."""
+"""Secondary/backtest market data source (yfinance) — long-history OHLCV caching.
+
+Separate from data/alpaca_client.py, which is the plan's primary source for
+live quotes, bars, and order execution. This module exists for backtesting
+(backtest/engine.py) and ad hoc `trading-agent ingest`, where a full year of
+free daily history is more useful than Alpaca's recent-bars window.
+"""
 
 from __future__ import annotations
 
