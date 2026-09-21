@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# secrets
+.env
+
+# generated data — keep the tree, not the contents
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# claude agent sdk session logs, if written locally
+.claude_sessions/
+
+.pytest_cache/
+.ipynb_checkpoints/
