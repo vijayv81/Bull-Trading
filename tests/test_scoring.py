@@ -38,7 +38,7 @@ def fixed_config(monkeypatch):
     monkeypatch.setattr(
         engine,
         "load_risk_limits",
-        lambda: {"position": {"min_confidence_to_notify": 50}},
+        lambda: {"position": {"min_confidence_to_notify": 50, "max_position_pct_of_portfolio": 5.0}},
     )
     monkeypatch.setattr(engine, "historical_hitrate", lambda ticker: 0.5)
 

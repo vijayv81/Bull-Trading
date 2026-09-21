@@ -27,6 +27,14 @@ PATTERNS = {
     "generic long hex/base64 secret": re.compile(r"\b[A-Za-z0-9_\-]{40,}\b"),
 }
 
+GENERIC_LABEL = "generic long hex/base64 secret"
+
+# Long snake_case/kebab-case identifiers (test names, config keys) routinely pass
+# 40 chars and would otherwise block every commit. Real key material carries at
+# most one separator — the prefixed tokens above (ghp_, pplx-) are matched by
+# their own patterns, so this filter never softens those.
+MAX_SEPARATORS_IN_SECRET = 1
+
 
 def staged_files() -> list[str]:
     result = subprocess.run(
@@ -45,7 +53,13 @@ def scan(path: str) -> list[str]:
         return []
     hits = []
     for label, pattern in PATTERNS.items():
-        if pattern.search(text):
+        matches = pattern.findall(text)
+        if label == GENERIC_LABEL:
+            matches = [
+                m for m in matches
+                if m.count("_") + m.count("-") <= MAX_SEPARATORS_IN_SECRET
+            ]
+        if matches:
             hits.append(label)
     return hits
 
