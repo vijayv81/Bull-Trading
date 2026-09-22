@@ -11,8 +11,8 @@ dist/
 .env
 
 # high-volume/low-signal — gitignored per plan §7. Everything else under
-# data/ (recommendations, approvals, trades, performance) IS tracked: it's
-# the plan's audit trail and is meant to be committed daily.
+# data/ (recommendations, approvals, trades, performance, journal) IS tracked:
+# it's the plan's audit trail and is meant to be committed daily.
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep

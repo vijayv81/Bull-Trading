@@ -23,6 +23,7 @@ from alpaca.trading.enums import OrderSide, TimeInForce
 from alpaca.trading.requests import MarketOrderRequest
 
 from trading_agent.config import load_risk_limits, require_env
+from trading_agent.guardrails import is_option_symbol
 
 
 def _credentials() -> tuple[str, str]:
@@ -94,7 +95,17 @@ def get_market_movers(top_n: int = 20) -> dict[str, Any]:
 
 
 def submit_market_order(ticker: str, side: str, qty: float) -> dict[str, Any]:
-    """Submit a paper market order. No approval check here — see module docstring."""
+    """Submit a paper market order. No approval check here — see module docstring.
+
+    The options ban is the one rule enforced at this depth as well as in
+    order_manager: "never" has to hold even for a caller that bypasses the gate.
+    """
+    if is_option_symbol(ticker):
+        raise ValueError(
+            f"Refusing to submit an order for options contract {ticker} — "
+            "this project never trades options."
+        )
+
     order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
     request = MarketOrderRequest(
         symbol=ticker,

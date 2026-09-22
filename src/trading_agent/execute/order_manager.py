@@ -13,6 +13,7 @@ from typing import Any
 
 from trading_agent.config import TRADES_DIR, load_risk_limits
 from trading_agent.data.alpaca_client import submit_market_order
+from trading_agent.guardrails import daily_loss_reason, options_reason, position_size_reason
 from trading_agent.notify.approval_gateway import get_decision, is_expired
 from trading_agent.utils import append_json, day_dir
 
@@ -29,6 +30,11 @@ def submit_approved_order(rec: dict[str, Any], qty: float) -> dict[str, Any]:
     risk = load_risk_limits()["operational"]
     if not risk.get("trading_enabled", False):
         raise OrderRefused("Kill switch is off (config/risk_limits.yaml: trading_enabled=false).")
+
+    # Absolute and free to check, so it comes before anything that touches the network.
+    breach = options_reason(rec["ticker"])
+    if breach:
+        raise OrderRefused(breach)
 
     decision = get_decision(rec["ticker"], rec["checkpoint"])
     if decision is None:
@@ -48,6 +54,16 @@ def submit_approved_order(rec: dict[str, Any], qty: float) -> dict[str, Any]:
                 f"Requested qty {qty} does not match approved qty {approved_qty} "
                 f"within {SIZE_TOLERANCE_PCT}% tolerance."
             )
+
+    # Account-state guardrails last: they cost API calls, and an order that fails
+    # the cheaper checks above never needs them.
+    breach = daily_loss_reason()
+    if breach:
+        raise OrderRefused(breach)
+
+    breach = position_size_reason(rec["ticker"], rec["action"], qty)
+    if breach:
+        raise OrderRefused(breach)
 
     order = submit_market_order(rec["ticker"], rec["action"], qty)
 

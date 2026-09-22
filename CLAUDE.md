@@ -20,9 +20,34 @@ approval record on disk. Nothing here is investment advice.
    layer via `notify.approval_gateway.save_recommendation()` so both paths
    are auditable from one place.
 
+## Capabilities are skills
+
+The four capabilities the scheduled routines use live in `.claude/skills/`, not
+as steps duplicated across four routine prompts:
+
+| Skill | Capability | Wraps |
+|---|---|---|
+| `trading-research` | Run a checkpoint, surface candidates | `trading-agent checkpoint` |
+| `trading-trade` | Human approval, then gated execution | `trading-agent approvals` / `execute` |
+| `trading-journal` | Record decision reasoning, measure outcomes | `trading-agent journal` |
+| `trading-report` | Daily/weekly reports, weight proposals, snapshot commit | `trading-agent report` / `propose-weights` |
+
+Each carries the refusal handling and the human-in-the-loop rules, so routines
+invoke the skill rather than the CLI directly — a bare `trading-agent` call
+carries none of that.
+
+**Refinement loop:** each skill reads its own `FEEDBACK.md` at the start of a
+run and appends corrections the user gives mid-run. Those entries outrank the
+skill's generic guidance, and because they're tracked in git a bad refinement
+shows up in a diff and can be reverted. Corrections that would loosen the
+approval gate itself are explicitly *not* recorded this way — that's a reviewed
+change to this file and the code, never a line in a feedback file that silently
+changes how unattended runs behave.
+
 ## Layout
 
 ```
+.claude/skills/          the four capability skills above, each with SKILL.md + FEEDBACK.md
 config/                  watchlist.yaml, risk_limits.yaml (kill switch lives here), agent_config.yaml
 src/trading_agent/
   config.py               YAML config + require_env() — the ONLY way credentials are read
@@ -30,6 +55,7 @@ src/trading_agent/
   orchestrator.py          run_checkpoint(): research -> data -> score -> notify
   research/                perplexity_client.py
   data/                    alpaca_client.py (primary), market_data.py (yfinance, backtest-only)
+  journal.py              decision reasoning + outcome measurement (plan §6.3, partial)
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
   notify/                  approval_gateway.py — hard requirement gate (plan §8)
   execute/                 order_manager.py — approval + kill-switch gated Alpaca submission
@@ -70,15 +96,46 @@ path to an Alpaca order in this codebase. It refuses unless, in order:
 `data/alpaca_client.py:trading_client()` refuses to even construct a client
 if it's `true`; flipping it is deliberately not sufficient on its own.
 
+## Portfolio guardrails (hard requirement)
+
+`guardrails.py` holds three checks. Each returns a refusal reason or `None`;
+callers turn that into `RoutineHalted` (orchestrator) or `OrderRefused`
+(order_manager). They are enforced at *both* boundaries — a rule that only
+applies at execution time would let the routine spend a day proposing trades
+it can never place.
+
+1. **Max 5% of portfolio per position** — `position_size_reason()`, checked
+   before any BUY. Counts the existing position in the same symbol, so
+   repeated partial buys can't stack past the cap one approval at a time.
+   SELLs reduce exposure and are never blocked. Cap:
+   `risk_limits.yaml -> position.max_position_pct_of_portfolio`.
+2. **2% daily loss halts the routine** — `daily_loss_reason()`, measured as
+   Alpaca `equity` vs. `last_equity` (prior close), so it resets each trading
+   day with no state on disk. Past the cap, `run_checkpoint()` halts *before*
+   spending research budget, and order submission refuses for the rest of the
+   day. Cap: `risk_limits.yaml -> portfolio.max_daily_drawdown_pct`.
+3. **No options, ever** — `is_option_symbol()` matches OCC contract symbols
+   (`AAPL240119C00150000`). There is deliberately **no config key** for this:
+   like `allow_live_trading`, lifting it takes a reviewed code change. Enforced
+   in `order_manager` *and* again in `alpaca_client.submit_market_order()`, so
+   it holds even for a caller that bypasses the gate. Option symbols are also
+   filtered out of the candidate set in `orchestrator.run_checkpoint()`.
+
+These **fail closed**: if Alpaca account state can't be read, the two
+account-dependent checks report a breach rather than assume the portfolio is
+healthy. A guardrail that passes when it can't see anything isn't a guardrail.
+
 ## What's not built yet
 
-- **Outcome tracking / continuous improvement loop** (plan §6.3, build
-  sequence phase 8): nothing yet compares a recommendation's confidence
-  against what the price actually did. `data/performance/strategy_metrics.json`
-  is seeded with neutral 0.5 defaults; `scoring/recommendation_engine.py:
-  historical_hitrate()` reads from it, and `propose_weight_adjustments()` is
-  ready to consume it once it's populated — but the "did this call work out"
-  measurement itself isn't implemented.
+- **The last hop of the improvement loop** (plan §6.3, build sequence phase 8).
+  `journal.py` now does the measuring — it records the human's reasoning at
+  decision time and marks what the price did afterwards, into `data/journal/`.
+  What's still missing is the aggregation: nothing rolls those outcomes up into
+  `data/performance/strategy_metrics.json`, so `historical_hitrate()` still
+  returns its neutral 0.5 default and `propose_weight_adjustments()` still has
+  nothing to propose from. Wiring that up changes how every future confidence
+  score is computed, so it wants its own reviewed commit once there's enough
+  journal history to aggregate.
 - **Real P&L in the weekly report** — `reporting/report_builder.py` currently
   reports activity counts (recs/approvals/trades), not realized/unrealized
   P&L, which needs position-marking logic.

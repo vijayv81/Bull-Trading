@@ -55,9 +55,15 @@ def cmd_screen(args: argparse.Namespace) -> None:
 
 
 def cmd_checkpoint(args: argparse.Namespace) -> None:
+    from trading_agent.guardrails import RoutineHalted
     from trading_agent.orchestrator import run_checkpoint
 
-    for rec in run_checkpoint(args.name, extra_tickers=args.tickers):
+    try:
+        recs = run_checkpoint(args.name, extra_tickers=args.tickers)
+    except RoutineHalted as exc:
+        print(f"HALTED: {exc}")
+        return
+    for rec in recs:
         print(f"{rec['ticker']}: {rec['action']} (confidence {rec['confidence']})")
 
 
@@ -96,6 +102,54 @@ def _all_recs_today(checkpoint: str) -> list[dict]:
     from trading_agent.utils import load_json_list, today
 
     return load_json_list(RECOMMENDATIONS_DIR / today() / f"recs_{checkpoint}.json")
+
+
+def cmd_journal_record(args: argparse.Namespace) -> None:
+    from trading_agent.journal import record_entry
+
+    entry = record_entry(
+        args.ticker,
+        args.checkpoint,
+        decision=args.decision,
+        reasoning=args.reasoning,
+        action=args.action,
+        confidence=args.confidence,
+    )
+    price = entry["reference_price"]
+    print(
+        f"Journaled {entry['decision']} for {entry['ticker']} @ {entry['checkpoint']}"
+        + (f" (reference price {price:.2f})" if price else " (no quote available to measure from)")
+    )
+
+
+def cmd_journal_outcomes(args: argparse.Namespace) -> None:
+    from trading_agent.journal import mark_outcomes
+
+    updated = mark_outcomes(args.day)
+    if not updated:
+        print("No entries needed marking.")
+        return
+    for entry in updated:
+        outcome = entry["outcome"]
+        verdict = outcome["directionally_correct"]
+        label = {True: "correct", False: "wrong", None: "no direction"}[verdict]
+        print(f"{entry['ticker']}: {outcome['pct_change']:+.2f}% — {label}")
+
+
+def cmd_journal_show(args: argparse.Namespace) -> None:
+    from trading_agent.journal import load_entries
+
+    entries = load_entries(args.day)
+    if not entries:
+        print("No journal entries.")
+        return
+    for entry in entries:
+        outcome = entry.get("outcome")
+        result = f"{outcome['pct_change']:+.2f}%" if outcome else "pending"
+        print(
+            f"{entry['ticker']} [{entry['checkpoint']}] {entry['decision']} "
+            f"({result}) — {entry['reasoning']}"
+        )
 
 
 def cmd_report(args: argparse.Namespace) -> None:
@@ -169,6 +223,26 @@ def build_parser() -> argparse.ArgumentParser:
     execute.add_argument("checkpoint")
     execute.add_argument("qty", type=float)
     execute.set_defaults(func=cmd_execute)
+
+    journal = sub.add_parser("journal", help="Record decision reasoning and measure how calls turned out.")
+    journal_sub = journal.add_subparsers(dest="journal_command", required=True)
+
+    journal_record = journal_sub.add_parser("record", help="Journal why a decision was made.")
+    journal_record.add_argument("ticker")
+    journal_record.add_argument("checkpoint")
+    journal_record.add_argument("--decision", required=True, choices=["approve", "reject"])
+    journal_record.add_argument("--reasoning", required=True, help="The decision rationale, in your own words.")
+    journal_record.add_argument("--action", choices=["BUY", "SELL", "HOLD"])
+    journal_record.add_argument("--confidence", type=float)
+    journal_record.set_defaults(func=cmd_journal_record)
+
+    journal_outcomes = journal_sub.add_parser("outcomes", help="Measure unmarked entries against current prices.")
+    journal_outcomes.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
+    journal_outcomes.set_defaults(func=cmd_journal_outcomes)
+
+    journal_show = journal_sub.add_parser("show", help="List journal entries and their outcomes.")
+    journal_show.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
+    journal_show.set_defaults(func=cmd_journal_show)
 
     report = sub.add_parser("report", help="Build a daily or weekly markdown report.")
     report.add_argument("period", choices=["daily", "weekly"])

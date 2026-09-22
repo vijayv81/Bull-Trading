@@ -15,20 +15,49 @@ requirement in CLAUDE.md / plan §8.
 Each is the same pipeline (research → data → score → notify), just weighted
 differently — see `src/trading_agent/orchestrator.py:run_checkpoint()`.
 
+## Capabilities are skills
+
+Each capability lives in `.claude/skills/` as a skill the routine invokes, rather
+than as steps copy-pasted into four routine prompts that then drift apart:
+
+| Skill | Capability |
+|---|---|
+| `trading-research` | Run the checkpoint, surface candidates for approval |
+| `trading-trade` | Human approval, then gated paper execution |
+| `trading-journal` | Record why a decision was made; measure how it turned out |
+| `trading-report` | Daily/weekly reports, weight proposals, git snapshot |
+
+Each skill reads its own `FEEDBACK.md` at the start of a run. That file holds
+corrections given during previous runs, which is how the skills get refined
+without editing their instructions by hand — see "Refining them" below.
+
 ## What each run should do
 
 1. `cd` into this project.
-2. Run `trading-agent checkpoint <name>` (e.g. `trading-agent checkpoint pre_open`).
-3. Report back the recommendations generated (ticker, action, confidence,
-   rationale) — this is the routine's completion message.
-4. Remind the user to review with `trading-agent approvals list <name>` and
-   decide with `trading-agent approvals approve|reject <ticker> <name>` before
-   anything can execute — an unreviewed recommendation simply expires
-   (`approval_expiry_hours` in `config/risk_limits.yaml`).
+2. **Invoke `trading-research`** and follow it. It runs the checkpoint, handles
+   a guardrail halt, and reports the recommendations — that report is the
+   routine's completion message.
+3. If the user responds with decisions, **invoke `trading-trade`** for the
+   approval flow, then **`trading-journal`** to capture their reasoning while
+   it's fresh.
 
-At `pre_close`, also run `trading-agent report daily` and note that it should
-be committed to git along with the day's `data/recommendations`, `data/approvals`,
-and `data/trades` snapshots (plan §7 commit triggers).
+At `pre_close`, also invoke **`trading-journal`** to mark outcomes and
+**`trading-report`** to build the daily report and commit the day's snapshot.
+
+Invoke the skill rather than reaching for the CLI directly. The skills carry the
+refusal handling, the "never decide for the user" rule, and the accumulated
+feedback; a bare `trading-agent` call carries none of it.
+
+## Refining them
+
+When you correct the routine mid-run — "stop reporting the movers", "don't ask
+me for qty under 5 shares" — the skill appends it to its `FEEDBACK.md` and
+confirms what it recorded. Subsequent runs read it first, so the correction
+sticks without anyone editing a `SKILL.md`.
+
+Those files are tracked in git, so a refinement that turns out to be wrong shows
+up in a diff and can be reverted. Worth skimming them occasionally: feedback
+accumulates, and an entry that made sense in September may not in December.
 
 ## Setting it up
 

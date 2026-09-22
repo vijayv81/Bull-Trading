@@ -16,6 +16,24 @@ def _risk(trading_enabled: bool):
     return {"operational": {"trading_enabled": trading_enabled}}
 
 
+@pytest.fixture(autouse=True)
+def guardrails_satisfied(monkeypatch):
+    """Account-state guardrails pass by default; the tests that care override them.
+
+    Without this they would reach for live Alpaca account data.
+    """
+    monkeypatch.setattr(om, "daily_loss_reason", lambda: None)
+    monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty: None)
+
+
+def _approved(qty=10):
+    return lambda ticker, checkpoint: {
+        "decision": "approve",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "terms": {"qty": qty},
+    }
+
+
 def test_kill_switch_off_refuses(monkeypatch):
     monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(False))
     with pytest.raises(om.OrderRefused, match="Kill switch"):
@@ -68,14 +86,7 @@ def test_qty_mismatch_beyond_tolerance_refuses(monkeypatch):
 
 def test_matching_approval_submits(monkeypatch, tmp_path):
     monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
-    monkeypatch.setattr(
-        om, "get_decision",
-        lambda ticker, checkpoint: {
-            "decision": "approve",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "terms": {"qty": 10},
-        },
-    )
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
     monkeypatch.setattr(om, "is_expired", lambda ts: False)
     monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: {"id": "fake", "symbol": t, "qty": q})
     monkeypatch.setattr(om, "TRADES_DIR", tmp_path)
@@ -85,3 +96,40 @@ def test_matching_approval_submits(monkeypatch, tmp_path):
 
     written = list(tmp_path.rglob("orders_submitted.json"))
     assert len(written) == 1
+
+
+def test_options_contract_refused_before_any_approval_lookup(monkeypatch):
+    """The options ban must not be satisfiable by approving the contract."""
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+
+    def fail(*args, **kwargs):
+        raise AssertionError("should have been refused before the approval lookup")
+
+    monkeypatch.setattr(om, "get_decision", fail)
+    option = {"ticker": "AAPL240119C00150000", "checkpoint": "midday", "action": "BUY"}
+    with pytest.raises(om.OrderRefused, match="never trades options"):
+        om.submit_approved_order(option, qty=1)
+
+
+def test_daily_loss_breach_refuses(monkeypatch):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(om, "daily_loss_reason", lambda: "Daily loss -2.40% has reached the 2.0% cap")
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
+
+    with pytest.raises(om.OrderRefused, match="2.0% cap"):
+        om.submit_approved_order(REC, qty=10)
+
+
+def test_position_size_breach_refuses(monkeypatch):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(
+        om, "position_size_reason", lambda ticker, side, qty: "TSLA would reach 9.10% ... over the 5.0% cap"
+    )
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
+
+    with pytest.raises(om.OrderRefused, match="over the 5.0% cap"):
+        om.submit_approved_order(REC, qty=10)

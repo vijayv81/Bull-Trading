@@ -3,6 +3,9 @@
 # explaining why (plan §7 commit triggers).
 
 position:
+  # Hard cap, enforced in guardrails.position_size_reason() before any BUY is
+  # submitted. Counts what you already hold in the same symbol, so repeated
+  # partial buys can't stack past it one approval at a time.
   max_position_pct_of_portfolio: 5.0
   min_position_pct_of_portfolio: 1.0
   max_concurrent_positions: 10
@@ -11,7 +14,10 @@ position:
 
 portfolio:
   starting_paper_capital_usd: 100000 # plan §12 open decision — set to your actual paper account size
-  max_daily_drawdown_pct: 5.0 # halt new recommendations for the day past this
+  # Measured as Alpaca equity vs. prior close, so it resets each trading day.
+  # Past this, guardrails.daily_loss_reason() halts the checkpoint routine before
+  # it researches anything AND refuses any order submission for the rest of the day.
+  max_daily_drawdown_pct: 2.0
   max_sector_concentration_pct: 25.0
   max_new_proposals_per_checkpoint: 5 # ranked by confidence, avoids notification fatigue
 
@@ -29,3 +35,8 @@ operational:
   # A recommendation with no approve/reject response within this window
   # expires rather than auto-executing or auto-rejecting (plan §8.6).
   approval_expiry_hours: 2
+
+# Equities only — there is deliberately no `allow_options` key here. The ban is
+# code-level (guardrails.is_option_symbol, enforced in both order_manager and
+# alpaca_client.submit_market_order) precisely so it can't be undone by editing
+# this file. Lifting it takes a reviewed code change.

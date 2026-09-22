@@ -17,6 +17,7 @@ import pandas as pd
 
 from trading_agent.config import load_watchlist
 from trading_agent.data.alpaca_client import get_market_movers, get_recent_bars
+from trading_agent.guardrails import RoutineHalted, daily_loss_reason, is_option_symbol
 from trading_agent.notify.approval_gateway import save_recommendation
 from trading_agent.research.perplexity_client import research_ticker
 from trading_agent.scoring.recommendation_engine import score_candidate, technical_score
@@ -28,11 +29,19 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     if checkpoint not in VALID_CHECKPOINTS:
         raise ValueError(f"Unknown checkpoint {checkpoint!r} — expected one of {VALID_CHECKPOINTS}")
 
+    # Halt before spending any research budget: past the daily loss cap there is
+    # nothing this checkpoint should be proposing.
+    halt = daily_loss_reason()
+    if halt:
+        raise RoutineHalted(halt)
+
     tickers = set(load_watchlist()) | set(extra_tickers or [])
     movers = get_market_movers()
     # Movers only *seed* candidates (plan §4) — they still go through the same
     # research + scoring pipeline as the core watchlist, never auto-approved.
     tickers |= {m["symbol"] for m in movers.get("gainers", [])[:10] if "symbol" in m}
+    # Never research, score, or propose an options contract, whatever the source.
+    tickers = {t for t in tickers if not is_option_symbol(t)}
 
     results = []
     for ticker in sorted(tickers):
