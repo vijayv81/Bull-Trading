@@ -60,7 +60,7 @@ src/trading_agent/
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
   notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — SMTP email/SMS (plan §12)
   execute/                 order_manager.py — approval + kill-switch gated Alpaca submission
-  reporting/               report_builder.py — daily/weekly markdown reports
+  reporting/               report_builder.py — daily/weekly markdown reports + realized/unrealized P&L
   agents/                  interactive Claude Agent SDK research (see above)
   backtest/                unchanged from the original scaffold
 routines/                 trading_checkpoints.md — spec for the 4 scheduled routines (/schedule)
@@ -158,9 +158,15 @@ healthy. A guardrail that passes when it can't see anything isn't a guardrail.
   `propose_weight_adjustments()` now read real numbers instead of nothing —
   but with an empty `data/journal/` so far (no checkpoint has run for real
   yet), both are still waiting on enough history to say anything.
-- **Real P&L in the weekly report** — `reporting/report_builder.py` currently
-  reports activity counts (recs/approvals/trades), not realized/unrealized
-  P&L, which needs position-marking logic.
+- ~~Real P&L in the weekly report~~ — built: `build_weekly_report()` now adds
+  a `## P&L` section. Realized P&L (`_realized_pnl()`) walks the week's
+  `data/trades/` fills in submission order, average-cost basis per symbol —
+  only orders with a confirmed fill (`filled_qty`/`filled_avg_price`) count;
+  this project doesn't poll Alpaca for fill confirmation after submission, so
+  an order recorded before it fills is excluded and reported separately as a
+  pending-fill count rather than guessed at. Unrealized P&L (`_unrealized_pnl()`)
+  is a live snapshot straight from Alpaca's own per-position figures — no
+  reconstruction needed there.
 - ~~A real notification channel~~ — built: `notify/senders.py` sends email
   and SMS (via a carrier email-to-SMS gateway) over SMTP, one consolidated
   message per checkpoint (`notify_digest()`, wired into
