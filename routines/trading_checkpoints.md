@@ -39,7 +39,16 @@ without editing their instructions by hand — see "Refining them" below.
 
 ## What each run should do
 
-1. `cd` into this project.
+1. **Get a push-authorized checkout first.** A cloud-routine session starts
+   with nothing checked out — call `add_repo` for `vijayv81/bull-trading` with
+   `access: "push"` and follow its instructions (clone via the command it
+   gives you, then `register_repo_root`), rather than a bare `git clone`. A
+   bare clone has no push credentials, which is exactly what made a prior
+   `pre_close` run's end-of-day commit fail to push ("repo not in this
+   session's authorized repository set") — discovered only when it tried to
+   commit, hours into the run. Do this even on a checkpoint that might not
+   end up committing anything; it's cheap up front and expensive to discover
+   missing at the end.
 2. **Invoke `trading-trade`'s "Sync email-link decisions first" step** even if
    nobody's asking for the approval flow this run — it's how a click on an
    emailed Approve/Reject link (routed through the Approval Ticket artifact)
