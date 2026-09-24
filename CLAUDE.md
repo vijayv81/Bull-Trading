@@ -58,7 +58,7 @@ src/trading_agent/
   data/                    alpaca_client.py (primary), market_data.py (yfinance, backtest-only)
   journal.py              decision reasoning + outcome measurement (plan §6.3, partial)
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
-  notify/                  approval_gateway.py — hard requirement gate (plan §8)
+  notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — SMTP email/SMS (plan §12)
   execute/                 order_manager.py — approval + kill-switch gated Alpaca submission
   reporting/               report_builder.py — daily/weekly markdown reports
   agents/                  interactive Claude Agent SDK research (see above)
@@ -83,11 +83,16 @@ Required env vars: `PERPLEXITY_API_KEY`, `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY
 (`GITHUB_TOKEN` is named in config for a future git-push helper; nothing
 currently reads it.)
 
-Optional: `SMS_GATEWAY_ADDRESS` — an email-to-SMS gateway address (e.g. a
-phone number's `@tmomail.net`/`@vtext.com`/`@txt.att.net` address), read the
-same way (never stored in a file — it's PII, not a secret, but the same rule
-applies) when a parallel SMS notification is sent alongside an email one.
-Unset means no SMS channel, not a failure.
+Optional, only needed when `config/agent_config.yaml -> notifications.channel`
+includes `email` or `sms` (`notify/senders.py`, plan §12): `SMTP_HOST`,
+`SMTP_USERNAME`, `SMTP_PASSWORD` (`SMTP_PORT` optional, default 587) — the
+sending account's own credentials, required the same fail-fast way as the
+three above once that channel is enabled. `NOTIFY_EMAIL_ADDRESS` (the email
+destination) and `SMS_GATEWAY_ADDRESS` (a phone's carrier email-to-SMS
+address, e.g. `<number>@tmomail.net`) are destinations, not secrets, but get
+the same treatment — never in a file — and are soft-optional: unset simply
+means that channel silently sends nothing rather than failing. Test the whole
+path with `trading-agent notify-test`.
 
 ## Approval + execution (hard requirement, plan §8)
 
@@ -146,10 +151,14 @@ healthy. A guardrail that passes when it can't see anything isn't a guardrail.
 - **Real P&L in the weekly report** — `reporting/report_builder.py` currently
   reports activity counts (recs/approvals/trades), not realized/unrealized
   P&L, which needs position-marking logic.
-- **A real notification channel** — defaults to console/file
-  (`config/agent_config.yaml -> notifications.channel`); `notify/
-  approval_gateway.py:notify()` is the single integration point once you
-  pick push/email/Slack/SMS.
+- ~~A real notification channel~~ — built: `notify/senders.py` sends email
+  and SMS (via a carrier email-to-SMS gateway) over SMTP, one consolidated
+  message per checkpoint (`notify_digest()`, wired into
+  `orchestrator.run_checkpoint()`) rather than one per ticker. Add `email`
+  and/or `sms` to `config/agent_config.yaml -> notifications.channel` and set
+  the env vars in CLAUDE.md's credential policy section; `trading-agent
+  notify-test` fires a one-off message through whatever's configured. Slack
+  and push are still just the docstring's aspiration, not built.
 - **A secondary fundamentals/screening vendor** — Alpaca's own coverage is
   limited (plan §5); `fundamental` score currently defaults to neutral (0.5)
   in `orchestrator.py`.

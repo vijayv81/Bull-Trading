@@ -47,3 +47,53 @@ def test_list_pending_excludes_decided_tickers():
 
     pending = gw.list_pending("midday")
     assert [r["ticker"] for r in pending] == ["GOOG"]
+
+
+def test_notification_channels_normalizes_string_and_list(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": "console"}})
+    assert gw.notification_channels() == {"console"}
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["console", "email"]}})
+    assert gw.notification_channels() == {"console", "email"}
+
+
+def test_notify_digest_skips_when_no_email_or_sms_channel(monkeypatch):
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append("email"))
+    gw.notify_digest([{"ticker": "TSLA", "action": "BUY", "confidence": 70}], "midday")
+    assert calls == []
+
+
+def test_notify_digest_sends_email_and_suppresses_sms_when_nothing_actionable(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email", "sms"]}})
+    email_calls = []
+    sms_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+    monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
+
+    gw.notify_digest([{"ticker": "GOOG", "action": "HOLD", "confidence": 40}], "midday")
+
+    assert len(email_calls) == 1
+    assert "No actionable" in email_calls[0][1]
+    assert sms_calls == []
+
+
+def test_notify_digest_sends_sms_when_actionable(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email", "sms"]}})
+    sms_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: None)
+    monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
+
+    gw.notify_digest([{"ticker": "TSLA", "action": "BUY", "confidence": 70}], "midday")
+
+    assert len(sms_calls) == 1
+    assert "TSLA" in sms_calls[0][0]
+
+
+def test_notify_digest_send_failure_does_not_raise(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+
+    def boom(*a, **k):
+        raise RuntimeError("SMTP_HOST not set")
+
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
+    gw.notify_digest([{"ticker": "TSLA", "action": "BUY", "confidence": 70}], "midday")  # must not raise

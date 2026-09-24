@@ -29,20 +29,72 @@ def save_recommendation(rec: dict[str, Any]) -> None:
     notify(rec)
 
 
-def notify(rec: dict[str, Any]) -> None:
-    """Send the recommendation to the configured channel (plan §12 open
-    decision — defaults to console). This is the single integration point:
-    swap in a real push/email/Slack sender here once you've picked a channel.
-    """
+def notification_channels() -> set[str]:
+    """Normalize notifications.channel (a string or a list) into a lowercase
+    set. Unknown values pass through harmlessly — nothing matches them."""
     channel = load_agent_config().get("notifications", {}).get("channel", "console")
-    message = (
-        f"[{rec['checkpoint']}] {rec['action']} {rec['ticker']} "
-        f"(confidence {rec['confidence']}) — {rec.get('rationale', '')}"
-    )
-    if channel == "console":
+    if isinstance(channel, str):
+        return {channel}
+    return {str(c) for c in channel}
+
+
+def notify(rec: dict[str, Any]) -> None:
+    """Per-ticker notification for the console/file channels (plan §12).
+    Email and SMS are handled once per checkpoint by notify_digest() instead
+    of once per ticker — see run_checkpoint() — so they aren't repeated here.
+    """
+    channels = notification_channels()
+    if "console" in channels:
+        message = (
+            f"[{rec['checkpoint']}] {rec['action']} {rec['ticker']} "
+            f"(confidence {rec['confidence']}) — {rec.get('rationale', '')}"
+        )
         print(f"NOTIFY: {message}")
     # "file" channel: the recommendation JSON written by save_recommendation()
-    # IS the notification — nothing further to do until a real sender exists.
+    # IS the notification — nothing further to do.
+
+
+def notify_digest(recs: list[dict[str, Any]], checkpoint: str) -> None:
+    """One consolidated email/SMS per checkpoint instead of one per ticker —
+    a mover-heavy checkpoint would otherwise fire a dozen texts. Console/file
+    already got every recommendation individually via notify(); this only
+    fires for the "email"/"sms" channels.
+
+    A send failure (bad SMTP creds, unreachable host) is reported, not
+    raised — a broken notification channel should never halt the pipeline
+    that produced the recommendations it was trying to deliver.
+    """
+    channels = notification_channels()
+    if not channels & {"email", "sms"}:
+        return
+
+    actionable = [r for r in recs if r.get("action") in ("BUY", "SELL")]
+    lines = [
+        f"{r['action']} {r['ticker']} (confidence {r['confidence']}) — {r.get('rationale', '')[:120]}"
+        for r in actionable
+    ]
+    subject = f"[Bull-Trading] {checkpoint}: {len(actionable)} recommendation(s)"
+    body = "\n".join(lines) if lines else "No actionable recommendations this checkpoint (all HOLD, or nothing scored)."
+
+    if "email" in channels:
+        try:
+            from trading_agent.notify.senders import send_email
+
+            send_email(subject, body)
+        except Exception as exc:  # noqa: BLE001 - a broken channel must not halt the routine
+            print(f"NOTIFY (email) failed: {exc}")
+
+    # SMS is skipped entirely on a quiet checkpoint — nothing here is worth a text.
+    if "sms" in channels and actionable:
+        try:
+            from trading_agent.notify.senders import send_sms
+
+            sms_body = "Bull-Trading " + checkpoint + ": " + "; ".join(
+                f"{r['action']} {r['ticker']} ({r['confidence']})" for r in actionable
+            )
+            send_sms(sms_body[:300])
+        except Exception as exc:  # noqa: BLE001
+            print(f"NOTIFY (sms) failed: {exc}")
 
 
 def record_decision(

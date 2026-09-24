@@ -168,6 +168,30 @@ def cmd_propose_weights(args: argparse.Namespace) -> None:
         print(f"- {line}")
 
 
+def cmd_notify_test(args: argparse.Namespace) -> None:
+    from trading_agent.notify.approval_gateway import notification_channels
+    from trading_agent.notify.senders import send_email, send_sms
+
+    channels = notification_channels()
+    if "email" in channels:
+        try:
+            sent = send_email("[Bull-Trading] Test notification", "This is a test of the email channel.")
+            print("email: sent" if sent else "email: skipped (NOTIFY_EMAIL_ADDRESS not set)")
+        except Exception as exc:  # noqa: BLE001
+            print(f"email: failed — {exc}")
+    else:
+        print("email: not in notifications.channel, skipped")
+
+    if "sms" in channels:
+        try:
+            sent = send_sms("Bull-Trading: test notification")
+            print("sms: sent" if sent else "sms: skipped (SMS_GATEWAY_ADDRESS not set)")
+        except Exception as exc:  # noqa: BLE001
+            print(f"sms: failed — {exc}")
+    else:
+        print("sms: not in notifications.channel, skipped")
+
+
 def cmd_cron_status(args: argparse.Namespace) -> None:
     import datetime as dt
 
@@ -235,6 +259,11 @@ def build_parser() -> argparse.ArgumentParser:
     execute.add_argument("checkpoint")
     execute.add_argument("qty", type=float)
     execute.set_defaults(func=cmd_execute)
+
+    notify_test = sub.add_parser(
+        "notify-test", help="Fire a test message through every channel in notifications.channel."
+    )
+    notify_test.set_defaults(func=cmd_notify_test)
 
     journal = sub.add_parser("journal", help="Record decision reasoning and measure how calls turned out.")
     journal_sub = journal.add_subparsers(dest="journal_command", required=True)
