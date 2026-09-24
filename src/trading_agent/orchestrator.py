@@ -55,7 +55,7 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             checkpoint=checkpoint,
             sentiment=research.get("confidence_of_extraction", 0.5),
             technical=tech,
-            fundamental=0.5,  # no fundamentals vendor wired up yet — plan §12 open decision
+            fundamental=None,  # no fundamentals vendor wired up yet — excluded from the score, not neutral
             catalyst=0.7 if research.get("sources") else 0.3,
         )
         rec["rationale"] = (research.get("headline_summary") or "")[:280]

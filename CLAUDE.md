@@ -110,7 +110,7 @@ if it's `true`; flipping it is deliberately not sufficient on its own.
 
 ## Portfolio guardrails (hard requirement)
 
-`guardrails.py` holds three checks. Each returns a refusal reason or `None`;
+`guardrails.py` holds four checks. Each returns a refusal reason or `None`;
 callers turn that into `RoutineHalted` (orchestrator) or `OrderRefused`
 (order_manager). They are enforced at *both* boundaries — a rule that only
 applies at execution time would let the routine spend a day proposing trades
@@ -119,8 +119,7 @@ it can never place.
 1. **Max 5% of portfolio per position** — `position_size_reason()`, checked
    before any BUY. Counts the existing position in the same symbol, so
    repeated partial buys can't stack past the cap one approval at a time.
-   SELLs reduce exposure and are never blocked. Cap:
-   `risk_limits.yaml -> position.max_position_pct_of_portfolio`.
+   Cap: `risk_limits.yaml -> position.max_position_pct_of_portfolio`.
 2. **2% daily loss halts the routine** — `daily_loss_reason()`, measured as
    Alpaca `equity` vs. `last_equity` (prior close), so it resets each trading
    day with no state on disk. Past the cap, `run_checkpoint()` halts *before*
@@ -132,8 +131,16 @@ it can never place.
    in `order_manager` *and* again in `alpaca_client.submit_market_order()`, so
    it holds even for a caller that bypasses the gate. Option symbols are also
    filtered out of the candidate set in `orchestrator.run_checkpoint()`.
+4. **No short positions, ever** — `short_sale_reason()`, checked before any
+   SELL. A SELL is only ever a reduction of an existing long here; refuses
+   outright if there's no existing position, or if the requested qty exceeds
+   what's held (that remainder would open a short). The 5% cap in
+   `position_size_reason()` applies to BUY alone, so without this check a
+   SELL recommendation on a ticker you don't hold would open unbounded short
+   exposure with no guardrail on it at all — there is deliberately no config
+   key to allow shorting, same as the options ban.
 
-These **fail closed**: if Alpaca account state can't be read, the two
+These **fail closed**: if Alpaca account state can't be read, the
 account-dependent checks report a breach rather than assume the portfolio is
 healthy. A guardrail that passes when it can't see anything isn't a guardrail.
 

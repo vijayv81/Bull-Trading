@@ -109,6 +109,9 @@ erroring. Read the reason back to the user in plain language and stop there:
   re-running.
 - **Options contract** — never tradeable here, at any size, under any config.
   There is no flag for this by design.
+- **Would open a short position** — a SELL beyond what's currently held. This
+  project never opens shorts, at any size, under any config, same as options.
+  If they want to reduce a position, offer the qty that matches what's held.
 
 Never work around a refusal. Don't edit config to unblock an order mid-run,
 don't call `alpaca_client.submit_market_order()` directly to skip the gate, and
