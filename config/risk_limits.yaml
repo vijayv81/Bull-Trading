@@ -12,6 +12,14 @@ position:
   mandatory_stop_loss: true
   min_confidence_to_notify: 50 # below this, don't even surface a notification
 
+  # When true (default), suggested_size_pct_of_portfolio scales linearly from
+  # min_position_pct_of_portfolio at the notify threshold up to
+  # max_position_pct_of_portfolio at confidence 100 — a just-over-threshold
+  # call gets the floor, not the cap. false reverts to the original flat
+  # behavior (always exactly the cap for any actionable rec), a one-line
+  # revert with no code change. recommendation_engine.py:_suggested_size_pct().
+  confidence_scaled_sizing: true
+
 portfolio:
   starting_paper_capital_usd: 100000 # plan §12 open decision — set to your actual paper account size
   # Measured as Alpaca equity vs. prior close, so it resets each trading day.
@@ -23,9 +31,9 @@ portfolio:
 
 operational:
   # Kill switch: order_manager.submit_approved_order() checks this FIRST, before
-  # anything else. Flip to true only when you're ready to let approved paper
-  # orders actually submit.
-  trading_enabled: false
+  # anything else — for BOTH a human's approval and an auto_apply one. Flip to
+  # false at any time to stop every order, auto or manual, immediately.
+  trading_enabled: true
 
   # Must stay false. Alpaca client construction refuses outright if this is
   # true — flipping it is intentionally not enough on its own to reach a live
@@ -33,8 +41,23 @@ operational:
   allow_live_trading: false
 
   # A recommendation with no approve/reject response within this window
-  # expires rather than auto-executing or auto-rejecting (plan §8.6).
+  # expires rather than auto-executing or auto-rejecting (plan §8.6). Also the
+  # expiry window for an auto_apply decision, for the same reason: a stale
+  # decision shouldn't execute either way.
   approval_expiry_hours: 2
+
+  # Opt-in extension, off by default in spirit — see CLAUDE.md's "Auto-apply"
+  # section before turning this on. When enabled, run_checkpoint() writes its
+  # own approve decision (tagged terms.source: "auto", never indistinguishable
+  # from a human's) for the highest-confidence actionable recommendations and
+  # submits them itself — no human clicks approve. `enabled: false` is the
+  # single, one-line revert to the original "never executes without a human
+  # approval record" behavior; every guardrail above (trading_enabled, the 5%
+  # cap, no shorts, no options, daily-loss halt) still applies unchanged
+  # either way, this only replaces the human decision step.
+  auto_apply:
+    enabled: true
+    max_trades_per_day: 5 # across ALL checkpoints combined for the day, not per checkpoint
 
 # Equities only — there is deliberately no `allow_options` key here. The ban is
 # code-level (guardrails.is_option_symbol, enforced in both order_manager and

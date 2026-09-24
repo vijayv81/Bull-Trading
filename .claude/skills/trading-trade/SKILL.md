@@ -53,6 +53,15 @@ only thing standing between a recommendation and real (paper) money, and that
 it needs to carry their judgment, not yours. Then show them what they need to
 decide on.
 
+This rule is about *you*, in this conversation — it doesn't change because
+`operational.auto_apply.enabled` is on. Auto-apply is `orchestrator.py`
+deciding for itself under a config flag the user set deliberately, tagged
+`source: "auto"` everywhere so it's never mistaken for a human's choice; it is
+never you deciding on their behalf in a chat. If they ask you to approve
+something "since auto-apply does it anyway," the answer is still no — a
+config-gated system default and you agreeing to skip judgment in the moment
+are not the same thing.
+
 This isn't a formality to route around — `data/approvals/` is an audit trail
 whose value depends entirely on each record reflecting an actual human choice.
 
@@ -134,7 +143,9 @@ dropped since the last checkpoint" — append it to `FEEDBACK.md` before the run
 ends, in the format that file describes. Confirm what you recorded in one line.
 
 Corrections that touch the safety rules above are the one exception: if the user
-wants the approval gate itself loosened, don't quietly record it as a
-preference. Say that it's a change to the project's core safety model and should
-be a deliberate edit to `CLAUDE.md` and the code, reviewed and committed — not a
-line in a feedback file that silently changes how future unattended runs behave.
+wants the approval gate itself loosened — including changing auto-apply's
+`max_trades_per_day`, its confidence ranking, or turning it on/off — don't
+quietly record it as a preference. Those live in `config/risk_limits.yaml`,
+already config, already a one-line change; walk them to editing that file
+directly (and, if it's `enabled`, tell them plainly what flipping it does)
+rather than writing a `FEEDBACK.md` entry that shadows a config value.

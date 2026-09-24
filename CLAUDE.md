@@ -59,7 +59,7 @@ src/trading_agent/
   journal.py              decision reasoning + outcome measurement + performance aggregation (plan §6.3)
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
   notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — SMTP email/SMS (plan §12)
-  execute/                 order_manager.py — approval + kill-switch gated Alpaca submission
+  execute/                 order_manager.py — approval + kill-switch gated Alpaca submission; auto_pilot.py — opt-in auto-apply (see below)
   reporting/               report_builder.py — daily/weekly markdown reports + realized/unrealized P&L
   agents/                  interactive Claude Agent SDK research (see above)
   backtest/                unchanged from the original scaffold
@@ -94,6 +94,16 @@ the same treatment — never in a file — and are soft-optional: unset simply
 means that channel silently sends nothing rather than failing. Test the whole
 path with `trading-agent notify-test`.
 
+`trading-agent daily-summary` (gated by `notifications.daily_summary_enabled`,
+default `true`) sends one end-of-day email/SMS, separate from the
+per-checkpoint digests: today's journaled reasoning + outcomes as "findings,"
+and the account's own return today (`reporting/report_builder.py`'s
+`_portfolio_return_pct()`, the same equity-vs-prior-close measure
+`daily_loss_reason()` uses) against `BENCHMARK_SYMBOL` (`"SPY"` by default)
+over the same window. Either return being unavailable (Alpaca unreachable, or
+insufficient benchmark bars) is reported as unavailable, never guessed at or
+silently shown as 0%.
+
 ## Approval + execution (hard requirement, plan §8)
 
 `execute/order_manager.py:submit_approved_order()` is the only sanctioned
@@ -107,6 +117,53 @@ path to an Alpaca order in this codebase. It refuses unless, in order:
 `allow_live_trading` in the same file is a second, independent guard —
 `data/alpaca_client.py:trading_client()` refuses to even construct a client
 if it's `true`; flipping it is deliberately not sufficient on its own.
+
+## Auto-apply (opt-in exception to the human-approval requirement)
+
+**Read this before changing anything below it.** The line at the top of this
+file — "it never executes without a human approval record on disk" — has one
+deliberate, config-gated exception: `execute/auto_pilot.py:auto_apply()`,
+wired into `orchestrator.run_checkpoint()`. It exists because a paper-trading
+account was explicitly set up to run unattended; it does not relax anything
+about how an order actually gets checked, and every toggle below is a
+one-line revert with no code change.
+
+**How it stays honest about what it is:**
+- Off unless `risk_limits.yaml -> operational.auto_apply.enabled` is `true`.
+  `false` is the complete revert — `run_checkpoint()` then behaves exactly as
+  the rest of this document describes, unconditionally.
+- When on, it picks the highest-confidence actionable (BUY/SELL) recommendations
+  from *this* checkpoint, up to `max_trades_per_day` **shared across all 4
+  checkpoints for the day** (re-read from `data/trades/` fresh each call, not
+  reset per checkpoint) — 5 by default.
+- It writes its own `data/approvals/` decision — tagged `terms.source: "auto"`
+  — then calls the exact same `submit_approved_order()` a human's approval
+  would. Every guardrail still runs: `trading_enabled`, the options ban, the
+  5% position cap, the no-short-sale rule, the daily-loss halt. This module
+  adds no new bypass; it only automates who clicks approve.
+- Every submitted order is tagged `source: "auto"` in `data/trades/`, next to
+  `"human"` for everything else — the audit trail never blurs the two.
+  `list_pending()` correctly stops showing a ticker once auto-applied, same
+  as it would for a human decision, because it *is* a decision, just not a
+  human's.
+- Qty comes from `suggested_size_pct_of_portfolio` (see below), converted to
+  whole shares at the current quote — never rounds up.
+- One candidate failing (a guardrail refusal, an Alpaca error) is recorded as
+  that candidate's own outcome and never stops the rest, and never raises
+  into `run_checkpoint()` — a broken auto-apply run must not also break
+  research/scoring/notification for the checkpoint.
+
+Turning `enabled` back to `false` is sufficient and complete: nothing else
+needs to change, and no auto-approved history is rewritten or hidden by it.
+
+**Confidence-scaled position sizing** (`recommendation_engine._suggested_size_pct()`,
+gated by `position.confidence_scaled_sizing`, default `true`): a
+just-over-the-notify-threshold call sizes at `min_position_pct_of_portfolio`
+(the floor), scaling linearly up to `max_position_pct_of_portfolio` (the cap)
+at confidence 100 — this feeds both auto-apply's qty and the
+`suggested_size_pct_of_portfolio` a human sees when deciding their own qty.
+`false` reverts to the original flat behavior: always exactly the cap for any
+actionable recommendation, confidence-blind.
 
 ## Portfolio guardrails (hard requirement)
 

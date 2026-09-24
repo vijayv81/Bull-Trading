@@ -2,8 +2,14 @@
 
 Scheduled Claude Code routines (set up via the `/schedule` skill) that run the
 research/scoring pipeline at each checkpoint and surface recommendations for
-approval. **None of this executes a trade on its own** — see the hard
-requirement in CLAUDE.md / plan §8.
+approval. **By default none of this executes a trade on its own** — see the
+hard requirement in CLAUDE.md / plan §8. The one exception is
+`operational.auto_apply.enabled` in `config/risk_limits.yaml` — when the user
+has turned it on, `run_checkpoint()` itself submits its highest-confidence
+recommendations, up to a daily cap, through every existing guardrail. Check
+that config before telling the user "nothing executes automatically" — say
+what's actually configured instead. See CLAUDE.md's "Auto-apply" section
+before touching any of that config.
 
 | Checkpoint | Time (ET) | Emphasis |
 |---|---|---|
@@ -43,13 +49,19 @@ without editing their instructions by hand — see "Refining them" below.
    trigger it manually.
 3. **Invoke `trading-research`** and follow it. It runs the checkpoint, handles
    a guardrail halt, and reports the recommendations — that report is the
-   routine's completion message.
-4. If the user responds with decisions, **invoke `trading-trade`** for the
-   approval flow, then **`trading-journal`** to capture their reasoning while
-   it's fresh.
+   routine's completion message. If `auto_apply` is enabled, `run_checkpoint()`
+   will also have already submitted its top candidates; the completion message
+   must say what was auto-applied, not just what was proposed, or the user is
+   reading a report of decisions that already happened as if they're still
+   pending.
+4. If the user responds with decisions on anything auto-apply didn't already
+   take, **invoke `trading-trade`** for the approval flow, then
+   **`trading-journal`** to capture their reasoning while it's fresh.
 
 At `pre_close`, also invoke **`trading-journal`** to mark outcomes and
-**`trading-report`** to build the daily report and commit the day's snapshot.
+aggregate performance, **`trading-report`** to build the daily report and
+commit the day's snapshot, and **`trading-report`'s daily-summary step** to
+send the end-of-day learnings + SPY comparison email.
 
 Invoke the skill rather than reaching for the CLI directly. The skills carry the
 refusal handling, the "never decide for the user" rule, and the accumulated
@@ -75,8 +87,12 @@ Run `/schedule` four times (once per checkpoint), e.g.:
 
 The skill walks through cadence, working directory, and confirmation before
 creating each cron schedule — nothing here runs automatically until you do
-that, and `config/risk_limits.yaml: operational.trading_enabled` stays `false`
-until you deliberately flip it, so even an unattended run can't place an order.
+that. Whether an unattended run can place an order depends entirely on
+`config/risk_limits.yaml`: `operational.trading_enabled` is the master kill
+switch (`false` blocks every order, auto or manual), and
+`operational.auto_apply.enabled` separately controls whether the routine
+submits its own top picks without a human approving them first — see
+CLAUDE.md's "Auto-apply" section before enabling that combination.
 
 ## Cloud cron schedules are UTC-only — recheck at each DST transition
 
@@ -95,7 +111,9 @@ triggers' `cron_expression` (schedule-only, not the prompt) to match.
 
 ## Guardrails
 
-- Research and recommendations only, always human-approved before any paper
-  order — see `execute/order_manager.py` and plan §8.
+- Every paper order goes through `execute/order_manager.py` (plan §8), which
+  requires a matching approval record no matter who or what wrote it. By
+  default that's always a human; `operational.auto_apply` is the one
+  config-gated exception — see CLAUDE.md's "Auto-apply" section.
 - Every recommendation must carry a rationale and sources; a run that can't
   produce one for a ticker should skip it, not guess.

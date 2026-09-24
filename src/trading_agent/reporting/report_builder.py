@@ -13,6 +13,8 @@ from pathlib import Path
 from trading_agent.config import APPROVALS_DIR, RECOMMENDATIONS_DIR, REPORTS_DIR, TRADES_DIR
 from trading_agent.utils import load_json_list, today
 
+BENCHMARK_SYMBOL = "SPY"
+
 
 def _day_recs(day: str) -> list[dict]:
     items = []
@@ -232,3 +234,73 @@ def build_weekly_report(week_start: str | None = None) -> Path:
     path = out_dir / f"{iso.year}-W{iso.week:02d}.md"
     path.write_text("\n".join(lines))
     return path
+
+
+def _portfolio_return_pct() -> float | None:
+    """Today's account return so far — same equity-vs-prior-close measure
+    guardrails.daily_loss_reason() already uses, so this always agrees with
+    what would have halted the routine. None (not 0.0) when Alpaca can't be
+    reached, so a benchmark comparison never silently reports a flat day.
+    """
+    try:
+        from trading_agent.data.alpaca_client import get_account
+
+        account = get_account()
+        equity = float(account["equity"])
+        last_equity = float(account["last_equity"])
+    except Exception:  # noqa: BLE001 - a report must still build without live Alpaca access
+        return None
+    if last_equity <= 0:
+        return None
+    return round((equity - last_equity) / last_equity * 100, 2)
+
+
+def _benchmark_return_pct(symbol: str = BENCHMARK_SYMBOL) -> float | None:
+    """Latest available daily % change for `symbol` — the most recent daily
+    bar against the one before it. If run after today's session closes, that's
+    today's move; if run intraday, it's the last fully-formed bar (typically
+    yesterday's), same lag technical_score() already has for any ticker.
+    None when bars aren't available, never a guess.
+    """
+    try:
+        from trading_agent.data.alpaca_client import get_recent_bars
+
+        bars = get_recent_bars(symbol, lookback_days=5)
+    except Exception:  # noqa: BLE001
+        return None
+    if len(bars) < 2:
+        return None
+    prior_close = float(bars[-2]["close"])
+    if prior_close <= 0:
+        return None
+    return round((float(bars[-1]["close"]) - prior_close) / prior_close * 100, 2)
+
+
+def build_daily_summary(day: str | None = None) -> dict:
+    """End-of-day learnings + benchmark comparison — distinct from
+    build_daily_report()'s activity log. Pulls today's journaled reasoning and
+    outcomes (data/journal/) as the "findings", and compares the account's
+    own return today against BENCHMARK_SYMBOL's.
+    """
+    from trading_agent.journal import load_entries
+
+    day = day or today()
+    entries = load_entries(day)
+    marked_entries = [e for e in entries if e.get("outcome") is not None]
+
+    portfolio_pct = _portfolio_return_pct()
+    benchmark_pct = _benchmark_return_pct()
+    outperformance_pct = (
+        round(portfolio_pct - benchmark_pct, 2) if portfolio_pct is not None and benchmark_pct is not None else None
+    )
+
+    return {
+        "day": day,
+        "portfolio_return_pct": portfolio_pct,
+        "benchmark_symbol": BENCHMARK_SYMBOL,
+        "benchmark_return_pct": benchmark_pct,
+        "outperformance_pct": outperformance_pct,
+        "recommendations_count": len(_day_recs(day)),
+        "trades_count": len(_day_trades(day)),
+        "journal_entries": marked_entries,
+    }

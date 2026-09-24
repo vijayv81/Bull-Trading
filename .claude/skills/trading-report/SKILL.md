@@ -25,6 +25,21 @@ trading-agent report weekly --week-start YYYY-MM-DD
 Daily lands in `reports/daily/<date>.md`, weekly in
 `reports/weekly/<year>-W<week>.md`.
 
+## Send the daily summary
+
+At `pre_close`, after `trading-journal` has marked outcomes and aggregated
+performance, also send the end-of-day email/SMS:
+
+```bash
+trading-agent daily-summary                   # today
+trading-agent daily-summary --day YYYY-MM-DD
+```
+
+This is separate from `report daily` above — it's the "learnings + how we did
+vs. SPY today" email, not a markdown file. It's gated by
+`notifications.daily_summary_enabled`; if the user's turned that off, running
+it is a silent no-op, so check the config before telling them it didn't send.
+
 ## Say what the numbers aren't
 
 The weekly report's `## P&L` section has two different kinds of number in it,
@@ -41,6 +56,13 @@ The activity counts (recommendations, approvals, rejections, expiries, trades)
 are still just activity, not performance — a summary that leads with "12
 recommendations, 4 approved" invites the user to read it as performance on its
 own, so pair it with the P&L section rather than reporting it alone.
+
+The daily summary's portfolio-vs-SPY comparison is a third, different basis
+again: equity-vs-prior-close for *both* legs, the same simple measure
+`daily_loss_reason()` uses — not the weekly report's realized/unrealized P&L
+accounting. Don't quote the two together as if they're the same number
+measured twice; they answer "did today go well" and "what has this week's
+trading actually made or lost," respectively.
 
 The "Guardrail / Incident Notes" section in the daily report is currently always
 empty — decision values are only ever `approve` or `reject`, so nothing can land

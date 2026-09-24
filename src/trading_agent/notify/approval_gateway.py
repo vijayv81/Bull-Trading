@@ -1,8 +1,12 @@
 """Notification + approval workflow (plan §8, hard requirement).
 
 execute/order_manager.py refuses to submit any order without a matching,
-timestamped record written here — nothing in this module ever executes a
-trade, and nothing auto-approves. A recommendation with no response within
+timestamped record written here — nothing in this module executes a trade,
+and record_decision() itself never decides anything, it only persists
+whatever decision its caller already made. By default that caller is always
+a human (`trading-agent approvals approve/reject`); the one exception is
+execute.auto_pilot, gated behind its own config flag — see that module and
+CLAUDE.md's "Auto-apply" section. A recommendation with no response within
 config/risk_limits.yaml -> operational.approval_expiry_hours simply expires
 (see is_expired()); callers must check that themselves before treating an
 old "approve" as still valid.
@@ -54,11 +58,18 @@ def notify(rec: dict[str, Any]) -> None:
     # IS the notification — nothing further to do.
 
 
-def notify_digest(recs: list[dict[str, Any]], checkpoint: str) -> None:
+def notify_digest(
+    recs: list[dict[str, Any]], checkpoint: str, auto_results: list[dict[str, Any]] | None = None
+) -> None:
     """One consolidated email/SMS per checkpoint instead of one per ticker —
     a mover-heavy checkpoint would otherwise fire a dozen texts. Console/file
     already got every recommendation individually via notify(); this only
     fires for the "email"/"sms" channels.
+
+    `auto_results` (execute.auto_pilot.auto_apply()'s return, when that's
+    enabled) gets its own section — a human reading this must be able to tell
+    a recommendation the system already acted on apart from one still waiting
+    on them, never have to guess.
 
     A send failure (bad SMTP creds, unreachable host) is reported, not
     raised — a broken notification channel should never halt the pipeline
@@ -76,6 +87,9 @@ def notify_digest(recs: list[dict[str, Any]], checkpoint: str) -> None:
     subject = f"[Bull-Trading] {checkpoint}: {len(actionable)} recommendation(s)"
     body = "\n".join(lines) if lines else "No actionable recommendations this checkpoint (all HOLD, or nothing scored)."
 
+    if auto_results:
+        body += "\n\nAuto-applied:\n" + "\n".join(_auto_result_line(r) for r in auto_results)
+
     if "email" in channels:
         try:
             from trading_agent.notify.senders import send_email
@@ -85,16 +99,98 @@ def notify_digest(recs: list[dict[str, Any]], checkpoint: str) -> None:
             print(f"NOTIFY (email) failed: {exc}")
 
     # SMS is skipped entirely on a quiet checkpoint — nothing here is worth a text.
-    if "sms" in channels and actionable:
+    if "sms" in channels and (actionable or auto_results):
         try:
             from trading_agent.notify.senders import send_sms
 
-            sms_body = "Bull-Trading " + checkpoint + ": " + "; ".join(
-                f"{r['action']} {r['ticker']} ({r['confidence']})" for r in actionable
-            )
+            sms_parts = [f"{r['action']} {r['ticker']} ({r['confidence']})" for r in actionable]
+            if auto_results:
+                submitted = [r for r in auto_results if r["status"] == "submitted"]
+                if submitted:
+                    sms_parts.append(
+                        "AUTO: " + ", ".join(f"{r['ticker']} x{r['qty']}" for r in submitted)
+                    )
+            sms_body = "Bull-Trading " + checkpoint + ": " + "; ".join(sms_parts)
             send_sms(sms_body[:300])
         except Exception as exc:  # noqa: BLE001
             print(f"NOTIFY (sms) failed: {exc}")
+
+
+def _auto_result_line(result: dict[str, Any]) -> str:
+    status = result["status"]
+    if status == "submitted":
+        return f"- {result['ticker']}: SUBMITTED qty={result['qty']}"
+    return f"- {result['ticker']}: {status} — {result.get('reason', '')}"
+
+
+def notify_daily_summary(summary: dict[str, Any]) -> None:
+    """End-of-day learnings + benchmark comparison email/SMS (plan §12) — one
+    per day, separate from notify_digest()'s per-checkpoint messages. `summary`
+    is reporting.report_builder.build_daily_summary()'s return.
+
+    Config-gated independently of the channel list itself:
+    notifications.daily_summary_enabled (default true) — false is a one-line
+    way to keep per-checkpoint digests without the end-of-day summary, no
+    code change needed. A send failure is reported, not raised, same as
+    notify_digest().
+    """
+    if not load_agent_config().get("notifications", {}).get("daily_summary_enabled", True):
+        return
+    channels = notification_channels()
+    if not channels & {"email", "sms"}:
+        return
+
+    lines = [f"Bull-Trading daily summary — {summary['day']}", ""]
+    portfolio_pct = summary["portfolio_return_pct"]
+    benchmark_pct = summary["benchmark_return_pct"]
+    if portfolio_pct is not None:
+        lines.append(f"Portfolio: {portfolio_pct:+.2f}%")
+    if benchmark_pct is not None:
+        lines.append(f"{summary['benchmark_symbol']}: {benchmark_pct:+.2f}%")
+    if summary["outperformance_pct"] is not None:
+        lines.append(f"Vs. {summary['benchmark_symbol']}: {summary['outperformance_pct']:+.2f} pts")
+    if portfolio_pct is None or benchmark_pct is None:
+        lines.append("(one or both returns unavailable today — see the weekly report's P&L section instead)")
+
+    lines.append(f"Recommendations: {summary['recommendations_count']} | Trades: {summary['trades_count']}")
+
+    entries = summary["journal_entries"]
+    lines.append("")
+    if entries:
+        lines.append("Findings:")
+        verdict_label = {True: "correct", False: "wrong", None: "n/a"}
+        for e in entries:
+            outcome = e.get("outcome") or {}
+            verdict = verdict_label[outcome.get("directionally_correct")]
+            lines.append(f"- {e['ticker']} [{e['checkpoint']}] {e['decision']} — {verdict}: {e['reasoning'][:100]}")
+    else:
+        lines.append("No journaled decisions today.")
+
+    subject = f"[Bull-Trading] Daily summary — {summary['day']}"
+    body = "\n".join(lines)
+
+    if "email" in channels:
+        try:
+            from trading_agent.notify.senders import send_email
+
+            send_email(subject, body)
+        except Exception as exc:  # noqa: BLE001 - a broken channel must not halt the routine
+            print(f"NOTIFY (daily summary email) failed: {exc}")
+
+    if "sms" in channels:
+        try:
+            from trading_agent.notify.senders import send_sms
+
+            if portfolio_pct is not None and benchmark_pct is not None:
+                headline = (
+                    f"Bull-Trading {summary['day']}: {portfolio_pct:+.2f}% "
+                    f"vs {summary['benchmark_symbol']} {benchmark_pct:+.2f}%"
+                )
+            else:
+                headline = f"Bull-Trading {summary['day']}: daily summary sent by email"
+            send_sms(headline[:300])
+        except Exception as exc:  # noqa: BLE001
+            print(f"NOTIFY (daily summary sms) failed: {exc}")
 
 
 def record_decision(

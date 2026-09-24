@@ -131,3 +131,83 @@ def test_weekly_report_includes_realized_and_unrealized_pnl(monkeypatch, tmp_pat
     assert "Realized this week: $200.00" in text
     assert "TSLA: $200.00" in text
     assert "Unrealized" in text
+
+
+# --- _portfolio_return_pct / _benchmark_return_pct / build_daily_summary -----
+
+
+def test_portfolio_return_pct_computes_from_equity_change(monkeypatch):
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account",
+        lambda: {"equity": "102000", "last_equity": "100000"},
+    )
+    assert rb._portfolio_return_pct() == 2.0
+
+
+def test_portfolio_return_pct_none_when_alpaca_unreachable(monkeypatch):
+    def boom():
+        raise RuntimeError("alpaca unreachable")
+
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_account", boom)
+    assert rb._portfolio_return_pct() is None
+
+
+def test_portfolio_return_pct_none_on_zero_prior_equity(monkeypatch):
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account",
+        lambda: {"equity": "100", "last_equity": "0"},
+    )
+    assert rb._portfolio_return_pct() is None
+
+
+def test_benchmark_return_pct_computes_from_bars(monkeypatch):
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_recent_bars",
+        lambda symbol, lookback_days=5: [{"close": 500.0}, {"close": 505.0}],
+    )
+    assert rb._benchmark_return_pct("SPY") == 1.0
+
+
+def test_benchmark_return_pct_none_with_insufficient_bars(monkeypatch):
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_recent_bars",
+        lambda symbol, lookback_days=5: [{"close": 500.0}],
+    )
+    assert rb._benchmark_return_pct("SPY") is None
+
+
+def test_benchmark_return_pct_none_when_unreachable(monkeypatch):
+    def boom(symbol, lookback_days=5):
+        raise RuntimeError("alpaca unreachable")
+
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", boom)
+    assert rb._benchmark_return_pct("SPY") is None
+
+
+def test_build_daily_summary_combines_portfolio_benchmark_and_journal(monkeypatch, tmp_path):
+    monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
+    monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
+    monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account",
+        lambda: {"equity": "101000", "last_equity": "100000"},
+    )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_recent_bars",
+        lambda symbol, lookback_days=5: [{"close": 500.0}, {"close": 495.0}],
+    )
+    monkeypatch.setattr(
+        "trading_agent.journal.load_entries",
+        lambda day: [
+            {"ticker": "TSLA", "outcome": {"directionally_correct": True}},
+            {"ticker": "GOOG", "outcome": None},  # unmarked, excluded
+        ],
+    )
+
+    summary = rb.build_daily_summary("2026-09-24")
+    assert summary["portfolio_return_pct"] == 1.0
+    assert summary["benchmark_return_pct"] == -1.0
+    assert summary["outperformance_pct"] == 2.0
+    assert summary["benchmark_symbol"] == "SPY"
+    assert len(summary["journal_entries"]) == 1
+    assert summary["journal_entries"][0]["ticker"] == "TSLA"

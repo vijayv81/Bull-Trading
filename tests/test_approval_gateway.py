@@ -97,3 +97,118 @@ def test_notify_digest_send_failure_does_not_raise(monkeypatch):
 
     monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
     gw.notify_digest([{"ticker": "TSLA", "action": "BUY", "confidence": 70}], "midday")  # must not raise
+
+
+def test_notify_digest_includes_auto_apply_section(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email", "sms"]}})
+    email_calls = []
+    sms_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+    monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
+
+    auto_results = [
+        {"ticker": "TSLA", "status": "submitted", "qty": 12},
+        {"ticker": "GOOG", "status": "refused", "reason": "over the 5.0% cap"},
+    ]
+    gw.notify_digest(
+        [{"ticker": "TSLA", "action": "BUY", "confidence": 90}], "pre_open", auto_results=auto_results
+    )
+
+    email_body = email_calls[0][1]
+    assert "Auto-applied" in email_body
+    assert "TSLA: SUBMITTED qty=12" in email_body
+    assert "GOOG: refused" in email_body
+    assert "AUTO: TSLA x12" in sms_calls[0][0]
+
+
+def test_notify_digest_auto_results_alone_still_sms_when_no_actionable(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["sms"]}})
+    sms_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
+
+    gw.notify_digest([], "pre_open", auto_results=[{"ticker": "TSLA", "status": "submitted", "qty": 5}])
+    assert len(sms_calls) == 1
+
+
+# --- notify_daily_summary -----------------------------------------------------
+
+
+def _summary(**overrides):
+    base = {
+        "day": "2026-09-25",
+        "portfolio_return_pct": 1.2,
+        "benchmark_symbol": "SPY",
+        "benchmark_return_pct": 0.5,
+        "outperformance_pct": 0.7,
+        "recommendations_count": 3,
+        "trades_count": 2,
+        "journal_entries": [],
+    }
+    base.update(overrides)
+    return base
+
+
+def test_daily_summary_skipped_when_disabled(monkeypatch):
+    monkeypatch.setattr(
+        gw, "load_agent_config",
+        lambda: {"notifications": {"channel": ["email"], "daily_summary_enabled": False}},
+    )
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary())
+    assert calls == []
+
+
+def test_daily_summary_skipped_when_no_email_or_sms_channel(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["console"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary())
+    assert calls == []
+
+
+def test_daily_summary_email_includes_benchmark_comparison(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary())
+
+    body = calls[0][1]
+    assert "Portfolio: +1.20%" in body
+    assert "SPY: +0.50%" in body
+    assert "Vs. SPY: +0.70 pts" in body
+
+
+def test_daily_summary_includes_journal_findings(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    entry = {
+        "ticker": "TSLA", "checkpoint": "midday", "decision": "approve",
+        "reasoning": "held support at 240",
+        "outcome": {"directionally_correct": True},
+    }
+    gw.notify_daily_summary(_summary(journal_entries=[entry]))
+
+    body = calls[0][1]
+    assert "TSLA [midday] approve — correct: held support at 240" in body
+
+
+def test_daily_summary_handles_missing_returns_gracefully(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary(portfolio_return_pct=None, benchmark_return_pct=None, outperformance_pct=None))
+
+    body = calls[0][1]
+    assert "unavailable" in body
+
+
+def test_daily_summary_send_failure_does_not_raise(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+
+    def boom(*a, **k):
+        raise RuntimeError("SMTP_HOST not set")
+
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
+    gw.notify_daily_summary(_summary())  # must not raise

@@ -99,13 +99,35 @@ def score_candidate(
         "action": action,
         "confidence": round(confidence, 1),
         "component_scores": components,
-        "suggested_size_pct_of_portfolio": (
-            risk["max_position_pct_of_portfolio"] if action != "HOLD" else 0.0
-        ),
+        "suggested_size_pct_of_portfolio": _suggested_size_pct(action, confidence, risk),
         "stop_loss_pct": 4.0,
         "take_profit_pct": 8.0,
         "note": "Research-only output, not investment advice.",
     }
+
+
+def _suggested_size_pct(action: Action, confidence: float, risk: dict[str, Any]) -> float:
+    """Position size as a % of portfolio, for a human (or auto-apply) to size from.
+
+    Config-gated (position.confidence_scaled_sizing, default on) so this is a
+    one-line revert: false goes back to the original flat behavior (always
+    exactly the cap for any actionable rec, confidence-blind). When on, it
+    scales linearly from min_position_pct_of_portfolio at the notify threshold
+    up to max_position_pct_of_portfolio at confidence 100 — a just-over-threshold
+    call gets the floor, not the same size as a 99-confidence one.
+    """
+    if action == "HOLD":
+        return 0.0
+
+    cap_pct = risk["max_position_pct_of_portfolio"]
+    if not risk.get("confidence_scaled_sizing", True):
+        return cap_pct
+
+    floor_pct = risk.get("min_position_pct_of_portfolio", cap_pct)
+    min_confidence = risk["min_confidence_to_notify"]
+    span = max(100 - min_confidence, 1e-9)
+    lean = min(max((confidence - min_confidence) / span, 0.0), 1.0)
+    return round(floor_pct + (cap_pct - floor_pct) * lean, 2)
 
 
 def propose_weight_adjustments() -> list[str]:
