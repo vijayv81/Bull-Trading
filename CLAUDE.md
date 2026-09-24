@@ -90,8 +90,13 @@ enabled. Sent over Resend's HTTPS API deliberately, not SMTP: this project
 runs in a cloud sandbox whose network only proxies HTTPS egress, and a raw
 SMTP socket (port 587/465) times out at connect() there — confirmed directly,
 not a theoretical concern. `RESEND_FROM_ADDRESS` is optional (defaults to
-Resend's no-setup sandbox sender, `onboarding@resend.dev`, which works without
-verifying a domain). `NOTIFY_EMAIL_ADDRESS` (the email destination) and
+Resend's no-setup sandbox sender, `onboarding@resend.dev`) — but that sandbox
+sender can only send to the *account's own verified email* (confirmed live:
+`"You can only send testing emails to your own email address... verify a
+domain to send to other recipients"`), which is why `channel` ships without
+`sms` by default: a carrier's SMS gateway address is never that address. Once
+`RESEND_FROM_ADDRESS` is on a domain verified at resend.com/domains, add
+`sms` back — nothing else changes. `NOTIFY_EMAIL_ADDRESS` (the email destination) and
 `SMS_GATEWAY_ADDRESS` (a phone's carrier email-to-SMS address, e.g.
 `<number>@tmomail.net`) are destinations, not secrets, but get the same
 treatment — never in a file — and are soft-optional: unset simply means that
@@ -228,13 +233,15 @@ healthy. A guardrail that passes when it can't see anything isn't a guardrail.
   pending-fill count rather than guessed at. Unrealized P&L (`_unrealized_pnl()`)
   is a live snapshot straight from Alpaca's own per-position figures — no
   reconstruction needed there.
-- ~~A real notification channel~~ — built: `notify/senders.py` sends email
-  and SMS (via a carrier email-to-SMS gateway) over Resend's HTTPS API — not
-  SMTP, which times out in this project's cloud sandbox — one consolidated
-  message per checkpoint (`notify_digest()`, wired into
-  `orchestrator.run_checkpoint()`) rather than one per ticker. Add `email`
-  and/or `sms` to `config/agent_config.yaml -> notifications.channel` and set
-  the env vars in CLAUDE.md's credential policy section; `trading-agent
+- ~~A real notification channel~~ — built and confirmed live: `email` in
+  `config/agent_config.yaml -> notifications.channel` sends real mail via
+  Resend's HTTPS API (not SMTP, which times out in this project's cloud
+  sandbox), one consolidated message per checkpoint (`notify_digest()`) rather
+  than one per ticker. `sms` (a carrier email-to-SMS gateway, same mechanism)
+  is implemented but not in the default channel list — Resend's no-setup
+  sandbox sender can only send to the account's own verified email, so it
+  403s on an SMS gateway address until `RESEND_FROM_ADDRESS` is on a verified
+  domain (see the credential policy section above). `trading-agent
   notify-test` fires a one-off message through whatever's configured. Slack
   and push are still just the docstring's aspiration, not built.
 - **A secondary fundamentals/screening vendor** — Alpaca's own coverage is

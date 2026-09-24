@@ -58,7 +58,15 @@ notifications:
   # itself needs RESEND_API_KEY (RESEND_FROM_ADDRESS optional, defaults to
   # Resend's no-setup sandbox sender) — same require_env() policy as every
   # other credential. Test with `trading-agent notify-test`.
-  channel: [console, email, sms]
+  #
+  # "sms" is left out below on purpose: Resend's sandbox sender can only send
+  # to the account's OWN verified email (confirmed via a live 403 — "You can
+  # only send testing emails to your own email address... verify a domain to
+  # send to other recipients"), and a carrier's SMS gateway address is never
+  # that address. Add "sms" back once RESEND_FROM_ADDRESS is on a verified
+  # domain at resend.com/domains — nothing else needs to change, send_sms()
+  # already works identically to send_email() once that's true.
+  channel: [console, email]
 
   # End-of-day learnings + benchmark (SPY) comparison email/SMS, separate from
   # the per-checkpoint digests above — see `trading-agent daily-summary` and
