@@ -71,6 +71,21 @@ creating each cron schedule — nothing here runs automatically until you do
 that, and `config/risk_limits.yaml: operational.trading_enabled` stays `false`
 until you deliberately flip it, so even an unattended run can't place an order.
 
+## Cloud cron schedules are UTC-only — recheck at each DST transition
+
+The four cloud routines (`bull-trading-pre-open/market-open/midday/pre-close`)
+are cron-triggered in UTC; the trigger platform has no timezone field, so the
+UTC time for a fixed ET checkpoint shifts by an hour across the twice-yearly
+US DST transition unless the cron expression is recomputed and pushed.
+
+`src/trading_agent/scheduling.py` is the single source of truth for the
+correct UTC cron per checkpoint — it converts through `zoneinfo`
+(`America/New_York`) rather than a hand-maintained transition calendar, so it
+stays correct indefinitely. Run `trading-agent cron-status` to see today's
+correct expressions, and near each transition (next: 2026-11-01, then
+2027-03-14) an agent session with routine-management access updates the four
+triggers' `cron_expression` (schedule-only, not the prompt) to match.
+
 ## Guardrails
 
 - Research and recommendations only, always human-approved before any paper

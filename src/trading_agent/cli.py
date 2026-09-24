@@ -168,6 +168,18 @@ def cmd_propose_weights(args: argparse.Namespace) -> None:
         print(f"- {line}")
 
 
+def cmd_cron_status(args: argparse.Namespace) -> None:
+    import datetime as dt
+
+    from trading_agent.scheduling import all_checkpoint_crons_utc, is_dst_active
+
+    on = dt.date.fromisoformat(args.date) if args.date else None
+    label = "EDT (UTC-4)" if is_dst_active(on) else "EST (UTC-5)"
+    print(f"US Eastern is {label} on {on or dt.datetime.now().date()}. Correct UTC cron expressions:")
+    for name, cron in all_checkpoint_crons_utc(on).items():
+        print(f"  {name}: {cron}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="trading-agent")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -252,6 +264,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     propose = sub.add_parser("propose-weights", help="Print (never apply) proposed scoring-weight changes.")
     propose.set_defaults(func=cmd_propose_weights)
+
+    cron_status = sub.add_parser(
+        "cron-status",
+        help="Print DST-correct UTC cron expressions for the four checkpoints (routine schedules are UTC-only).",
+    )
+    cron_status.add_argument("--date", help="YYYY-MM-DD (US/Eastern) to check, defaults to today.")
+    cron_status.set_defaults(func=cmd_cron_status)
 
     return parser
 

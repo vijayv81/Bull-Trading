@@ -52,6 +52,7 @@ config/                  watchlist.yaml, risk_limits.yaml (kill switch lives her
 src/trading_agent/
   config.py               YAML config + require_env() — the ONLY way credentials are read
   utils.py                shared date-partitioned file-layer helpers
+  scheduling.py            DST-aware ET -> UTC cron conversion for the 4 checkpoints (`trading-agent cron-status`)
   orchestrator.py          run_checkpoint(): research -> data -> score -> notify
   research/                perplexity_client.py
   data/                    alpaca_client.py (primary), market_data.py (yfinance, backtest-only)
