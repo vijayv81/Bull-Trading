@@ -34,10 +34,17 @@ without editing their instructions by hand — see "Refining them" below.
 ## What each run should do
 
 1. `cd` into this project.
-2. **Invoke `trading-research`** and follow it. It runs the checkpoint, handles
+2. **Invoke `trading-trade`'s "Sync email-link decisions first" step** even if
+   nobody's asking for the approval flow this run — it's how a click on an
+   emailed Approve/Reject link (routed through the Approval Ticket artifact)
+   actually becomes a `data/approvals/` record. Skipping this because "no one
+   asked for approvals" leaves clicked decisions stuck in the artifact's
+   database indefinitely; an unattended run is exactly when nobody's around to
+   trigger it manually.
+3. **Invoke `trading-research`** and follow it. It runs the checkpoint, handles
    a guardrail halt, and reports the recommendations — that report is the
    routine's completion message.
-3. If the user responds with decisions, **invoke `trading-trade`** for the
+4. If the user responds with decisions, **invoke `trading-trade`** for the
    approval flow, then **`trading-journal`** to capture their reasoning while
    it's fresh.
 
@@ -70,6 +77,21 @@ The skill walks through cadence, working directory, and confirmation before
 creating each cron schedule — nothing here runs automatically until you do
 that, and `config/risk_limits.yaml: operational.trading_enabled` stays `false`
 until you deliberately flip it, so even an unattended run can't place an order.
+
+## Cloud cron schedules are UTC-only — recheck at each DST transition
+
+The four cloud routines (`bull-trading-pre-open/market-open/midday/pre-close`)
+are cron-triggered in UTC; the trigger platform has no timezone field, so the
+UTC time for a fixed ET checkpoint shifts by an hour across the twice-yearly
+US DST transition unless the cron expression is recomputed and pushed.
+
+`src/trading_agent/scheduling.py` is the single source of truth for the
+correct UTC cron per checkpoint — it converts through `zoneinfo`
+(`America/New_York`) rather than a hand-maintained transition calendar, so it
+stays correct indefinitely. Run `trading-agent cron-status` to see today's
+correct expressions, and near each transition (next: 2026-11-01, then
+2027-03-14) an agent session with routine-management access updates the four
+triggers' `cron_expression` (schedule-only, not the prompt) to match.
 
 ## Guardrails
 

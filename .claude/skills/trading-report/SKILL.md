@@ -27,11 +27,20 @@ Daily lands in `reports/daily/<date>.md`, weekly in
 
 ## Say what the numbers aren't
 
-The weekly report counts activity — recommendations, approvals, rejections,
-expiries, trades. It does **not** report P&L, because realized-outcome tracking
-against positions isn't built (see CLAUDE.md). When presenting it, say so. A
-summary that leads with "12 recommendations, 4 approved" invites the user to
-read it as performance, and they'll draw conclusions the data doesn't support.
+The weekly report's `## P&L` section has two different kinds of number in it,
+and they answer different questions — don't blur them together when relaying
+it. **Realized P&L** is scoped to the week and only counts orders with a
+confirmed fill; a pending-fill count means some of that week's trades aren't
+in the total yet, not that the total is final. **Unrealized P&L** is a live
+snapshot of open positions *as of right now*, not as of any day in the week —
+don't present it as "how the week's positions are doing," since it also
+reflects positions opened before the week started, or after it ended if you
+run the report late.
+
+The activity counts (recommendations, approvals, rejections, expiries, trades)
+are still just activity, not performance — a summary that leads with "12
+recommendations, 4 approved" invites the user to read it as performance on its
+own, so pair it with the P&L section rather than reporting it alone.
 
 The "Guardrail / Incident Notes" section in the daily report is currently always
 empty — decision values are only ever `approve` or `reject`, so nothing can land

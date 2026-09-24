@@ -1,6 +1,6 @@
-"""Safety-critical: the three portfolio guardrails (5% per position, 2% daily
-loss halt, no options ever) must hold, and must fail closed when account state
-can't be read.
+"""Safety-critical: the four portfolio guardrails (5% per position, 2% daily
+loss halt, no options ever, no short positions ever) must hold, and must fail
+closed when account state can't be read.
 """
 
 import pytest
@@ -138,3 +138,37 @@ def test_position_size_fails_closed_when_account_unreadable(limits, flat_book, m
 def test_position_size_fails_closed_on_zero_equity(limits, flat_book, monkeypatch):
     _account(monkeypatch, equity=0.0)
     assert "Cannot verify" in g.position_size_reason("TSLA", "BUY", qty=1)
+
+
+# --- no short positions, ever ------------------------------------------------
+
+
+def test_buy_side_never_checked_for_short_sale(monkeypatch):
+    monkeypatch.setattr(g, "_positions", lambda: [])
+    assert g.short_sale_reason("TSLA", "BUY", qty=1_000_000) is None
+
+
+def test_sell_with_no_existing_position_refuses(monkeypatch):
+    monkeypatch.setattr(g, "_positions", lambda: [])
+    reason = g.short_sale_reason("TSLA", "SELL", qty=10)
+    assert "never opens short positions" in reason
+
+
+def test_sell_exceeding_held_qty_refuses(monkeypatch):
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": "TSLA", "qty": "5"}])
+    reason = g.short_sale_reason("TSLA", "SELL", qty=10)
+    assert "never opens short positions" in reason
+
+
+def test_sell_within_held_qty_passes(monkeypatch):
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": "TSLA", "qty": "10"}])
+    assert g.short_sale_reason("TSLA", "SELL", qty=10) is None
+    assert g.short_sale_reason("TSLA", "SELL", qty=5) is None
+
+
+def test_short_sale_fails_closed_when_positions_unreadable(monkeypatch):
+    def boom():
+        raise RuntimeError("alpaca unreachable")
+
+    monkeypatch.setattr(g, "_positions", boom)
+    assert "refusing to proceed blind" in g.short_sale_reason("TSLA", "SELL", qty=10)

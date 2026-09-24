@@ -52,14 +52,15 @@ config/                  watchlist.yaml, risk_limits.yaml (kill switch lives her
 src/trading_agent/
   config.py               YAML config + require_env() — the ONLY way credentials are read
   utils.py                shared date-partitioned file-layer helpers
+  scheduling.py            DST-aware ET -> UTC cron conversion for the 4 checkpoints (`trading-agent cron-status`)
   orchestrator.py          run_checkpoint(): research -> data -> score -> notify
   research/                perplexity_client.py
   data/                    alpaca_client.py (primary), market_data.py (yfinance, backtest-only)
-  journal.py              decision reasoning + outcome measurement (plan §6.3, partial)
+  journal.py              decision reasoning + outcome measurement + performance aggregation (plan §6.3)
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
-  notify/                  approval_gateway.py — hard requirement gate (plan §8)
+  notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — SMTP email/SMS (plan §12)
   execute/                 order_manager.py — approval + kill-switch gated Alpaca submission
-  reporting/               report_builder.py — daily/weekly markdown reports
+  reporting/               report_builder.py — daily/weekly markdown reports + realized/unrealized P&L
   agents/                  interactive Claude Agent SDK research (see above)
   backtest/                unchanged from the original scaffold
 routines/                 trading_checkpoints.md — spec for the 4 scheduled routines (/schedule)
@@ -82,6 +83,17 @@ Required env vars: `PERPLEXITY_API_KEY`, `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY
 (`GITHUB_TOKEN` is named in config for a future git-push helper; nothing
 currently reads it.)
 
+Optional, only needed when `config/agent_config.yaml -> notifications.channel`
+includes `email` or `sms` (`notify/senders.py`, plan §12): `SMTP_HOST`,
+`SMTP_USERNAME`, `SMTP_PASSWORD` (`SMTP_PORT` optional, default 587) — the
+sending account's own credentials, required the same fail-fast way as the
+three above once that channel is enabled. `NOTIFY_EMAIL_ADDRESS` (the email
+destination) and `SMS_GATEWAY_ADDRESS` (a phone's carrier email-to-SMS
+address, e.g. `<number>@tmomail.net`) are destinations, not secrets, but get
+the same treatment — never in a file — and are soft-optional: unset simply
+means that channel silently sends nothing rather than failing. Test the whole
+path with `trading-agent notify-test`.
+
 ## Approval + execution (hard requirement, plan §8)
 
 `execute/order_manager.py:submit_approved_order()` is the only sanctioned
@@ -98,7 +110,7 @@ if it's `true`; flipping it is deliberately not sufficient on its own.
 
 ## Portfolio guardrails (hard requirement)
 
-`guardrails.py` holds three checks. Each returns a refusal reason or `None`;
+`guardrails.py` holds four checks. Each returns a refusal reason or `None`;
 callers turn that into `RoutineHalted` (orchestrator) or `OrderRefused`
 (order_manager). They are enforced at *both* boundaries — a rule that only
 applies at execution time would let the routine spend a day proposing trades
@@ -107,8 +119,7 @@ it can never place.
 1. **Max 5% of portfolio per position** — `position_size_reason()`, checked
    before any BUY. Counts the existing position in the same symbol, so
    repeated partial buys can't stack past the cap one approval at a time.
-   SELLs reduce exposure and are never blocked. Cap:
-   `risk_limits.yaml -> position.max_position_pct_of_portfolio`.
+   Cap: `risk_limits.yaml -> position.max_position_pct_of_portfolio`.
 2. **2% daily loss halts the routine** — `daily_loss_reason()`, measured as
    Alpaca `equity` vs. `last_equity` (prior close), so it resets each trading
    day with no state on disk. Past the cap, `run_checkpoint()` halts *before*
@@ -120,29 +131,50 @@ it can never place.
    in `order_manager` *and* again in `alpaca_client.submit_market_order()`, so
    it holds even for a caller that bypasses the gate. Option symbols are also
    filtered out of the candidate set in `orchestrator.run_checkpoint()`.
+4. **No short positions, ever** — `short_sale_reason()`, checked before any
+   SELL. A SELL is only ever a reduction of an existing long here; refuses
+   outright if there's no existing position, or if the requested qty exceeds
+   what's held (that remainder would open a short). The 5% cap in
+   `position_size_reason()` applies to BUY alone, so without this check a
+   SELL recommendation on a ticker you don't hold would open unbounded short
+   exposure with no guardrail on it at all — there is deliberately no config
+   key to allow shorting, same as the options ban.
 
-These **fail closed**: if Alpaca account state can't be read, the two
+These **fail closed**: if Alpaca account state can't be read, the
 account-dependent checks report a breach rather than assume the portfolio is
 healthy. A guardrail that passes when it can't see anything isn't a guardrail.
 
 ## What's not built yet
 
-- **The last hop of the improvement loop** (plan §6.3, build sequence phase 8).
-  `journal.py` now does the measuring — it records the human's reasoning at
-  decision time and marks what the price did afterwards, into `data/journal/`.
-  What's still missing is the aggregation: nothing rolls those outcomes up into
-  `data/performance/strategy_metrics.json`, so `historical_hitrate()` still
-  returns its neutral 0.5 default and `propose_weight_adjustments()` still has
-  nothing to propose from. Wiring that up changes how every future confidence
-  score is computed, so it wants its own reviewed commit once there's enough
-  journal history to aggregate.
-- **Real P&L in the weekly report** — `reporting/report_builder.py` currently
-  reports activity counts (recs/approvals/trades), not realized/unrealized
-  P&L, which needs position-marking logic.
-- **A real notification channel** — defaults to console/file
-  (`config/agent_config.yaml -> notifications.channel`); `notify/
-  approval_gateway.py:notify()` is the single integration point once you
-  pick push/email/Slack/SMS.
+- ~~The last hop of the improvement loop~~ (plan §6.3, build sequence phase 8) —
+  built: `journal.aggregate_performance()` (`trading-agent journal aggregate`)
+  rolls outcome-marked `data/journal/` entries up into
+  `data/performance/strategy_metrics.json` — a full recompute every call, not
+  an incremental merge. `by_ticker` is straight from each entry's own outcome;
+  `by_signal_type` looks the entry's ticker+checkpoint back up in that day's
+  `data/recommendations/` for `component_scores`, and credits a component when
+  its own bullish/bearish lean agreed with which way the price actually moved,
+  independent of the blended action. `historical_hitrate()` and
+  `propose_weight_adjustments()` now read real numbers instead of nothing —
+  but with an empty `data/journal/` so far (no checkpoint has run for real
+  yet), both are still waiting on enough history to say anything.
+- ~~Real P&L in the weekly report~~ — built: `build_weekly_report()` now adds
+  a `## P&L` section. Realized P&L (`_realized_pnl()`) walks the week's
+  `data/trades/` fills in submission order, average-cost basis per symbol —
+  only orders with a confirmed fill (`filled_qty`/`filled_avg_price`) count;
+  this project doesn't poll Alpaca for fill confirmation after submission, so
+  an order recorded before it fills is excluded and reported separately as a
+  pending-fill count rather than guessed at. Unrealized P&L (`_unrealized_pnl()`)
+  is a live snapshot straight from Alpaca's own per-position figures — no
+  reconstruction needed there.
+- ~~A real notification channel~~ — built: `notify/senders.py` sends email
+  and SMS (via a carrier email-to-SMS gateway) over SMTP, one consolidated
+  message per checkpoint (`notify_digest()`, wired into
+  `orchestrator.run_checkpoint()`) rather than one per ticker. Add `email`
+  and/or `sms` to `config/agent_config.yaml -> notifications.channel` and set
+  the env vars in CLAUDE.md's credential policy section; `trading-agent
+  notify-test` fires a one-off message through whatever's configured. Slack
+  and push are still just the docstring's aspiration, not built.
 - **A secondary fundamentals/screening vendor** — Alpaca's own coverage is
   limited (plan §5); `fundamental` score currently defaults to neutral (0.5)
   in `orchestrator.py`.

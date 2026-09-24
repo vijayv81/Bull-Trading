@@ -34,17 +34,21 @@ def technical_score(bars: pd.DataFrame, fast: int = 20, slow: int = 50) -> float
     return max(0.0, min(1.0, score))
 
 
-def historical_hitrate(ticker: str) -> float:
+def historical_hitrate(ticker: str) -> float | None:
     """Rolling per-ticker accuracy from data/performance/strategy_metrics.json.
 
-    Defaults to a neutral 0.5 until enough realized outcomes exist — see
-    reporting/report_builder.py for how that file gets updated.
+    Returns None until enough realized outcomes exist for this ticker — see
+    reporting/report_builder.py for how that file gets updated. score_candidate()
+    excludes a None component from the weighted score entirely rather than
+    substituting a neutral 0.5, which would silently dilute every other
+    component's weight with a constant that carries no per-ticker signal.
     """
     path = PERFORMANCE_DIR / "strategy_metrics.json"
     if not path.exists():
-        return 0.5
+        return None
     metrics = json.loads(path.read_text())
-    return metrics.get("by_ticker", {}).get(ticker, {}).get("hit_rate", 0.5)
+    entry = metrics.get("by_ticker", {}).get(ticker)
+    return entry.get("hit_rate") if entry else None
 
 
 def score_candidate(
@@ -52,13 +56,20 @@ def score_candidate(
     checkpoint: str,
     sentiment: float,
     technical: float,
-    fundamental: float,
+    fundamental: float | None,
     catalyst: float,
 ) -> dict[str, Any]:
     """Combine component scores (each 0-1) into a 0-100 confidence + action.
 
     Record shape matches plan §6.2 exactly, so reports and the approval
     gateway can rely on the field names.
+
+    A component passed as None (no real data yet — see historical_hitrate()
+    and orchestrator.py's fundamental=None) is excluded from the weighted sum
+    rather than treated as a neutral 0.5: a constant baked into every
+    ticker's score can't discriminate between them, it only dilutes the
+    components that can. Its weight is redistributed proportionally across
+    whatever components ARE available this call.
     """
     weights = load_agent_config()["scoring_weights"]
     hitrate = historical_hitrate(ticker)
@@ -70,7 +81,11 @@ def score_candidate(
         "catalyst": catalyst,
         "historical_hitrate": hitrate,
     }
-    confidence = sum(weights[key] * value for key, value in components.items()) * 100
+    available = {key: value for key, value in components.items() if value is not None}
+    if not available:
+        raise ValueError(f"No scoring components available for {ticker} — cannot compute a confidence score.")
+    weight_total = sum(weights[key] for key in available)
+    confidence = sum(weights[key] * value for key, value in available.items()) / weight_total * 100
 
     risk = load_risk_limits()["position"]
     action: Action = "HOLD"

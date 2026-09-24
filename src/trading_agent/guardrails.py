@@ -100,12 +100,43 @@ def daily_loss_reason() -> str | None:
     return None
 
 
+def short_sale_reason(symbol: str, side: str, qty: float) -> str | None:
+    """Breach reason when a SELL would open or increase a short position.
+
+    SELL is only ever meant to reduce an existing long here — the 5% cap in
+    position_size_reason() applies to BUY alone, so a SELL that isn't capped
+    at the existing holding would open unbounded short exposure with no
+    guardrail bounding it at all. Fails closed: an unreadable position looks
+    like a breach, not a pass.
+    """
+    if side.upper() != "SELL":
+        return None
+
+    try:
+        held = _existing_position_qty(symbol)
+    except Exception as exc:
+        return f"Cannot verify existing {symbol} holdings before a SELL ({exc}) — refusing to proceed blind."
+
+    if held <= 0:
+        return (
+            f"SELL {qty} {symbol} refused: no existing long position to reduce (held: {held}). "
+            "This project never opens short positions."
+        )
+    if qty > held:
+        return (
+            f"SELL {qty} {symbol} refused: only {held} shares held — selling {qty} would open "
+            "a short for the remainder. This project never opens short positions."
+        )
+    return None
+
+
 def position_size_reason(symbol: str, side: str, qty: float) -> str | None:
     """Breach reason when a BUY would push the position past the per-position cap.
 
     Counts any existing position in the same symbol, so repeated partial buys
-    cannot stack past the cap one approval at a time. Sells reduce exposure and
-    are never blocked here.
+    cannot stack past the cap one approval at a time. Short-sale exposure is
+    guarded separately by short_sale_reason() — a SELL never reaches this cap
+    check at all.
     """
     if side.upper() != "BUY":
         return None
@@ -135,4 +166,11 @@ def _existing_position_value(symbol: str) -> float:
     for position in _positions():
         if str(position.get("symbol", "")).upper() == symbol.upper():
             return abs(float(position.get("market_value") or 0.0))
+    return 0.0
+
+
+def _existing_position_qty(symbol: str) -> float:
+    for position in _positions():
+        if str(position.get("symbol", "")).upper() == symbol.upper():
+            return float(position.get("qty") or 0.0)
     return 0.0

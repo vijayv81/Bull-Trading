@@ -152,6 +152,20 @@ def cmd_journal_show(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_journal_aggregate(args: argparse.Namespace) -> None:
+    from trading_agent.journal import aggregate_performance
+
+    metrics = aggregate_performance()
+    n_tickers = len(metrics["by_ticker"])
+    n_signals = len(metrics["by_signal_type"])
+    if n_tickers == 0:
+        print("No outcome-marked journal entries yet — nothing to aggregate.")
+        return
+    print(f"Aggregated {n_tickers} ticker(s), {n_signals} signal type(s) into data/performance/strategy_metrics.json")
+    for signal, stats in sorted(metrics["by_signal_type"].items()):
+        print(f"  {signal}: {stats['hit_rate']:.0%} over {stats['n']} call(s)")
+
+
 def cmd_report(args: argparse.Namespace) -> None:
     from trading_agent.reporting.report_builder import build_daily_report, build_weekly_report
 
@@ -166,6 +180,42 @@ def cmd_propose_weights(args: argparse.Namespace) -> None:
 
     for line in propose_weight_adjustments():
         print(f"- {line}")
+
+
+def cmd_notify_test(args: argparse.Namespace) -> None:
+    from trading_agent.notify.approval_gateway import notification_channels
+    from trading_agent.notify.senders import send_email, send_sms
+
+    channels = notification_channels()
+    if "email" in channels:
+        try:
+            sent = send_email("[Bull-Trading] Test notification", "This is a test of the email channel.")
+            print("email: sent" if sent else "email: skipped (NOTIFY_EMAIL_ADDRESS not set)")
+        except Exception as exc:  # noqa: BLE001
+            print(f"email: failed — {exc}")
+    else:
+        print("email: not in notifications.channel, skipped")
+
+    if "sms" in channels:
+        try:
+            sent = send_sms("Bull-Trading: test notification")
+            print("sms: sent" if sent else "sms: skipped (SMS_GATEWAY_ADDRESS not set)")
+        except Exception as exc:  # noqa: BLE001
+            print(f"sms: failed — {exc}")
+    else:
+        print("sms: not in notifications.channel, skipped")
+
+
+def cmd_cron_status(args: argparse.Namespace) -> None:
+    import datetime as dt
+
+    from trading_agent.scheduling import all_checkpoint_crons_utc, is_dst_active
+
+    on = dt.date.fromisoformat(args.date) if args.date else None
+    label = "EDT (UTC-4)" if is_dst_active(on) else "EST (UTC-5)"
+    print(f"US Eastern is {label} on {on or dt.datetime.now().date()}. Correct UTC cron expressions:")
+    for name, cron in all_checkpoint_crons_utc(on).items():
+        print(f"  {name}: {cron}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -224,6 +274,11 @@ def build_parser() -> argparse.ArgumentParser:
     execute.add_argument("qty", type=float)
     execute.set_defaults(func=cmd_execute)
 
+    notify_test = sub.add_parser(
+        "notify-test", help="Fire a test message through every channel in notifications.channel."
+    )
+    notify_test.set_defaults(func=cmd_notify_test)
+
     journal = sub.add_parser("journal", help="Record decision reasoning and measure how calls turned out.")
     journal_sub = journal.add_subparsers(dest="journal_command", required=True)
 
@@ -244,6 +299,12 @@ def build_parser() -> argparse.ArgumentParser:
     journal_show.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
     journal_show.set_defaults(func=cmd_journal_show)
 
+    journal_aggregate = journal_sub.add_parser(
+        "aggregate",
+        help="Roll all outcome-marked entries into data/performance/strategy_metrics.json.",
+    )
+    journal_aggregate.set_defaults(func=cmd_journal_aggregate)
+
     report = sub.add_parser("report", help="Build a daily or weekly markdown report.")
     report.add_argument("period", choices=["daily", "weekly"])
     report.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
@@ -252,6 +313,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     propose = sub.add_parser("propose-weights", help="Print (never apply) proposed scoring-weight changes.")
     propose.set_defaults(func=cmd_propose_weights)
+
+    cron_status = sub.add_parser(
+        "cron-status",
+        help="Print DST-correct UTC cron expressions for the four checkpoints (routine schedules are UTC-only).",
+    )
+    cron_status.add_argument("--date", help="YYYY-MM-DD (US/Eastern) to check, defaults to today.")
+    cron_status.set_defaults(func=cmd_cron_status)
 
     return parser
 

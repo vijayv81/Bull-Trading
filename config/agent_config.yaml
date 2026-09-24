@@ -45,11 +45,25 @@ scoring_weights:
 holding_period: swing
 
 notifications:
-  # plan §12 open decision. "console" prints to stdout; "file" relies on the
-  # recommendation JSON itself (already written either way). Swap in a real
-  # sender (webhook/SMTP/etc.) in notify/approval_gateway.py:notify() once
-  # you've picked a channel — that function is the single integration point.
+  # plan §12. A single value or a list — "console" prints to stdout (per
+  # ticker); "file" relies on the recommendation JSON itself (already
+  # written either way); "email"/"sms" send one consolidated message per
+  # checkpoint via notify/senders.py (SMTP). Mix freely, e.g. [console, email].
+  #
+  # email/sms read their destinations from the environment, never from this
+  # file: NOTIFY_EMAIL_ADDRESS for email, SMS_GATEWAY_ADDRESS (a phone's
+  # carrier email-to-SMS address, e.g. <number>@tmomail.net) for SMS. Sending
+  # SMTP itself needs SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD (SMTP_PORT
+  # optional, default 587) — same require_env() policy as every other
+  # credential. Test with `trading-agent notify-test`.
   channel: console
+
+  # URL of the published Claude Artifact "Approval Ticket" page email links
+  # point to (its own small database holds the click-through decision until
+  # it's synced into data/approvals/ — see .claude/skills/trading-trade
+  # "Sync email-link decisions first"). Not a secret, just a page URL; null
+  # disables the sync step entirely.
+  approval_ticket_artifact_url: "https://claude.ai/artifact/RopjHYW6Rtr9n3t8Ka7MNT"
 
 # Alpaca's own fundamentals/screener coverage is limited (plan §5) — no
 # secondary data vendor is wired up yet (plan §12 open decision). Fundamental
