@@ -83,6 +83,12 @@ Required env vars: `PERPLEXITY_API_KEY`, `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY
 (`GITHUB_TOKEN` is named in config for a future git-push helper; nothing
 currently reads it.)
 
+Optional: `SMS_GATEWAY_ADDRESS` — an email-to-SMS gateway address (e.g. a
+phone number's `@tmomail.net`/`@vtext.com`/`@txt.att.net` address), read the
+same way (never stored in a file — it's PII, not a secret, but the same rule
+applies) when a parallel SMS notification is sent alongside an email one.
+Unset means no SMS channel, not a failure.
+
 ## Approval + execution (hard requirement, plan §8)
 
 `execute/order_manager.py:submit_approved_order()` is the only sanctioned
