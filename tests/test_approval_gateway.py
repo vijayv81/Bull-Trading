@@ -121,6 +121,22 @@ def test_notify_digest_includes_auto_apply_section(monkeypatch):
     assert "AUTO: TSLA x12" in sms_calls[0][0]
 
 
+def test_notify_digest_includes_failed_tickers_section(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    gw.notify_digest(
+        [{"ticker": "TSLA", "action": "BUY", "confidence": 90}],
+        "pre_open",
+        failed_tickers=[{"ticker": "BAD", "error": "ReadTimeout"}],
+    )
+
+    body = email_calls[0][1]
+    assert "Research failed" in body
+    assert "BAD: ReadTimeout" in body
+
+
 def test_notify_digest_auto_results_alone_still_sms_when_no_actionable(monkeypatch):
     monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["sms"]}})
     sms_calls = []

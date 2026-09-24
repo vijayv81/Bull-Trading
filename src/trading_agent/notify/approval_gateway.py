@@ -59,7 +59,10 @@ def notify(rec: dict[str, Any]) -> None:
 
 
 def notify_digest(
-    recs: list[dict[str, Any]], checkpoint: str, auto_results: list[dict[str, Any]] | None = None
+    recs: list[dict[str, Any]],
+    checkpoint: str,
+    auto_results: list[dict[str, Any]] | None = None,
+    failed_tickers: list[dict[str, Any]] | None = None,
 ) -> None:
     """One consolidated email/SMS per checkpoint instead of one per ticker —
     a mover-heavy checkpoint would otherwise fire a dozen texts. Console/file
@@ -69,7 +72,10 @@ def notify_digest(
     `auto_results` (execute.auto_pilot.auto_apply()'s return, when that's
     enabled) gets its own section — a human reading this must be able to tell
     a recommendation the system already acted on apart from one still waiting
-    on them, never have to guess.
+    on them, never have to guess. `failed_tickers` (orchestrator.run_checkpoint()'s
+    per-ticker research/scoring failures) gets one too, for the same reason: a
+    quiet checkpoint and a checkpoint that silently dropped half the watchlist
+    to a research API error must not read the same to a human skimming this.
 
     A send failure (bad API key, unreachable host) is reported, not
     raised — a broken notification channel should never halt the pipeline
@@ -89,6 +95,11 @@ def notify_digest(
 
     if auto_results:
         body += "\n\nAuto-applied:\n" + "\n".join(_auto_result_line(r) for r in auto_results)
+
+    if failed_tickers:
+        body += "\n\nResearch failed (skipped, not scored):\n" + "\n".join(
+            f"- {f['ticker']}: {f['error'][:120]}" for f in failed_tickers
+        )
 
     if "email" in channels:
         try:
