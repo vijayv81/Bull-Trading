@@ -52,26 +52,31 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     tickers = {t for t in tickers if not is_option_symbol(t)}
 
     results = []
+    failed_tickers = []
     for ticker in sorted(tickers):
-        research = research_ticker(ticker, checkpoint)
+        try:
+            research = research_ticker(ticker, checkpoint)
 
-        bars = pd.DataFrame(get_recent_bars(ticker))
-        tech = technical_score(bars)
+            bars = pd.DataFrame(get_recent_bars(ticker))
+            tech = technical_score(bars)
 
-        rec = score_candidate(
-            ticker=ticker,
-            checkpoint=checkpoint,
-            sentiment=research.get("confidence_of_extraction", 0.5),
-            technical=tech,
-            fundamental=None,  # no fundamentals vendor wired up yet — excluded from the score, not neutral
-            catalyst=0.7 if research.get("sources") else 0.3,
-        )
-        rec["rationale"] = (research.get("headline_summary") or "")[:280]
-        rec["sources"] = research.get("sources", [])
+            rec = score_candidate(
+                ticker=ticker,
+                checkpoint=checkpoint,
+                sentiment=research.get("confidence_of_extraction", 0.5),
+                technical=tech,
+                fundamental=None,  # no fundamentals vendor wired up yet — excluded from the score, not neutral
+                catalyst=0.7 if research.get("sources") else 0.3,
+            )
+            rec["rationale"] = (research.get("headline_summary") or "")[:280]
+            rec["sources"] = research.get("sources", [])
 
-        save_recommendation(rec)
-        results.append(rec)
+            save_recommendation(rec)
+            results.append(rec)
+        except Exception as exc:  # noqa: BLE001 - one ticker's failure must not kill the checkpoint
+            failed_tickers.append({"ticker": ticker, "error": str(exc)})
+            print(f"SKIPPED {ticker}: research/scoring failed — {exc}")
 
     auto_results = auto_apply(results, checkpoint)
-    notify_digest(results, checkpoint, auto_results=auto_results)
+    notify_digest(results, checkpoint, auto_results=auto_results, failed_tickers=failed_tickers)
     return results
