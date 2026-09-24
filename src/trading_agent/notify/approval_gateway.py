@@ -71,7 +71,7 @@ def notify_digest(
     a recommendation the system already acted on apart from one still waiting
     on them, never have to guess.
 
-    A send failure (bad SMTP creds, unreachable host) is reported, not
+    A send failure (bad API key, unreachable host) is reported, not
     raised — a broken notification channel should never halt the pipeline
     that produced the recommendations it was trying to deliver.
     """

@@ -58,7 +58,7 @@ src/trading_agent/
   data/                    alpaca_client.py (primary), market_data.py (yfinance, backtest-only)
   journal.py              decision reasoning + outcome measurement + performance aggregation (plan §6.3)
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
-  notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — SMTP email/SMS (plan §12)
+  notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — email/SMS over Resend's HTTPS API (plan §12)
   execute/                 order_manager.py — approval + kill-switch gated Alpaca submission; auto_pilot.py — opt-in auto-apply (see below)
   reporting/               report_builder.py — daily/weekly markdown reports + realized/unrealized P&L
   agents/                  interactive Claude Agent SDK research (see above)
@@ -84,15 +84,19 @@ Required env vars: `PERPLEXITY_API_KEY`, `APCA_API_KEY_ID`, `APCA_API_SECRET_KEY
 currently reads it.)
 
 Optional, only needed when `config/agent_config.yaml -> notifications.channel`
-includes `email` or `sms` (`notify/senders.py`, plan §12): `SMTP_HOST`,
-`SMTP_USERNAME`, `SMTP_PASSWORD` (`SMTP_PORT` optional, default 587) — the
-sending account's own credentials, required the same fail-fast way as the
-three above once that channel is enabled. `NOTIFY_EMAIL_ADDRESS` (the email
-destination) and `SMS_GATEWAY_ADDRESS` (a phone's carrier email-to-SMS
-address, e.g. `<number>@tmomail.net`) are destinations, not secrets, but get
-the same treatment — never in a file — and are soft-optional: unset simply
-means that channel silently sends nothing rather than failing. Test the whole
-path with `trading-agent notify-test`.
+includes `email` or `sms` (`notify/senders.py`, plan §12): `RESEND_API_KEY` —
+required the same fail-fast way as the three above once that channel is
+enabled. Sent over Resend's HTTPS API deliberately, not SMTP: this project
+runs in a cloud sandbox whose network only proxies HTTPS egress, and a raw
+SMTP socket (port 587/465) times out at connect() there — confirmed directly,
+not a theoretical concern. `RESEND_FROM_ADDRESS` is optional (defaults to
+Resend's no-setup sandbox sender, `onboarding@resend.dev`, which works without
+verifying a domain). `NOTIFY_EMAIL_ADDRESS` (the email destination) and
+`SMS_GATEWAY_ADDRESS` (a phone's carrier email-to-SMS address, e.g.
+`<number>@tmomail.net`) are destinations, not secrets, but get the same
+treatment — never in a file — and are soft-optional: unset simply means that
+channel silently sends nothing rather than failing. Test the whole path with
+`trading-agent notify-test`.
 
 `trading-agent daily-summary` (gated by `notifications.daily_summary_enabled`,
 default `true`) sends one end-of-day email/SMS, separate from the
@@ -225,7 +229,8 @@ healthy. A guardrail that passes when it can't see anything isn't a guardrail.
   is a live snapshot straight from Alpaca's own per-position figures — no
   reconstruction needed there.
 - ~~A real notification channel~~ — built: `notify/senders.py` sends email
-  and SMS (via a carrier email-to-SMS gateway) over SMTP, one consolidated
+  and SMS (via a carrier email-to-SMS gateway) over Resend's HTTPS API — not
+  SMTP, which times out in this project's cloud sandbox — one consolidated
   message per checkpoint (`notify_digest()`, wired into
   `orchestrator.run_checkpoint()`) rather than one per ticker. Add `email`
   and/or `sms` to `config/agent_config.yaml -> notifications.channel` and set

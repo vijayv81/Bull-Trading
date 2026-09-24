@@ -1,56 +1,57 @@
-"""Email + SMS delivery (plan §12 notification channel).
+"""Email + SMS delivery over Resend's HTTPS API (plan §12 notification channel).
 
-SMTP-only, on purpose: it's the one transport that fits the credential
-policy without adding a provider-specific SDK or OAuth flow. SMS rides the
-same SMTP send to a phone's carrier email-to-SMS gateway address
-(SMS_GATEWAY_ADDRESS, e.g. `<number>@tmomail.net`) rather than a separate
-provider. Every address and credential comes from the environment — see
-CLAUDE.md's credential policy; nothing here ever reads or writes a file.
+Not SMTP: this project runs in a cloud sandbox whose network only proxies
+HTTPS egress — a raw SMTP socket (port 587/465) times out at connect(), a
+network-level block confirmed directly, not a code bug. Resend's REST API
+sends over HTTPS like every other integration in this project (Perplexity,
+Alpaca), so it actually works from an unattended cloud routine. SMS rides the
+same API to a phone's carrier email-to-SMS gateway address rather than a
+separate SMS provider.
 """
 
 from __future__ import annotations
 
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from typing import Any
+
+import requests
 
 from trading_agent.config import require_env
 
+RESEND_URL = "https://api.resend.com/emails"
+# Resend's no-setup sandbox sender — works without verifying a domain, so
+# there's a working default even before RESEND_FROM_ADDRESS is configured.
+DEFAULT_FROM_ADDRESS = "onboarding@resend.dev"
 
-def _send_via_smtp(to_addr: str, subject: str, body: str, html_body: str | None = None) -> None:
-    host = require_env("SMTP_HOST")
-    port = int(os.environ.get("SMTP_PORT", "587"))
-    username = require_env("SMTP_USERNAME")
-    password = require_env("SMTP_PASSWORD")
 
-    if html_body:
-        msg: MIMEMultipart | MIMEText = MIMEMultipart("alternative")
-        msg.attach(MIMEText(body, "plain"))
-        msg.attach(MIMEText(html_body, "html"))
-    else:
-        msg = MIMEText(body, "plain")
-    msg["Subject"] = subject
-    msg["From"] = username
-    msg["To"] = to_addr
+def _send_via_resend(to_addr: str, subject: str, text: str, html: str | None = None) -> None:
+    api_key = require_env("RESEND_API_KEY")
+    from_addr = os.environ.get("RESEND_FROM_ADDRESS", DEFAULT_FROM_ADDRESS)
 
-    with smtplib.SMTP(host, port, timeout=10) as server:
-        server.starttls()
-        server.login(username, password)
-        server.sendmail(username, [to_addr], msg.as_string())
+    payload: dict[str, Any] = {"from": from_addr, "to": [to_addr], "subject": subject, "text": text}
+    if html:
+        payload["html"] = html
+
+    response = requests.post(
+        RESEND_URL,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=15,
+    )
+    response.raise_for_status()
 
 
 def send_email(subject: str, body: str, html_body: str | None = None) -> bool:
     """Send to NOTIFY_EMAIL_ADDRESS. Returns False (no error) when that's
     unset — no destination configured is a normal, silent no-op, same as an
-    unset SMS_GATEWAY_ADDRESS. A configured destination with broken SMTP
-    credentials still raises; that's a real config error, not a missing
+    unset SMS_GATEWAY_ADDRESS. A configured destination with a broken/missing
+    RESEND_API_KEY still raises; that's a real config error, not a missing
     optional channel.
     """
     to_addr = os.environ.get("NOTIFY_EMAIL_ADDRESS")
     if not to_addr:
         return False
-    _send_via_smtp(to_addr, subject, body, html_body)
+    _send_via_resend(to_addr, subject, body, html_body)
     return True
 
 
@@ -63,5 +64,5 @@ def send_sms(body: str) -> bool:
     to_addr = os.environ.get("SMS_GATEWAY_ADDRESS")
     if not to_addr:
         return False
-    _send_via_smtp(to_addr, subject="", body=body)
+    _send_via_resend(to_addr, subject="Bull-Trading", text=body)
     return True

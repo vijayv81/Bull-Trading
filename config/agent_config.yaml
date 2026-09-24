@@ -48,14 +48,16 @@ notifications:
   # plan §12. A single value or a list — "console" prints to stdout (per
   # ticker); "file" relies on the recommendation JSON itself (already
   # written either way); "email"/"sms" send one consolidated message per
-  # checkpoint via notify/senders.py (SMTP). Mix freely, e.g. [console, email].
+  # checkpoint via notify/senders.py over Resend's HTTPS API (not SMTP — this
+  # project's cloud sandbox only proxies HTTPS egress; raw SMTP times out at
+  # connect(), confirmed directly). Mix freely, e.g. [console, email].
   #
   # email/sms read their destinations from the environment, never from this
   # file: NOTIFY_EMAIL_ADDRESS for email, SMS_GATEWAY_ADDRESS (a phone's
   # carrier email-to-SMS address, e.g. <number>@tmomail.net) for SMS. Sending
-  # SMTP itself needs SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD (SMTP_PORT
-  # optional, default 587) — same require_env() policy as every other
-  # credential. Test with `trading-agent notify-test`.
+  # itself needs RESEND_API_KEY (RESEND_FROM_ADDRESS optional, defaults to
+  # Resend's no-setup sandbox sender) — same require_env() policy as every
+  # other credential. Test with `trading-agent notify-test`.
   channel: [console, email, sms]
 
   # End-of-day learnings + benchmark (SPY) comparison email/SMS, separate from

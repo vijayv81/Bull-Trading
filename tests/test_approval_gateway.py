@@ -93,7 +93,7 @@ def test_notify_digest_send_failure_does_not_raise(monkeypatch):
     monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
 
     def boom(*a, **k):
-        raise RuntimeError("SMTP_HOST not set")
+        raise RuntimeError("RESEND_API_KEY not set")
 
     monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
     gw.notify_digest([{"ticker": "TSLA", "action": "BUY", "confidence": 70}], "midday")  # must not raise
@@ -208,7 +208,7 @@ def test_daily_summary_send_failure_does_not_raise(monkeypatch):
     monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
 
     def boom(*a, **k):
-        raise RuntimeError("SMTP_HOST not set")
+        raise RuntimeError("RESEND_API_KEY not set")
 
     monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
     gw.notify_daily_summary(_summary())  # must not raise
