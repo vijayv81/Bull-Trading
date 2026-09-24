@@ -152,6 +152,20 @@ def cmd_journal_show(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_journal_aggregate(args: argparse.Namespace) -> None:
+    from trading_agent.journal import aggregate_performance
+
+    metrics = aggregate_performance()
+    n_tickers = len(metrics["by_ticker"])
+    n_signals = len(metrics["by_signal_type"])
+    if n_tickers == 0:
+        print("No outcome-marked journal entries yet — nothing to aggregate.")
+        return
+    print(f"Aggregated {n_tickers} ticker(s), {n_signals} signal type(s) into data/performance/strategy_metrics.json")
+    for signal, stats in sorted(metrics["by_signal_type"].items()):
+        print(f"  {signal}: {stats['hit_rate']:.0%} over {stats['n']} call(s)")
+
+
 def cmd_report(args: argparse.Namespace) -> None:
     from trading_agent.reporting.report_builder import build_daily_report, build_weekly_report
 
@@ -284,6 +298,12 @@ def build_parser() -> argparse.ArgumentParser:
     journal_show = journal_sub.add_parser("show", help="List journal entries and their outcomes.")
     journal_show.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
     journal_show.set_defaults(func=cmd_journal_show)
+
+    journal_aggregate = journal_sub.add_parser(
+        "aggregate",
+        help="Roll all outcome-marked entries into data/performance/strategy_metrics.json.",
+    )
+    journal_aggregate.set_defaults(func=cmd_journal_aggregate)
 
     report = sub.add_parser("report", help="Build a daily or weekly markdown report.")
     report.add_argument("period", choices=["daily", "weekly"])

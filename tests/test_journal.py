@@ -3,6 +3,8 @@ that must hold are: reasoning is stored verbatim, outcomes are only computed
 from a real reference price, and marking is re-runnable without double-counting.
 """
 
+import json
+
 import pytest
 
 from trading_agent import journal as j
@@ -11,6 +13,8 @@ from trading_agent import journal as j
 @pytest.fixture(autouse=True)
 def isolated_journal(monkeypatch, tmp_path):
     monkeypatch.setattr(j, "JOURNAL_DIR", tmp_path / "journal")
+    monkeypatch.setattr(j, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
+    monkeypatch.setattr(j, "PERFORMANCE_DIR", tmp_path / "performance")
 
 
 @pytest.fixture
@@ -117,3 +121,82 @@ def test_entries_persist_across_multiple_records(price):
     j.record_entry("GOOG", "midday", "reject", "second")
 
     assert [e["ticker"] for e in j.load_entries()] == ["TSLA", "GOOG"]
+
+
+# --- aggregate_performance ---------------------------------------------------
+
+
+def _write_rec(day, checkpoint, ticker, component_scores):
+    path = j.RECOMMENDATIONS_DIR / day
+    path.mkdir(parents=True, exist_ok=True)
+    rec_file = path / f"recs_{checkpoint}.json"
+    recs = json.loads(rec_file.read_text()) if rec_file.exists() else []
+    recs.append({"ticker": ticker, "checkpoint": checkpoint, "component_scores": component_scores})
+    rec_file.write_text(json.dumps(recs))
+
+
+def test_aggregate_with_no_journal_history_is_empty():
+    metrics = j.aggregate_performance()
+    assert metrics["by_ticker"] == {}
+    assert metrics["by_signal_type"] == {}
+
+
+def test_aggregate_writes_strategy_metrics_file(price):
+    price(100.0)
+    j.record_entry("TSLA", "midday", "approve", "why", action="BUY")
+    price(110.0)
+    j.mark_outcomes()
+
+    j.aggregate_performance()
+    assert j._strategy_metrics_path().exists()
+
+
+def test_aggregate_by_ticker_hit_rate(price):
+    day = j.today()
+    price(100.0)
+    j.record_entry("TSLA", "midday", "approve", "why", action="BUY", day=day)
+    price(110.0)
+    j.mark_outcomes(day)  # correct
+    price(100.0)
+    j.record_entry("TSLA", "pre_close", "approve", "why", action="BUY", day=day)
+    price(90.0)
+    j.mark_outcomes(day)  # wrong
+
+    metrics = j.aggregate_performance()
+    assert metrics["by_ticker"]["TSLA"] == {"hit_rate": 0.5, "n": 2}
+
+
+def test_aggregate_excludes_entries_with_no_direction(price):
+    day = j.today()
+    price(100.0)
+    j.record_entry("TSLA", "midday", "approve", "why", action="HOLD", day=day)
+    price(110.0)
+    j.mark_outcomes(day)
+
+    metrics = j.aggregate_performance()
+    assert metrics["by_ticker"] == {}
+
+
+def test_aggregate_by_signal_type_credits_agreeing_leans(price):
+    day = j.today()
+    _write_rec(day, "midday", "TSLA", {"sentiment": 0.9, "technical": 0.1, "fundamental": None})
+    price(100.0)
+    j.record_entry("TSLA", "midday", "approve", "why", action="BUY", day=day)
+    price(110.0)  # price rose: sentiment (bullish lean) agrees, technical (bearish lean) doesn't
+    j.mark_outcomes(day)
+
+    metrics = j.aggregate_performance()
+    assert metrics["by_signal_type"]["sentiment"] == {"hit_rate": 1.0, "n": 1}
+    assert metrics["by_signal_type"]["technical"] == {"hit_rate": 0.0, "n": 1}
+    assert "fundamental" not in metrics["by_signal_type"]  # None component excluded
+
+
+def test_aggregate_is_a_full_recompute_not_incremental(price):
+    day = j.today()
+    price(100.0)
+    j.record_entry("TSLA", "midday", "approve", "why", action="BUY", day=day)
+    price(110.0)
+    j.mark_outcomes(day)
+    first = j.aggregate_performance()
+    second = j.aggregate_performance()
+    assert first["by_ticker"] == second["by_ticker"]

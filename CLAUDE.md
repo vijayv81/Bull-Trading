@@ -56,7 +56,7 @@ src/trading_agent/
   orchestrator.py          run_checkpoint(): research -> data -> score -> notify
   research/                perplexity_client.py
   data/                    alpaca_client.py (primary), market_data.py (yfinance, backtest-only)
-  journal.py              decision reasoning + outcome measurement (plan §6.3, partial)
+  journal.py              decision reasoning + outcome measurement + performance aggregation (plan §6.3)
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
   notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — SMTP email/SMS (plan §12)
   execute/                 order_manager.py — approval + kill-switch gated Alpaca submission
@@ -146,15 +146,18 @@ healthy. A guardrail that passes when it can't see anything isn't a guardrail.
 
 ## What's not built yet
 
-- **The last hop of the improvement loop** (plan §6.3, build sequence phase 8).
-  `journal.py` now does the measuring — it records the human's reasoning at
-  decision time and marks what the price did afterwards, into `data/journal/`.
-  What's still missing is the aggregation: nothing rolls those outcomes up into
-  `data/performance/strategy_metrics.json`, so `historical_hitrate()` still
-  returns its neutral 0.5 default and `propose_weight_adjustments()` still has
-  nothing to propose from. Wiring that up changes how every future confidence
-  score is computed, so it wants its own reviewed commit once there's enough
-  journal history to aggregate.
+- ~~The last hop of the improvement loop~~ (plan §6.3, build sequence phase 8) —
+  built: `journal.aggregate_performance()` (`trading-agent journal aggregate`)
+  rolls outcome-marked `data/journal/` entries up into
+  `data/performance/strategy_metrics.json` — a full recompute every call, not
+  an incremental merge. `by_ticker` is straight from each entry's own outcome;
+  `by_signal_type` looks the entry's ticker+checkpoint back up in that day's
+  `data/recommendations/` for `component_scores`, and credits a component when
+  its own bullish/bearish lean agreed with which way the price actually moved,
+  independent of the blended action. `historical_hitrate()` and
+  `propose_weight_adjustments()` now read real numbers instead of nothing —
+  but with an empty `data/journal/` so far (no checkpoint has run for real
+  yet), both are still waiting on enough history to say anything.
 - **Real P&L in the weekly report** — `reporting/report_builder.py` currently
   reports activity counts (recs/approvals/trades), not realized/unrealized
   P&L, which needs position-marking logic.

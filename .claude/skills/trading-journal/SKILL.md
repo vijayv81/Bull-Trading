@@ -7,9 +7,10 @@ description: Captures why a trading decision was made, in the user's own words, 
 
 `data/recommendations/` holds what the pipeline proposed and `data/approvals/`
 holds what the user decided. Neither holds *why*, and nothing holds what the
-price then did. Those two gaps are why `historical_hitrate()` is still returning
-its neutral 0.5 default and `propose-weights` has nothing to work from. This
-skill closes them.
+price then did. This skill closes both gaps, and the `aggregate` step below
+rolls the result into what `historical_hitrate()` and `propose-weights`
+actually read — until there's enough journal history, those two still have
+nothing to work from, but the pipe is no longer missing.
 
 ## Before you start
 
@@ -77,14 +78,27 @@ Never edit a past entry's `reasoning` once an outcome is known. If the user
 wants to add a retrospective thought, that's a new entry — rewriting the stated
 reason after seeing the result destroys the only thing this record is for.
 
-## What this does not do yet
+## Roll outcomes into performance metrics
 
-Outcome data lands in `data/journal/` but nothing aggregates it into
-`data/performance/strategy_metrics.json` yet, so `historical_hitrate()` still
-returns 0.5 and `propose-weights` still has nothing to propose. Closing that
-last hop is a deliberate, reviewable change to the scoring loop — flag it to the
-user when there's enough journal history to make it worth doing, rather than
-wiring it up mid-run.
+Right after marking outcomes, roll them up:
+
+```bash
+trading-agent journal aggregate
+```
+
+This recomputes `data/performance/strategy_metrics.json` from scratch out of
+everything in `data/journal/` and `data/recommendations/` — a full recompute,
+not an incremental update, so re-running it after fixing a bad entry just
+works, and it never drifts from the source data. It's what `historical_hitrate()`
+and `propose-weights` read; skip this step and both keep working off stale (or
+empty) numbers no matter how much journal history piles up.
+
+It's cheap and re-runnable, so there's no harm running it every time you run
+`outcomes`, not just at pre_close.
+
+Don't over-read a small `n`. The command reports how many calls each hit rate
+is based on — say that number back to the user rather than just "62%", for the
+same reason you never extrapolate a hit rate from a handful of entries above.
 
 ## Capturing feedback
 
