@@ -94,3 +94,84 @@ def test_no_components_available_raises(monkeypatch, fixed_config):
         engine.score_candidate(
             "TSLA", "midday", sentiment=None, technical=None, fundamental=None, catalyst=None
         )
+
+
+# --- confidence-scaled position sizing ---------------------------------------
+
+
+@pytest.fixture
+def scaled_sizing_config(monkeypatch):
+    monkeypatch.setattr(
+        engine,
+        "load_risk_limits",
+        lambda: {
+            "position": {
+                "min_confidence_to_notify": 50,
+                "max_position_pct_of_portfolio": 5.0,
+                "min_position_pct_of_portfolio": 1.0,
+                "confidence_scaled_sizing": True,
+            }
+        },
+    )
+
+
+def test_hold_always_sizes_zero(scaled_sizing_config):
+    assert engine._suggested_size_pct("HOLD", 90, engine.load_risk_limits()["position"]) == 0.0
+
+
+def test_sizing_at_threshold_confidence_is_the_floor(scaled_sizing_config):
+    risk = engine.load_risk_limits()["position"]
+    assert engine._suggested_size_pct("BUY", 50, risk) == 1.0
+
+
+def test_sizing_at_max_confidence_is_the_cap(scaled_sizing_config):
+    risk = engine.load_risk_limits()["position"]
+    assert engine._suggested_size_pct("BUY", 100, risk) == 5.0
+
+
+def test_sizing_scales_between_floor_and_cap(scaled_sizing_config):
+    risk = engine.load_risk_limits()["position"]
+    low = engine._suggested_size_pct("BUY", 60, risk)
+    high = engine._suggested_size_pct("BUY", 90, risk)
+    assert 1.0 < low < high < 5.0
+
+
+def test_sizing_disabled_reverts_to_flat_cap(monkeypatch):
+    monkeypatch.setattr(
+        engine,
+        "load_risk_limits",
+        lambda: {
+            "position": {
+                "min_confidence_to_notify": 50,
+                "max_position_pct_of_portfolio": 5.0,
+                "min_position_pct_of_portfolio": 1.0,
+                "confidence_scaled_sizing": False,
+            }
+        },
+    )
+    risk = engine.load_risk_limits()["position"]
+    assert engine._suggested_size_pct("BUY", 51, risk) == 5.0
+    assert engine._suggested_size_pct("BUY", 100, risk) == 5.0
+
+
+def test_score_candidate_wires_scaled_size_end_to_end(monkeypatch, scaled_sizing_config):
+    monkeypatch.setattr(
+        engine,
+        "load_agent_config",
+        lambda: {
+            "scoring_weights": {
+                "sentiment": 0.25, "technical": 0.30, "fundamental": 0.15,
+                "catalyst": 0.20, "historical_hitrate": 0.10,
+            }
+        },
+    )
+    monkeypatch.setattr(engine, "historical_hitrate", lambda ticker: None)
+    barely_actionable = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.51, technical=0.51, fundamental=None, catalyst=0.51
+    )
+    strong = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.99, technical=0.99, fundamental=None, catalyst=0.99
+    )
+    assert barely_actionable["action"] == "BUY"
+    assert 1.0 <= barely_actionable["suggested_size_pct_of_portfolio"] < strong["suggested_size_pct_of_portfolio"]
+    assert strong["suggested_size_pct_of_portfolio"] <= 5.0

@@ -4,9 +4,14 @@ the file layer (plan §1.2 design principle #1), never from conversation or
 session memory. This is what routines/ schedules via `/schedule`; see
 routines/trading_checkpoints.md.
 
-This module never executes a trade — it stops at notify(). Approval and
-execution are separate, deliberately later steps (see notify.approval_gateway
-and execute.order_manager, and `trading-agent approvals` / `execute`).
+By default this module never executes a trade — it stops at notify(), and
+approval/execution are separate, deliberately later steps (see
+notify.approval_gateway and execute.order_manager, and `trading-agent
+approvals` / `execute`). The one exception is execute.auto_pilot.auto_apply(),
+gated behind config/risk_limits.yaml -> operational.auto_apply.enabled
+(default off in spirit — see CLAUDE.md's "Auto-apply" section) — flipping
+that back to false is a one-line revert to the description above being
+unconditionally true again.
 """
 
 from __future__ import annotations
@@ -17,6 +22,7 @@ import pandas as pd
 
 from trading_agent.config import load_watchlist
 from trading_agent.data.alpaca_client import get_market_movers, get_recent_bars
+from trading_agent.execute.auto_pilot import auto_apply
 from trading_agent.guardrails import RoutineHalted, daily_loss_reason, is_option_symbol
 from trading_agent.notify.approval_gateway import notify_digest, save_recommendation
 from trading_agent.research.perplexity_client import research_ticker
@@ -37,8 +43,10 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
 
     tickers = set(load_watchlist()) | set(extra_tickers or [])
     movers = get_market_movers()
-    # Movers only *seed* candidates (plan §4) — they still go through the same
-    # research + scoring pipeline as the core watchlist, never auto-approved.
+    # Movers only *seed* candidates (plan §4) — they go through the exact same
+    # research, scoring, and (if enabled) auto_apply path as the core
+    # watchlist. A mover isn't inherently more or less trusted than a
+    # watchlist ticker; nothing here treats it specially.
     tickers |= {m["symbol"] for m in movers.get("gainers", [])[:10] if "symbol" in m}
     # Never research, score, or propose an options contract, whatever the source.
     tickers = {t for t in tickers if not is_option_symbol(t)}
@@ -64,5 +72,6 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
         save_recommendation(rec)
         results.append(rec)
 
-    notify_digest(results, checkpoint)
+    auto_results = auto_apply(results, checkpoint)
+    notify_digest(results, checkpoint, auto_results=auto_results)
     return results

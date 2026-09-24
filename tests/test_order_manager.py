@@ -2,6 +2,7 @@
 record matching, and must always respect the kill switch (plan §8, §9).
 """
 
+import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -94,6 +95,32 @@ def test_matching_approval_submits(monkeypatch, tmp_path):
 
     order = om.submit_approved_order(REC, qty=10)
     assert order["id"] == "fake"
+
+
+def test_trade_record_tags_source_human_by_default(monkeypatch, tmp_path):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: {"id": "fake", "symbol": t, "qty": q})
+    monkeypatch.setattr(om, "TRADES_DIR", tmp_path)
+
+    om.submit_approved_order(REC, qty=10)
+    written = list(tmp_path.rglob("orders_submitted.json"))[0]
+    record = json.loads(written.read_text())[0]
+    assert record["source"] == "human"
+
+
+def test_trade_record_tags_source_auto_when_passed(monkeypatch, tmp_path):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: {"id": "fake", "symbol": t, "qty": q})
+    monkeypatch.setattr(om, "TRADES_DIR", tmp_path)
+
+    om.submit_approved_order(REC, qty=10, source="auto")
+    written = list(tmp_path.rglob("orders_submitted.json"))[0]
+    record = json.loads(written.read_text())[0]
+    assert record["source"] == "auto"
 
     written = list(tmp_path.rglob("orders_submitted.json"))
     assert len(written) == 1

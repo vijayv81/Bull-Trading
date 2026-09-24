@@ -56,7 +56,14 @@ notifications:
   # SMTP itself needs SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD (SMTP_PORT
   # optional, default 587) — same require_env() policy as every other
   # credential. Test with `trading-agent notify-test`.
-  channel: console
+  channel: [console, email, sms]
+
+  # End-of-day learnings + benchmark (SPY) comparison email/SMS, separate from
+  # the per-checkpoint digests above — see `trading-agent daily-summary` and
+  # notify/approval_gateway.py:notify_daily_summary(). false is a one-line way
+  # to keep per-checkpoint notifications without the daily summary, no code
+  # change needed. Still gated by `channel` including email/sms above.
+  daily_summary_enabled: true
 
   # URL of the published Claude Artifact "Approval Ticket" page email links
   # point to (its own small database holds the click-through decision until

@@ -4,10 +4,12 @@ Command groups map onto the plan's modules:
   ingest / backtest        -> data/market_data.py, backtest/engine.py (yfinance, historical)
   research / screen        -> research/perplexity_client.py
   checkpoint                -> orchestrator.py (research -> data -> score -> notify)
-  approvals                 -> notify/approval_gateway.py (hard requirement: human in the loop)
+  approvals                 -> notify/approval_gateway.py (hard requirement: human in the loop,
+                               except execute/auto_pilot.py when operational.auto_apply is on)
   execute                   -> execute/order_manager.py (approval + kill-switch gated)
-  report                    -> reporting/report_builder.py
+  report / daily-summary    -> reporting/report_builder.py, notify/approval_gateway.py
   propose-weights           -> scoring/recommendation_engine.py (never auto-applies)
+  notify-test / cron-status -> notify/senders.py, scheduling.py
   chat                      -> agents/orchestrator.py (interactive Claude Agent SDK research)
 """
 
@@ -175,6 +177,26 @@ def cmd_report(args: argparse.Namespace) -> None:
         print(f"Wrote {build_weekly_report(args.week_start)}")
 
 
+def cmd_report_daily_summary(args: argparse.Namespace) -> None:
+    from trading_agent.notify.approval_gateway import notify_daily_summary
+    from trading_agent.reporting.report_builder import build_daily_summary
+
+    summary = build_daily_summary(args.day)
+    notify_daily_summary(summary)
+
+    portfolio_pct = summary["portfolio_return_pct"]
+    benchmark_pct = summary["benchmark_return_pct"]
+    if portfolio_pct is not None and benchmark_pct is not None:
+        print(
+            f"{summary['day']}: portfolio {portfolio_pct:+.2f}% vs "
+            f"{summary['benchmark_symbol']} {benchmark_pct:+.2f}% "
+            f"({summary['outperformance_pct']:+.2f} pts)"
+        )
+    else:
+        print(f"{summary['day']}: return data unavailable (portfolio={portfolio_pct}, benchmark={benchmark_pct})")
+    print(f"{len(summary['journal_entries'])} journaled decision(s) with an outcome today.")
+
+
 def cmd_propose_weights(args: argparse.Namespace) -> None:
     from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
 
@@ -310,6 +332,13 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
     report.add_argument("--week-start", help="YYYY-MM-DD Monday, defaults to this week.")
     report.set_defaults(func=cmd_report)
+
+    daily_summary = sub.add_parser(
+        "daily-summary",
+        help="Email/SMS today's learnings + benchmark (SPY) comparison (notifications.daily_summary_enabled).",
+    )
+    daily_summary.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
+    daily_summary.set_defaults(func=cmd_report_daily_summary)
 
     propose = sub.add_parser("propose-weights", help="Print (never apply) proposed scoring-weight changes.")
     propose.set_defaults(func=cmd_propose_weights)

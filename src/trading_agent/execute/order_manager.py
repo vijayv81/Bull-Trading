@@ -26,7 +26,11 @@ class OrderRefused(Exception):
     flow, not a bug."""
 
 
-def submit_approved_order(rec: dict[str, Any], qty: float) -> dict[str, Any]:
+def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human") -> dict[str, Any]:
+    """`source` only tags the persisted trade record (plan §12 auto-apply
+    extension) — it changes nothing about the gate itself. Every check below
+    runs identically whether a human or execute.auto_pilot wrote the approval
+    decision this reads."""
     risk = load_risk_limits()["operational"]
     if not risk.get("trading_enabled", False):
         raise OrderRefused("Kill switch is off (config/risk_limits.yaml: trading_enabled=false).")
@@ -78,6 +82,7 @@ def submit_approved_order(rec: dict[str, Any], qty: float) -> dict[str, Any]:
             "recommendation": rec,
             "order": order,
             "submitted_at": datetime.now(timezone.utc).isoformat(),
+            "source": source,
         },
     )
     return order
