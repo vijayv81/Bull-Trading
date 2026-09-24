@@ -51,6 +51,13 @@ notifications:
   # you've picked a channel — that function is the single integration point.
   channel: console
 
+  # URL of the published Claude Artifact "Approval Ticket" page email links
+  # point to (its own small database holds the click-through decision until
+  # it's synced into data/approvals/ — see .claude/skills/trading-trade
+  # "Sync email-link decisions first"). Not a secret, just a page URL; null
+  # disables the sync step entirely.
+  approval_ticket_artifact_url: "https://claude.ai/artifact/RopjHYW6Rtr9n3t8Ka7MNT"
+
 # Alpaca's own fundamentals/screener coverage is limited (plan §5) — no
 # secondary data vendor is wired up yet (plan §12 open decision). Fundamental
 # score currently defaults to neutral (0.5) in orchestrator.py until one is.

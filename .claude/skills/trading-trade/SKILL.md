@@ -15,6 +15,35 @@ preferences on sizing, which tickers they want extra scrutiny on, and how they
 like decisions presented. Those came from real runs and outrank the generic
 guidance here.
 
+## Sync email-link decisions first
+
+Recommendation emails carry Approve/Reject links to a hosted confirmation page
+(the "Approval Ticket" artifact). Clicking one and confirming there writes the
+decision into that page's own database — not into `data/approvals/` — so it
+needs pulling in before you treat `data/approvals/` as complete.
+
+Every time this skill runs, before step 1 below:
+
+1. Read `config/agent_config.yaml -> notifications.approval_ticket_artifact_url`.
+   If it's null or missing, skip this section entirely — nothing to sync.
+2. `ArtifactData` (`action: "list"`, `collection: "decisions"`, that `url`) to
+   read every decision recorded there. Each document carries `ticker`,
+   `checkpoint`, `decision`, and `qty` (approve only).
+3. For each one, run `trading-agent approvals list <checkpoint>` for its
+   checkpoint. If the ticker still shows up as pending, it hasn't been synced
+   yet — record it now:
+   ```bash
+   trading-agent approvals approve <TICKER> <checkpoint> --qty <qty>
+   trading-agent approvals reject  <TICKER> <checkpoint>
+   ```
+   If the ticker no longer shows as pending, a decision already exists for it
+   (synced earlier, or made some other way) — leave it alone, never re-record.
+4. Mention what you synced, if anything, in one line before showing the
+   regular pending list. Silence is fine when there's nothing new.
+
+This is the only place a click on that page becomes an actual approval record —
+skip it and clicked decisions just sit in the artifact's database indefinitely.
+
 ## The one rule
 
 **You never decide.** Not when the confidence is 95. Not when the user said

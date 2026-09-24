@@ -34,10 +34,17 @@ without editing their instructions by hand — see "Refining them" below.
 ## What each run should do
 
 1. `cd` into this project.
-2. **Invoke `trading-research`** and follow it. It runs the checkpoint, handles
+2. **Invoke `trading-trade`'s "Sync email-link decisions first" step** even if
+   nobody's asking for the approval flow this run — it's how a click on an
+   emailed Approve/Reject link (routed through the Approval Ticket artifact)
+   actually becomes a `data/approvals/` record. Skipping this because "no one
+   asked for approvals" leaves clicked decisions stuck in the artifact's
+   database indefinitely; an unattended run is exactly when nobody's around to
+   trigger it manually.
+3. **Invoke `trading-research`** and follow it. It runs the checkpoint, handles
    a guardrail halt, and reports the recommendations — that report is the
    routine's completion message.
-3. If the user responds with decisions, **invoke `trading-trade`** for the
+4. If the user responds with decisions, **invoke `trading-trade`** for the
    approval flow, then **`trading-journal`** to capture their reasoning while
    it's fresh.
 
