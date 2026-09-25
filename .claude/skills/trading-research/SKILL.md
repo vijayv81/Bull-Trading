@@ -97,6 +97,18 @@ system fell back to raw Yahoo Finance headlines instead — flag it inline
 research basis than the rest of the list and the user deciding on it should
 know that.
 
+Every ticker currently held in the Alpaca account is now researched and
+scored every checkpoint too, not just watchlist/mover candidates — expect to
+see recommendations for positions that aren't on `watchlist.yaml` at all.
+Check `position_pnl_pct`/`sell_pressure` on each one: a non-null
+`position_pnl_pct` means it's a holding, and `sell_pressure > 0` means the
+action was influenced by a stop-loss/take-profit breach, not a purely fresh
+technical read. Say so plainly when it's the reason for a SELL ("TSLA SELL —
+down 5.2% from entry, past the 4% stop-loss") rather than presenting it the
+same as an ordinary technical-driven call; the user deciding whether to
+approve should know the position itself is what triggered it, not new
+bearish research.
+
 Then point them at the review step:
 
 ```bash

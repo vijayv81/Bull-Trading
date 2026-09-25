@@ -217,3 +217,119 @@ def test_score_candidate_wires_scaled_size_end_to_end(monkeypatch, scaled_sizing
     assert barely_actionable["action"] == "BUY"
     assert 1.0 <= barely_actionable["suggested_size_pct_of_portfolio"] < strong["suggested_size_pct_of_portfolio"]
     assert strong["suggested_size_pct_of_portfolio"] <= 5.0
+
+
+# --- position_sell_pressure ---------------------------------------------------
+
+
+def test_sell_pressure_zero_well_within_range():
+    assert engine.position_sell_pressure(0.0, stop_loss_pct=4.0, take_profit_pct=8.0) == 0.0
+    assert engine.position_sell_pressure(-2.0, stop_loss_pct=4.0, take_profit_pct=8.0) == 0.0
+    assert engine.position_sell_pressure(5.0, stop_loss_pct=4.0, take_profit_pct=8.0) == 0.0
+
+
+def test_sell_pressure_half_right_at_stop_loss():
+    assert engine.position_sell_pressure(-4.0, stop_loss_pct=4.0, take_profit_pct=8.0) == pytest.approx(0.5)
+
+
+def test_sell_pressure_maxes_out_twice_past_stop_loss():
+    assert engine.position_sell_pressure(-8.0, stop_loss_pct=4.0, take_profit_pct=8.0) == pytest.approx(1.0)
+    assert engine.position_sell_pressure(-20.0, stop_loss_pct=4.0, take_profit_pct=8.0) == pytest.approx(1.0)
+
+
+def test_sell_pressure_half_right_at_take_profit():
+    assert engine.position_sell_pressure(8.0, stop_loss_pct=4.0, take_profit_pct=8.0) == pytest.approx(0.5)
+
+
+def test_sell_pressure_maxes_out_twice_past_take_profit():
+    assert engine.position_sell_pressure(16.0, stop_loss_pct=4.0, take_profit_pct=8.0) == pytest.approx(1.0)
+
+
+# --- score_candidate: position-pnl bias toward SELL -----------------------------
+
+
+def test_position_pnl_none_when_not_held(fixed_config):
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=0.8, fundamental=0.8, catalyst=0.8
+    )
+    assert rec["position_pnl_pct"] is None
+    assert rec["sell_pressure"] == 0.0
+    assert rec["action"] == "BUY"
+
+
+def test_position_well_within_range_does_not_change_action(fixed_config):
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=0.9, fundamental=0.8, catalyst=0.8,
+        position_pnl_pct=-1.0,
+    )
+    assert rec["sell_pressure"] == 0.0
+    assert rec["action"] == "BUY"
+
+
+def test_moderate_technical_flips_to_sell_at_stop_loss(fixed_config):
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=0.6, fundamental=0.8, catalyst=0.8,
+        position_pnl_pct=-4.0,  # exactly at the stop-loss line -> sell_pressure 0.5
+    )
+    assert rec["sell_pressure"] == pytest.approx(0.5)
+    assert rec["action"] == "SELL"  # 0.6 * 0.5 = 0.3, below the 0.5 direction threshold
+
+
+def test_max_bullish_technical_survives_right_at_stop_loss(fixed_config):
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=1.0, fundamental=0.8, catalyst=0.8,
+        position_pnl_pct=-4.0,
+    )
+    assert rec["action"] == "BUY"  # 1.0 * 0.5 = 0.5, right at the direction boundary
+
+
+def test_take_profit_biases_toward_sell_not_buy(fixed_config):
+    # Deeply past take-profit (a winning position) still biases toward SELL
+    # (lock in gains), never toward BUYing more — sell_pressure only ever
+    # pulls the effective technical DOWN, regardless of which threshold fired.
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=0.55, fundamental=0.8, catalyst=0.8,
+        position_pnl_pct=20.0,  # well past an 8% take-profit
+    )
+    assert rec["sell_pressure"] == pytest.approx(1.0)
+    assert rec["action"] == "SELL"
+
+
+def test_mandatory_stop_loss_false_reverts_to_pure_technical(monkeypatch, fixed_config):
+    monkeypatch.setattr(
+        engine,
+        "load_risk_limits",
+        lambda: {
+            "position": {
+                "min_confidence_to_notify": 50,
+                "max_position_pct_of_portfolio": 5.0,
+                "mandatory_stop_loss": False,
+            }
+        },
+    )
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=0.6, fundamental=0.8, catalyst=0.8,
+        position_pnl_pct=-50.0,  # deep stop-loss breach — must be ignored
+    )
+    assert rec["sell_pressure"] == 0.0
+    assert rec["action"] == "BUY"
+
+
+def test_stop_loss_and_take_profit_pct_come_from_config(monkeypatch, fixed_config):
+    monkeypatch.setattr(
+        engine,
+        "load_risk_limits",
+        lambda: {
+            "position": {
+                "min_confidence_to_notify": 50,
+                "max_position_pct_of_portfolio": 5.0,
+                "stop_loss_pct": 2.0,
+                "take_profit_pct": 6.0,
+            }
+        },
+    )
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=0.8, fundamental=0.8, catalyst=0.8
+    )
+    assert rec["stop_loss_pct"] == 2.0
+    assert rec["take_profit_pct"] == 6.0

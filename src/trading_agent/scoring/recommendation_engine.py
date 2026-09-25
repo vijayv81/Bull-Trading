@@ -67,6 +67,24 @@ def historical_hitrate(ticker: str) -> float | None:
     return entry.get("hit_rate") if entry else None
 
 
+def position_sell_pressure(pnl_pct: float, stop_loss_pct: float, take_profit_pct: float) -> float:
+    """0 (no sell pressure) to 1 (strong sell pressure) from how far a held
+    position's unrealized return has moved past either the stop-loss (cut
+    losses) or take-profit (lock in gains) threshold — both extremes point
+    toward selling, for opposite reasons, so this is a tent shape, not a
+    simple bullish/bearish scale: 0 for anything comfortably inside the
+    range, 0.5 right at either threshold, ramping linearly to 1.0 by the time
+    the position is twice as far past it.
+    """
+    if pnl_pct <= -stop_loss_pct:
+        overshoot = (-pnl_pct - stop_loss_pct) / stop_loss_pct
+        return min(1.0, 0.5 + 0.5 * overshoot)
+    if pnl_pct >= take_profit_pct:
+        overshoot = (pnl_pct - take_profit_pct) / take_profit_pct
+        return min(1.0, 0.5 + 0.5 * overshoot)
+    return 0.0
+
+
 def score_candidate(
     ticker: str,
     checkpoint: str,
@@ -74,6 +92,7 @@ def score_candidate(
     technical: float | None,
     fundamental: float | None,
     catalyst: float,
+    position_pnl_pct: float | None = None,
 ) -> dict[str, Any]:
     """Combine component scores (each 0-1) into a 0-100 confidence + action.
 
@@ -92,6 +111,17 @@ def score_candidate(
     is BUY/SELL by whether technical is >= 0.5. Without it there is no basis
     to guess a direction, so a missing technical always forces HOLD, however
     high confidence is from the remaining components alone.
+
+    position_pnl_pct (only passed for a ticker orchestrator.run_checkpoint()
+    found in current Alpaca positions — see get_positions()) biases that
+    action toward SELL, never overriding technical outright: effective
+    direction is computed from `technical * (1 - sell_pressure)`, so a
+    strongly bullish technical read can still keep the call BUY/HOLD against
+    a mild stop-loss/take-profit breach, while a weak-to-moderate technical
+    flips to SELL under the same pressure. Gated by
+    `risk_limits.yaml -> position.mandatory_stop_loss` (default true) —
+    false is a one-line revert to pure-technical direction, unconditionally,
+    same convention as confidence_scaled_sizing/auto_apply.enabled.
     """
     weights = load_agent_config()["scoring_weights"]
     hitrate = historical_hitrate(ticker)
@@ -110,9 +140,17 @@ def score_candidate(
     confidence = sum(weights[key] * value for key, value in available.items()) / weight_total * 100
 
     risk = load_risk_limits()["position"]
+    stop_loss_pct = risk.get("stop_loss_pct", 4.0)
+    take_profit_pct = risk.get("take_profit_pct", 8.0)
+
+    sell_pressure = 0.0
+    if position_pnl_pct is not None and risk.get("mandatory_stop_loss", True):
+        sell_pressure = position_sell_pressure(position_pnl_pct, stop_loss_pct, take_profit_pct)
+
     action: Action = "HOLD"
     if confidence >= risk["min_confidence_to_notify"] and technical is not None:
-        action = "BUY" if technical >= 0.5 else "SELL"
+        effective_technical = technical * (1 - sell_pressure)
+        action = "BUY" if effective_technical >= 0.5 else "SELL"
 
     return {
         "ticker": ticker,
@@ -122,8 +160,10 @@ def score_candidate(
         "confidence": round(confidence, 1),
         "component_scores": components,
         "suggested_size_pct_of_portfolio": _suggested_size_pct(action, confidence, risk),
-        "stop_loss_pct": 4.0,
-        "take_profit_pct": 8.0,
+        "stop_loss_pct": stop_loss_pct,
+        "take_profit_pct": take_profit_pct,
+        "position_pnl_pct": position_pnl_pct,
+        "sell_pressure": round(sell_pressure, 2),
         "note": "Research-only output, not investment advice.",
     }
 
