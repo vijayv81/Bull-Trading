@@ -57,6 +57,30 @@ trusted, and don't encourage approving anything off it until the cause is
 found. Don't quietly proceed to "here's what's pending" as if nothing were
 wrong.
 
+## Persist the checkpoint's output
+
+`data/recommendations/` (and `data/approvals/`, `data/trades/` if auto_apply
+acted) are tracked, audit-trail files (CLAUDE.md's Layout section) — but
+`trading-agent checkpoint` only writes them locally. Nothing else in this
+skill commits or pushes them.
+
+**A human is present in this conversation (interactive use):** leave this to
+them, or to a later `trading-report` run — don't push without being asked.
+
+**No human is present (a scheduled routine, per its prompt saying so
+explicitly):** this is the only chance this checkpoint's output has to reach
+the repo — the session's local checkout is reclaimed once the run ends, and
+`pre_close`'s `trading-report` snapshot commit won't pick up an earlier
+checkpoint's files from a different, already-gone container. So, after
+reporting is otherwise ready: `git add data/recommendations/ data/approvals/
+data/trades/`, check `git status` before committing (same reasoning as
+`trading-report`'s snapshot commit — notice anything unexpected before it's
+staged), commit with a plain factual message (e.g. "pre_open 2026-09-25: 6
+recommendations"), push, open a PR against `main`, and merge it — there's no
+one to ask. If nothing changed (e.g. every ticker failed research), there's
+nothing to commit; don't force one. If the push, PR, or merge fails, say so
+plainly in your summary rather than silently dropping it.
+
 ## Reporting back
 
 The routine's completion message is the only thing the user may ever read, so
