@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(trading-agent *)",
+      "Bash(git *)",
+      "Skill"
+    ]
+  }
+}

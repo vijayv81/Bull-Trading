@@ -1,6 +1,7 @@
 """Command-line entrypoint: trading-agent <command>.
 
 Command groups map onto the plan's modules:
+  account                   -> data/alpaca_client.py (read-only connectivity check)
   ingest / backtest        -> data/market_data.py, backtest/engine.py (yfinance, historical)
   research / screen        -> research/perplexity_client.py
   checkpoint                -> orchestrator.py (research -> data -> score -> notify)
@@ -21,6 +22,20 @@ import asyncio
 from trading_agent.backtest.engine import backtest_moving_average
 from trading_agent.config import load_watchlist
 from trading_agent.data.market_data import fetch_watchlist, load_cached_price_history
+
+
+def cmd_account(args: argparse.Namespace) -> None:
+    """Read-only Alpaca paper-account connectivity check — not part of the
+    plan's pipeline, just a fast way to confirm credentials and the paper
+    endpoint are reachable before trusting a scheduled run to them."""
+    from trading_agent.data.alpaca_client import get_account
+
+    account = get_account()
+    print(f"Alpaca paper account {account.get('account_number')} ({account.get('status')})")
+    print(f"  Equity:        {float(account['equity']):,.2f}")
+    print(f"  Last close:    {float(account['last_equity']):,.2f}")
+    print(f"  Cash:          {float(account['cash']):,.2f}")
+    print(f"  Buying power:  {float(account['buying_power']):,.2f}")
 
 
 def cmd_ingest(args: argparse.Namespace) -> None:
@@ -248,6 +263,9 @@ def cmd_cron_status(args: argparse.Namespace) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="trading-agent")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    account = sub.add_parser("account", help="Read-only Alpaca paper-account connectivity check.")
+    account.set_defaults(func=cmd_account)
 
     ingest = sub.add_parser("ingest", help="Fetch and cache long-history price data (yfinance) for backtesting.")
     ingest.add_argument("tickers", nargs="*")
