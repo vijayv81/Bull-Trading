@@ -299,6 +299,49 @@ where all 15 recommendations came back with an identical, wrong confidence of
   `notify_digest(data_quality_alert=...)`) and **auto-apply is skipped
   entirely for that checkpoint** — a flat score never reaches an order.
 
+## Continuous position monitoring (plan §6)
+
+Every checkpoint's research universe used to be exactly `watchlist.yaml` +
+that run's top-10 gainer movers — a ticker bought today but never added to
+the watchlist would drop out of scoring the moment it stopped being a
+"mover," and no future checkpoint would ever propose a SELL for it again.
+Fixed: `orchestrator._held_position_pnl_pct()` reads every current Alpaca
+position at the start of `run_checkpoint()` and adds all of them to the
+ticker set unconditionally, so anything you hold gets researched and scored
+every checkpoint regardless of watchlist/movers status. A read failure
+degrades to "no positions known" for that one run (same best-effort
+tolerance as `get_market_movers()`) rather than blocking the checkpoint.
+
+Each held ticker's live unrealized return (Alpaca's `unrealized_plpc`, as a
+percent) is also passed into `score_candidate()` as `position_pnl_pct`,
+which biases — never overrides — the action toward SELL via
+`position_sell_pressure()`: both a stop-loss breach (cut losses) *and* a
+take-profit breach (lock in gains) push toward SELL, for opposite reasons,
+so this is a tent shape (0 well within range, 0.5 right at either
+threshold, capping at 1.0 twice as far past it), not a simple bullish/
+bearish scale. The bias multiplies into the technical signal used for
+direction (`technical * (1 - sell_pressure)`) — a strongly bullish technical
+read can still hold the line at BUY against a mild breach; a weak-to-moderate
+one flips to SELL under the same pressure. `short_sale_reason()` already
+bounds a SELL to what's actually held, so this can never manufacture a
+short. Gated by `risk_limits.yaml -> position.mandatory_stop_loss` (a config
+key that existed before but was never read anywhere) — `false` is the
+one-line revert to pure-technical direction, unconditionally, same
+convention as `auto_apply.enabled`. Thresholds:
+`position.stop_loss_pct`/`take_profit_pct` (default 4.0/8.0) — previously
+hardcoded into every recommendation's `stop_loss_pct`/`take_profit_pct`
+fields with nothing ever reading them back; now those same config values
+both label the recommendation *and* actually drive `sell_pressure`.
+`position_pnl_pct` and `sell_pressure` are recorded on every recommendation
+(`None`/`0.0` for a ticker that isn't currently held) for audit visibility
+into *why* a SELL fired — a fresh bearish technical read and a stop-loss-
+triggered one look identical in `action` alone otherwise.
+
+Auto-apply treats a stop-loss/take-profit-biased SELL exactly like any other
+recommendation — no special human-only gate — since every guardrail
+(kill switch, short-sale ban, daily-loss halt, daily trade cap) already
+applies unchanged regardless of what produced the `action`.
+
 ## What's not built yet
 
 - ~~The last hop of the improvement loop~~ (plan §6.3, build sequence phase 8) —

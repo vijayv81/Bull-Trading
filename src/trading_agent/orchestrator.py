@@ -21,7 +21,7 @@ from typing import Any
 import pandas as pd
 
 from trading_agent.config import load_watchlist
-from trading_agent.data.alpaca_client import get_market_movers, get_recent_bars
+from trading_agent.data.alpaca_client import get_market_movers, get_positions, get_recent_bars
 from trading_agent.execute.auto_pilot import auto_apply
 from trading_agent.guardrails import RoutineHalted, daily_loss_reason, is_option_symbol
 from trading_agent.notify.approval_gateway import notify_digest, save_recommendation
@@ -65,6 +65,28 @@ def _flat_confidence_alert(results: list[dict[str, Any]]) -> str | None:
     )
 
 
+def _held_position_pnl_pct() -> dict[str, float]:
+    """Every current Alpaca position's unrealized return, as a percent
+    (Alpaca's own `unrealized_plpc` is a fraction, e.g. 0.05 = +5%). Used
+    both to force continuous monitoring of anything already held (see
+    run_checkpoint() below) and to feed score_candidate()'s stop-loss/
+    take-profit bias. Best-effort: an unreadable account degrades to "no
+    positions known" rather than blocking the checkpoint — the existing
+    watchlist/movers research still runs either way, this only means a
+    held position drops out of monitoring for this one run, same as any
+    other best-effort Alpaca read in this module (get_market_movers()).
+    """
+    try:
+        return {
+            p["symbol"]: round(float(p.get("unrealized_plpc") or 0.0) * 100, 2)
+            for p in get_positions()
+            if p.get("symbol")
+        }
+    except Exception as exc:  # noqa: BLE001 - one bad read must not block the checkpoint
+        print(f"Could not read current positions for continuous monitoring: {exc}")
+        return {}
+
+
 def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> list[dict[str, Any]]:
     if checkpoint not in VALID_CHECKPOINTS:
         raise ValueError(f"Unknown checkpoint {checkpoint!r} — expected one of {VALID_CHECKPOINTS}")
@@ -75,6 +97,8 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     if halt:
         raise RoutineHalted(halt)
 
+    held_pnl = _held_position_pnl_pct()
+
     tickers = set(load_watchlist()) | set(extra_tickers or [])
     movers = get_market_movers()
     # Movers only *seed* candidates (plan §4) — they go through the exact same
@@ -82,6 +106,12 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     # watchlist. A mover isn't inherently more or less trusted than a
     # watchlist ticker; nothing here treats it specially.
     tickers |= {m["symbol"] for m in movers.get("gainers", [])[:10] if "symbol" in m}
+    # Continuous monitoring: anything currently held stays in the research
+    # universe every checkpoint regardless of watchlist/movers, so a position
+    # bought today (possibly not on the watchlist at all) never silently
+    # drops out of scoring the moment it stops being a "mover" — without
+    # this, no future checkpoint would ever propose a SELL for it again.
+    tickers |= set(held_pnl)
     # Never research, score, or propose an options contract, whatever the source.
     tickers = {t for t in tickers if not is_option_symbol(t)}
 
@@ -105,6 +135,7 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
                 technical=tech,
                 fundamental=None,  # no fundamentals vendor wired up yet — excluded from the score, not neutral
                 catalyst=0.7 if research.get("sources") else 0.3,
+                position_pnl_pct=held_pnl.get(ticker),
             )
             rec["rationale"] = (research.get("headline_summary") or "")[:280]
             rec["sources"] = research.get("sources", [])

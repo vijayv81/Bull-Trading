@@ -12,7 +12,20 @@ position:
   # that would open a symbol not already held — bounds aggregate exposure
   # across positions, since the 5% cap above only bounds any ONE of them.
   max_concurrent_positions: 10
+
+  # Was declared but never enforced anywhere — now gates
+  # recommendation_engine.score_candidate()'s stop-loss/take-profit bias
+  # (below). true (default): a held position past either threshold biases
+  # its action toward SELL, without overriding a strongly bullish technical
+  # read outright. false: pure-technical action determination, unconditionally
+  # — the one-line revert, no code change, same convention as auto_apply.enabled.
   mandatory_stop_loss: true
+  # Read by position_sell_pressure() — a held position's unrealized return
+  # this far below entry starts biasing its action toward SELL (cut losses).
+  stop_loss_pct: 4.0
+  # Same mechanism, opposite reason: this far above entry starts biasing
+  # toward SELL too (lock in gains), not toward buying more.
+  take_profit_pct: 8.0
   min_confidence_to_notify: 50 # below this, don't even surface a notification
 
   # When true (default), suggested_size_pct_of_portfolio scales linearly from
