@@ -228,3 +228,116 @@ def test_daily_summary_send_failure_does_not_raise(monkeypatch):
 
     monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
     gw.notify_daily_summary(_summary())  # must not raise
+
+
+# --- pending_approvals_today / notify_pending_reminder -------------------------
+
+
+def _rec(ticker, checkpoint, action="BUY", confidence=70, age_hours=0.0):
+    ts = (datetime.now(timezone.utc) - timedelta(hours=age_hours)).isoformat()
+    return {
+        "ticker": ticker, "checkpoint": checkpoint, "action": action,
+        "confidence": confidence, "timestamp": ts, "rationale": "test",
+    }
+
+
+def test_pending_approvals_today_spans_all_checkpoints():
+    gw.save_recommendation(_rec("TSLA", "pre_open"))
+    gw.save_recommendation(_rec("GOOG", "midday"))
+
+    pending = gw.pending_approvals_today()
+    assert {r["ticker"] for r in pending} == {"TSLA", "GOOG"}
+
+
+def test_pending_approvals_today_excludes_decided():
+    gw.save_recommendation(_rec("TSLA", "pre_open"))
+    gw.record_decision("TSLA", "pre_open", "approve")
+
+    assert gw.pending_approvals_today() == []
+
+
+def test_pending_approvals_today_excludes_hold():
+    gw.save_recommendation(_rec("TSLA", "pre_open", action="HOLD"))
+    assert gw.pending_approvals_today() == []
+
+
+def test_pending_approvals_today_flags_expired_but_still_includes_it():
+    gw.save_recommendation(_rec("TSLA", "pre_open", age_hours=3.0))  # past the 2h window
+    pending = gw.pending_approvals_today()
+    assert [r["ticker"] for r in pending] == ["TSLA"]
+    assert pending[0]["expired"] is True
+
+
+def test_pending_approvals_today_flags_unexpired_as_not_expired():
+    gw.save_recommendation(_rec("TSLA", "pre_open", age_hours=0.5))
+    pending = gw.pending_approvals_today()
+    assert [r["ticker"] for r in pending] == ["TSLA"]
+    assert pending[0]["expired"] is False
+
+
+def test_notify_pending_reminder_silent_when_nothing_pending(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_pending_reminder()
+    assert calls == []
+
+
+def test_notify_pending_reminder_skips_when_no_email_or_sms_channel(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["console"]}})
+    gw.save_recommendation(_rec("TSLA", "pre_open"))
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_pending_reminder()
+    assert calls == []
+
+
+def test_notify_pending_reminder_sends_email_listing_pending(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email", "sms"]}})
+    gw.save_recommendation(_rec("TSLA", "pre_open"))
+    gw.save_recommendation(_rec("GOOG", "midday", action="SELL", confidence=85))
+    email_calls = []
+    sms_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+    monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
+
+    gw.notify_pending_reminder()
+
+    assert len(email_calls) == 1
+    subject, body = email_calls[0]
+    assert "2 pending" in subject
+    assert "expired" not in subject
+    assert "TSLA [pre_open]" in body
+    assert "GOOG [midday]" in body
+    assert "expired" not in body
+    assert len(sms_calls) == 1
+    assert "2 pending" in sms_calls[0][0]
+
+
+def test_notify_pending_reminder_separates_expired_from_still_actionable(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    gw.save_recommendation(_rec("TSLA", "pre_open", age_hours=3.0))  # expired
+    gw.save_recommendation(_rec("GOOG", "midday", action="SELL", confidence=85))  # fresh
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    gw.notify_pending_reminder()
+
+    subject, body = email_calls[0]
+    assert "1 pending" in subject
+    assert "1 expired" in subject
+    assert "still awaiting a decision" in body
+    assert "GOOG [midday]" in body.split("expired today")[0]
+    assert "expired today with no decision" in body
+    assert "TSLA [pre_open]" in body.split("expired today")[1]
+
+
+def test_notify_pending_reminder_send_failure_does_not_raise(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    gw.save_recommendation(_rec("TSLA", "pre_open"))
+
+    def boom(*a, **k):
+        raise RuntimeError("RESEND_API_KEY not set")
+
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
+    gw.notify_pending_reminder()  # must not raise

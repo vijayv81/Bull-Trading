@@ -40,6 +40,23 @@ vs. SPY today" email, not a markdown file. It's gated by
 `notifications.daily_summary_enabled`; if the user's turned that off, running
 it is a silent no-op, so check the config before telling them it didn't send.
 
+## Send the pending-approvals reminder
+
+Also at `pre_close`, after the daily summary: nudge for anything still
+lacking a human decision.
+
+```bash
+trading-agent approvals remind
+```
+
+The immediate per-checkpoint email (`notify_digest()`, already fired at
+`pre_open`/`market_open`/`midday`/`pre_close` when a recommendation was
+first made) is not this — this is the once-a-day follow-up for whatever
+that immediate email didn't get a response to. It's a no-op (nothing sent)
+when nothing's pending, so a quiet day stays quiet. Report in one line
+whether it found anything and, if so, how many are still within the
+approval window vs. expired with no decision ever recorded.
+
 ## Say what the numbers aren't
 
 The weekly report's `## P&L` section has two different kinds of number in it,

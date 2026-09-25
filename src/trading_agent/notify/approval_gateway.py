@@ -262,3 +262,114 @@ def list_pending(checkpoint: str) -> list[dict[str, Any]]:
         d["ticker"] for d in load_json_list(day_dir(APPROVALS_DIR) / f"decisions_{checkpoint}.json")
     }
     return [r for r in recs if r["ticker"] not in decided_tickers]
+
+
+# The 4 scheduled checkpoints (plan §2) — duplicated from orchestrator.VALID_CHECKPOINTS
+# rather than imported, since orchestrator already imports this module and a
+# reverse import would be circular.
+_CHECKPOINTS = ("pre_open", "market_open", "midday", "pre_close")
+
+
+def pending_approvals_today() -> list[dict[str, Any]]:
+    """Every actionable (BUY/SELL) recommendation from any of today's 4
+    checkpoints that still has no approve/reject decision, whether or not its
+    approval window has technically expired. A HOLD never needs a decision
+    (no order would ever be submitted for it), so it's excluded here the same
+    way notify_digest() excludes it, even though list_pending() itself
+    doesn't discriminate by action.
+
+    Each item carries an added "expired" bool (via is_expired() on the rec's
+    own timestamp) so callers can separate "still within the approval window"
+    from "past it, no longer approvable" without a second lookup. Expired
+    ones are still returned, not dropped: by the time this runs (pre_close),
+    a pre_open recommendation is routinely already past the default 2-hour
+    window, and silently excluding it would make the daily reminder blind to
+    the morning's misses — a human should see what they missed, not have it
+    vanish.
+
+    Deliberately not itself checkpoint-scoped: called once daily across all 4.
+    """
+    pending = []
+    for checkpoint in _CHECKPOINTS:
+        for rec in list_pending(checkpoint):
+            if rec.get("action") not in ("BUY", "SELL"):
+                continue
+            pending.append({**rec, "expired": is_expired(rec["timestamp"])})
+    return pending
+
+
+def notify_pending_reminder() -> None:
+    """Daily reminder for whatever's still awaiting a human decision —
+    "email gets sent immediately" when a recommendation is first made is
+    notify_digest()'s job (called once per checkpoint from
+    orchestrator.run_checkpoint()); this is the follow-up for anything that
+    immediate email didn't get a response to. Meant to be called once a day,
+    from pre_close (trading-report's daily wrap-up), after all 4 checkpoints
+    have had their chance.
+
+    Silent when nothing is pending — this is a nudge for outstanding action,
+    not a daily status ping, so an empty inbox stays empty. Splits the body
+    into what's still actionable (within the approval window) and what
+    expired today with no decision ever recorded (no longer approvable, kept
+    visible so nothing silently disappears). A send failure is reported, not
+    raised, same as notify_digest()/notify_daily_summary().
+    """
+    channels = notification_channels()
+    if not channels & {"email", "sms"}:
+        return
+
+    pending = pending_approvals_today()
+    if not pending:
+        return
+
+    still_actionable = [r for r in pending if not r["expired"]]
+    expired = [r for r in pending if r["expired"]]
+
+    def _line(r: dict[str, Any]) -> str:
+        return (
+            f"{r['ticker']} [{r['checkpoint']}]: {r['action']} (confidence {r['confidence']}) — "
+            f"{r.get('rationale', '')[:120]}"
+        )
+
+    subject_bits = []
+    if still_actionable:
+        subject_bits.append(f"{len(still_actionable)} pending")
+    if expired:
+        subject_bits.append(f"{len(expired)} expired")
+    subject = f"[Bull-Trading] {' / '.join(subject_bits)} — no decision recorded"
+
+    body_parts = []
+    if still_actionable:
+        body_parts.append(
+            f"{len(still_actionable)} recommendation(s) still awaiting a decision, within "
+            "the approval window:\n\n" + "\n".join(_line(r) for r in still_actionable)
+        )
+    if expired:
+        body_parts.append(
+            f"{len(expired)} recommendation(s) expired today with no decision ever recorded — "
+            "no longer approvable, shown for visibility only:\n\n"
+            + "\n".join(_line(r) for r in expired)
+        )
+    body_parts.append("Run `trading-agent approvals list <checkpoint>` to review and decide.")
+    body = "\n\n".join(body_parts)
+
+    if "email" in channels:
+        try:
+            from trading_agent.notify.senders import send_email
+
+            send_email(subject, body)
+        except Exception as exc:  # noqa: BLE001 - a broken channel must not halt the routine
+            print(f"NOTIFY (pending reminder email) failed: {exc}")
+
+    if "sms" in channels:
+        try:
+            from trading_agent.notify.senders import send_sms
+
+            sms_bits = []
+            if still_actionable:
+                sms_bits.append(f"{len(still_actionable)} pending")
+            if expired:
+                sms_bits.append(f"{len(expired)} expired")
+            send_sms(f"Bull-Trading: {' / '.join(sms_bits)} — no decision recorded"[:300])
+        except Exception as exc:  # noqa: BLE001
+            print(f"NOTIFY (pending reminder sms) failed: {exc}")

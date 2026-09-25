@@ -113,6 +113,27 @@ over the same window. Either return being unavailable (Alpaca unreachable, or
 insufficient benchmark bars) is reported as unavailable, never guessed at or
 silently shown as 0%.
 
+## Human-approval notifications (plan §8/§12)
+
+Two, deliberately different in cadence:
+
+1. **Immediate, per checkpoint** — `notify_digest()` (`notify/approval_gateway.py`),
+   called from `orchestrator.run_checkpoint()` right after scoring. Every time
+   a checkpoint produces an actionable (BUY/SELL) recommendation, the
+   configured email/SMS channel gets it the same run — there's no delay
+   between "a recommendation needing a decision exists" and "a human is told."
+2. **Daily reminder for anything still undecided** — `trading-agent approvals
+   remind` (`notify.approval_gateway.notify_pending_reminder()` /
+   `pending_approvals_today()`), run once from `pre_close`'s `trading-report`
+   wrap-up. Sweeps all 4 checkpoints' recommendations for the day, not just
+   `pre_close`'s own, and reports two groups: still within the approval
+   window (genuinely actionable right now) and expired with no decision ever
+   recorded (no longer approvable — shown so nothing silently vanishes from
+   view rather than filtered out, since the default 2-hour window means a
+   `pre_open` recommendation is routinely already expired by the time this
+   runs). Silent (sends nothing) when nothing's outstanding — this is a nudge,
+   not a daily status ping.
+
 ## Approval + execution (hard requirement, plan §8)
 
 `execute/order_manager.py:submit_approved_order()` is the only sanctioned
