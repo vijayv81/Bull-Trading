@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "AIFF",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2173.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T19:57:10.558320+00:00"
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 455132.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T19:57:12.941043+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 4120.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T19:57:15.779006+00:00"
+  },
+  {
+    "ticker": "INLF",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 763.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T19:57:18.310820+00:00"
+  },
+  {
+    "ticker": "MGLD",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2266.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T19:57:21.017638+00:00"
+  }
+]
