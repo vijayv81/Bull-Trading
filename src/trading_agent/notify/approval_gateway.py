@@ -63,6 +63,7 @@ def notify_digest(
     checkpoint: str,
     auto_results: list[dict[str, Any]] | None = None,
     failed_tickers: list[dict[str, Any]] | None = None,
+    data_quality_alert: str | None = None,
 ) -> None:
     """One consolidated email/SMS per checkpoint instead of one per ticker —
     a mover-heavy checkpoint would otherwise fire a dozen texts. Console/file
@@ -77,10 +78,19 @@ def notify_digest(
     quiet checkpoint and a checkpoint that silently dropped half the watchlist
     to a research API error must not read the same to a human skimming this.
 
+    `data_quality_alert` (orchestrator._flat_confidence_alert()'s return) is
+    printed to console unconditionally, independent of the configured
+    notification channel — this is exactly the run where trusting only the
+    "email" channel would be the mistake, so it can't be silenced by channel
+    config the way the rest of this function's output can.
+
     A send failure (bad API key, unreachable host) is reported, not
     raised — a broken notification channel should never halt the pipeline
     that produced the recommendations it was trying to deliver.
     """
+    if data_quality_alert:
+        print(f"NOTIFY (data quality): {data_quality_alert}")
+
     channels = notification_channels()
     if not channels & {"email", "sms"}:
         return
@@ -92,6 +102,10 @@ def notify_digest(
     ]
     subject = f"[Bull-Trading] {checkpoint}: {len(actionable)} recommendation(s)"
     body = "\n".join(lines) if lines else "No actionable recommendations this checkpoint (all HOLD, or nothing scored)."
+
+    if data_quality_alert:
+        body = f"** DATA QUALITY ALERT **\n{data_quality_alert}\n\n" + body
+        subject = f"[Bull-Trading] {checkpoint}: DATA QUALITY ALERT"
 
     if auto_results:
         body += "\n\nAuto-applied:\n" + "\n".join(_auto_result_line(r) for r in auto_results)

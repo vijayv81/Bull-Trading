@@ -26,9 +26,43 @@ from trading_agent.execute.auto_pilot import auto_apply
 from trading_agent.guardrails import RoutineHalted, daily_loss_reason, is_option_symbol
 from trading_agent.notify.approval_gateway import notify_digest, save_recommendation
 from trading_agent.research.perplexity_client import research_ticker
-from trading_agent.scoring.recommendation_engine import score_candidate, technical_score
+from trading_agent.scoring.recommendation_engine import (
+    MIN_BARS_FOR_TECHNICAL,
+    score_candidate,
+    technical_score,
+)
 
 VALID_CHECKPOINTS = {"pre_open", "market_open", "midday", "pre_close"}
+
+# Below this many actionable (BUY/SELL) candidates, an identical confidence
+# across all of them is as likely to be coincidence as a data-quality failure
+# — the check below only fires once there's enough of a sample to be sure a
+# flat score isn't real.
+FLAT_CONFIDENCE_MIN_CANDIDATES = 3
+
+
+def _flat_confidence_alert(results: list[dict[str, Any]]) -> str | None:
+    """Detect a degenerate run: every actionable candidate scoring the exact
+    same confidence is never a real signal — sentiment/technical/catalyst
+    inputs vary per ticker by construction, so identical confidence across
+    several of them means an upstream input silently went constant (e.g. bars
+    or research data), not that every ticker is equally attractive. Reported
+    rather than trusted: notify_digest() surfaces it and run_checkpoint()
+    skips auto_apply for the checkpoint when this fires.
+    """
+    actionable = [r for r in results if r.get("action") in ("BUY", "SELL")]
+    if len(actionable) < FLAT_CONFIDENCE_MIN_CANDIDATES:
+        return None
+    confidences = {r["confidence"] for r in actionable}
+    if len(confidences) > 1:
+        return None
+    return (
+        f"All {len(actionable)} actionable recommendations this checkpoint scored an "
+        f"identical confidence ({actionable[0]['confidence']}) — that is not a real signal, "
+        f"it means a scoring input (sentiment/technical/catalyst) silently went constant "
+        f"for every ticker. Auto-apply was skipped for this checkpoint; treat every "
+        f"recommendation below as unverified until the cause is found."
+    )
 
 
 def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> list[dict[str, Any]]:
@@ -58,7 +92,11 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             research = research_ticker(ticker, checkpoint)
 
             bars = pd.DataFrame(get_recent_bars(ticker))
-            tech = technical_score(bars)
+            # Fewer bars than the SMA window means technical_score() would only
+            # ever return its neutral 0.5 fallback — that's not a real reading,
+            # so score_candidate() must exclude it (None) rather than treat a
+            # placeholder as this ticker's actual technical signal.
+            tech = technical_score(bars) if len(bars) >= MIN_BARS_FOR_TECHNICAL else None
 
             rec = score_candidate(
                 ticker=ticker,
@@ -70,6 +108,7 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             )
             rec["rationale"] = (research.get("headline_summary") or "")[:280]
             rec["sources"] = research.get("sources", [])
+            rec["research_source"] = research.get("research_source", "perplexity")
 
             save_recommendation(rec)
             results.append(rec)
@@ -77,6 +116,17 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             failed_tickers.append({"ticker": ticker, "error": str(exc)})
             print(f"SKIPPED {ticker}: research/scoring failed — {exc}")
 
-    auto_results = auto_apply(results, checkpoint)
-    notify_digest(results, checkpoint, auto_results=auto_results, failed_tickers=failed_tickers)
+    data_quality_alert = _flat_confidence_alert(results)
+    if data_quality_alert:
+        print(f"DATA QUALITY ALERT: {data_quality_alert}")
+        auto_results: list[dict[str, Any]] = []
+    else:
+        auto_results = auto_apply(results, checkpoint)
+    notify_digest(
+        results,
+        checkpoint,
+        auto_results=auto_results,
+        failed_tickers=failed_tickers,
+        data_quality_alert=data_quality_alert,
+    )
     return results

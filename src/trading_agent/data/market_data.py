@@ -42,3 +42,35 @@ def load_cached_price_history(ticker: str) -> pd.DataFrame:
 def fetch_watchlist(tickers: list[str], period: str = "1y", interval: str = "1d") -> dict[str, pd.DataFrame]:
     """Fetch and cache history for every ticker in a watchlist."""
     return {ticker: cache_price_history(ticker, period=period, interval=interval) for ticker in tickers}
+
+
+def fetch_news_headlines(ticker: str, limit: int = 5) -> list[dict[str, str]]:
+    """Recent news headlines from Yahoo Finance (yfinance) — a free, keyless
+    secondary research source, used by research.perplexity_client.research_ticker()
+    only as a fallback when Perplexity's Agent API is unreachable or returns no
+    usable content (plan §7.1 credential policy: no new credential for a second
+    vendor was introduced here on purpose — this needs none).
+
+    Never the primary source: Perplexity's Agent API synthesizes analyst
+    rating changes and options-flow commentary this doesn't attempt to
+    replicate; this only surfaces raw headlines + links for the fallback to
+    summarize. Returns [] (never raises) on any yfinance failure or an empty
+    result — the caller treats an empty list as "this source found nothing
+    either," not as an error of its own.
+    """
+    try:
+        items = yf.Ticker(ticker).news or []
+    except Exception:
+        return []
+
+    headlines = []
+    for item in items[:limit]:
+        # yfinance's news payload shape has shifted between versions (a flat
+        # {title, link, ...} dict vs. a nested {"content": {"title": ..., "canonicalUrl": {"url": ...}}}
+        # one) — handle both rather than assume the current shape holds.
+        content = item.get("content", item) if isinstance(item, dict) else {}
+        title = content.get("title")
+        url = content.get("link") or (content.get("canonicalUrl") or {}).get("url") or ""
+        if title:
+            headlines.append({"title": title, "url": url})
+    return headlines

@@ -62,7 +62,12 @@ def get_latest_quote(ticker: str) -> dict[str, Any]:
     return quotes[ticker].model_dump(mode="json")
 
 
-def get_recent_bars(ticker: str, lookback_days: int = 60) -> list[dict[str, Any]]:
+def get_recent_bars(ticker: str, lookback_days: int = 120) -> list[dict[str, Any]]:
+    # 120 calendar days ~= 85 trading days after weekends/holidays — comfortably
+    # above scoring.recommendation_engine.MIN_BARS_FOR_TECHNICAL (50). A lower
+    # default (60 calendar days ~= 40 trading days) was silently starving every
+    # call of technical_score(), which falls back to a flat neutral score below
+    # that threshold — see MIN_BARS_FOR_TECHNICAL's docstring.
     request = StockBarsRequest(
         symbol_or_symbols=ticker,
         timeframe=TimeFrame.Day,

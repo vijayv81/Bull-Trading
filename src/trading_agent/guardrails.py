@@ -162,6 +162,51 @@ def position_size_reason(symbol: str, side: str, qty: float) -> str | None:
     return None
 
 
+def position_count_reason(symbol: str, side: str) -> str | None:
+    """Breach reason when a BUY would open a brand-new position past
+    position.max_concurrent_positions.
+
+    position_size_reason() bounds any ONE position to 5% of the portfolio,
+    but nothing else bounded how many different positions could each sit near
+    that cap at once — 10 positions at ~5% each is already half the account,
+    20 is all of it, with every individual buy still passing the per-position
+    check. This is the aggregate-exposure check that was missing: it counts
+    distinct symbols currently held and refuses a BUY that would open a new
+    one past the configured cap. Adding to a symbol already held doesn't
+    increase that count, so it isn't refused here — position_size_reason()
+    is what bounds that case.
+
+    No config key defaults this away silently: a missing/zero
+    max_concurrent_positions is treated as "no cap configured" (None) rather
+    than always-refuse, matching how the rest of this file only enforces caps
+    that are actually set.
+    """
+    if side.upper() != "BUY":
+        return None
+
+    cap = load_risk_limits()["position"].get("max_concurrent_positions")
+    if not cap:
+        return None
+
+    try:
+        held_symbols = {str(p.get("symbol", "")).upper() for p in _positions()}
+    except Exception as exc:
+        return (
+            f"Cannot verify the {cap}-position concurrent-positions cap ({exc}) — "
+            "refusing to proceed blind."
+        )
+
+    if symbol.upper() in held_symbols:
+        return None
+
+    if len(held_symbols) >= cap:
+        return (
+            f"Opening {symbol} would exceed the {cap}-position concurrent-positions cap "
+            f"(already holding {len(held_symbols)}: {', '.join(sorted(held_symbols)) or 'none'})."
+        )
+    return None
+
+
 def _existing_position_value(symbol: str) -> float:
     for position in _positions():
         if str(position.get("symbol", "")).upper() == symbol.upper():

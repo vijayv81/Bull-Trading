@@ -8,6 +8,9 @@ position:
   # partial buys can't stack past it one approval at a time.
   max_position_pct_of_portfolio: 5.0
   min_position_pct_of_portfolio: 1.0
+  # Enforced in guardrails.position_count_reason(), checked before any BUY
+  # that would open a symbol not already held — bounds aggregate exposure
+  # across positions, since the 5% cap above only bounds any ONE of them.
   max_concurrent_positions: 10
   mandatory_stop_loss: true
   min_confidence_to_notify: 50 # below this, don't even surface a notification

@@ -33,8 +33,13 @@ def _capture_digest(monkeypatch):
     monkeypatch.setattr(
         orch,
         "notify_digest",
-        lambda recs, checkpoint, auto_results=None, failed_tickers=None: calls.append(
-            {"recs": recs, "auto_results": auto_results, "failed_tickers": failed_tickers}
+        lambda recs, checkpoint, auto_results=None, failed_tickers=None, data_quality_alert=None: calls.append(
+            {
+                "recs": recs,
+                "auto_results": auto_results,
+                "failed_tickers": failed_tickers,
+                "data_quality_alert": data_quality_alert,
+            }
         ),
     )
     return calls
@@ -99,3 +104,110 @@ def test_all_tickers_failing_still_completes_with_empty_results(monkeypatch):
 
     assert results == []
     assert len(digest_calls[0]["failed_tickers"]) == 2
+
+
+# --- insufficient bar history must not masquerade as a real technical signal --
+
+
+def test_technical_is_none_when_bars_insufficient(monkeypatch):
+    """Regression test: get_recent_bars(lookback_days=60) used to return fewer
+    trading days than technical_score()'s 50-day SMA window needs, so every
+    call silently fell back to the neutral 0.5 — for every ticker, every run.
+    orchestrator must now pass technical=None to score_candidate() instead,
+    so that fallback can never again look like a real per-ticker signal.
+    """
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    monkeypatch.setattr(orch, "get_recent_bars", lambda ticker: [{"close": 1.0}] * 10)  # < MIN_BARS_FOR_TECHNICAL
+    monkeypatch.setattr(orch, "technical_score", lambda bars: pytest.fail("must not be called"))
+    seen_technical = []
+    monkeypatch.setattr(
+        orch,
+        "score_candidate",
+        lambda **kwargs: (
+            seen_technical.append(kwargs["technical"])
+            or {"ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"], "action": "HOLD", "confidence": 50}
+        ),
+    )
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    assert seen_technical == [None, None]
+
+
+# --- flat/identical confidence across candidates is a data-quality failure ----
+
+
+def test_flat_confidence_across_candidates_skips_auto_apply_and_alerts(monkeypatch):
+    monkeypatch.setattr(orch, "load_watchlist", lambda: ["AAA", "BBB", "CCC"])
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 1.0, "headline_summary": "ok", "sources": ["u"]},
+    )
+
+    def fake_score(**kwargs):
+        return {
+            "ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"],
+            "action": "BUY", "confidence": 72.0,
+        }
+
+    monkeypatch.setattr(orch, "score_candidate", fake_score)
+
+    auto_apply_calls = []
+    monkeypatch.setattr(orch, "auto_apply", lambda recs, checkpoint: auto_apply_calls.append(recs) or [])
+    digest_calls = _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    assert len(results) == 3
+    assert auto_apply_calls == []  # never even called — a flat score must not reach auto_apply
+    assert digest_calls[0]["data_quality_alert"] is not None
+    assert "identical confidence" in digest_calls[0]["data_quality_alert"]
+
+
+def test_varied_confidence_does_not_trigger_the_alert(monkeypatch):
+    monkeypatch.setattr(orch, "load_watchlist", lambda: ["AAA", "BBB", "CCC"])
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 1.0, "headline_summary": "ok", "sources": ["u"]},
+    )
+
+    confidences = {"AAA": 60.0, "BBB": 75.0, "CCC": 90.0}
+
+    def fake_score(**kwargs):
+        return {
+            "ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"],
+            "action": "BUY", "confidence": confidences[kwargs["ticker"]],
+        }
+
+    monkeypatch.setattr(orch, "score_candidate", fake_score)
+    monkeypatch.setattr(orch, "auto_apply", lambda recs, checkpoint: [])
+    digest_calls = _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    assert digest_calls[0]["data_quality_alert"] is None
+
+
+def test_two_identical_candidates_does_not_trigger_the_alert(monkeypatch):
+    """Below FLAT_CONFIDENCE_MIN_CANDIDATES (3) two matching scores are as
+    likely to be coincidence as a real failure — the fixture's default
+    watchlist (GOOD, BAD) exercises exactly that boundary."""
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": ["u"]},
+    )
+    monkeypatch.setattr(
+        orch, "score_candidate",
+        lambda **kwargs: {
+            "ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"], "action": "BUY", "confidence": 72.0,
+        },
+    )
+    digest_calls = _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    assert digest_calls[0]["data_quality_alert"] is None

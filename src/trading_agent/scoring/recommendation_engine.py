@@ -20,9 +20,25 @@ Action = Literal["BUY", "SELL", "HOLD"]
 # as one input (0-1) to the blended confidence score rather than a standalone
 # buy/sell/hold call.
 
+# technical_score()'s default `slow` window — also the number of daily bars a
+# caller must have before treating its return value as a real signal rather
+# than the neutral fallback below. orchestrator.py checks bar count against
+# this same constant before calling technical_score(), so an insufficient-data
+# call becomes an excluded (None) component in score_candidate() rather than a
+# silent 0.5 that looks identical to genuine neutral technicals.
+MIN_BARS_FOR_TECHNICAL = 50
 
-def technical_score(bars: pd.DataFrame, fast: int = 20, slow: int = 50) -> float:
-    """0-1 technical score from a fast/slow SMA spread plus short-term momentum."""
+
+def technical_score(bars: pd.DataFrame, fast: int = 20, slow: int = MIN_BARS_FOR_TECHNICAL) -> float:
+    """0-1 technical score from a fast/slow SMA spread plus short-term momentum.
+
+    Returns a neutral 0.5 when there isn't enough history (`bars.empty or
+    len(bars) < slow`) — fine for this function's own standalone contract
+    (e.g. the interactive agent's price-history tool just wants a display
+    number), but a caller feeding this into score_candidate() should treat
+    "insufficient data" as no signal at all, not a real neutral reading — see
+    MIN_BARS_FOR_TECHNICAL and orchestrator.run_checkpoint().
+    """
     if bars.empty or len(bars) < slow:
         return 0.5
     close = bars["close"]
@@ -55,7 +71,7 @@ def score_candidate(
     ticker: str,
     checkpoint: str,
     sentiment: float,
-    technical: float,
+    technical: float | None,
     fundamental: float | None,
     catalyst: float,
 ) -> dict[str, Any]:
@@ -64,12 +80,18 @@ def score_candidate(
     Record shape matches plan §6.2 exactly, so reports and the approval
     gateway can rely on the field names.
 
-    A component passed as None (no real data yet — see historical_hitrate()
-    and orchestrator.py's fundamental=None) is excluded from the weighted sum
-    rather than treated as a neutral 0.5: a constant baked into every
+    A component passed as None (no real data yet — see historical_hitrate(),
+    orchestrator.py's fundamental=None, and technical=None when there aren't
+    enough bars — see MIN_BARS_FOR_TECHNICAL) is excluded from the weighted
+    sum rather than treated as a neutral 0.5: a constant baked into every
     ticker's score can't discriminate between them, it only dilutes the
     components that can. Its weight is redistributed proportionally across
     whatever components ARE available this call.
+
+    technical is also the only directional input this formula has — action
+    is BUY/SELL by whether technical is >= 0.5. Without it there is no basis
+    to guess a direction, so a missing technical always forces HOLD, however
+    high confidence is from the remaining components alone.
     """
     weights = load_agent_config()["scoring_weights"]
     hitrate = historical_hitrate(ticker)
@@ -89,7 +111,7 @@ def score_candidate(
 
     risk = load_risk_limits()["position"]
     action: Action = "HOLD"
-    if confidence >= risk["min_confidence_to_notify"]:
+    if confidence >= risk["min_confidence_to_notify"] and technical is not None:
         action = "BUY" if technical >= 0.5 else "SELL"
 
     return {

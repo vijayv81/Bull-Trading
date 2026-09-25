@@ -13,7 +13,13 @@ from typing import Any
 
 from trading_agent.config import TRADES_DIR, load_risk_limits
 from trading_agent.data.alpaca_client import submit_market_order
-from trading_agent.guardrails import daily_loss_reason, options_reason, position_size_reason, short_sale_reason
+from trading_agent.guardrails import (
+    daily_loss_reason,
+    options_reason,
+    position_count_reason,
+    position_size_reason,
+    short_sale_reason,
+)
 from trading_agent.notify.approval_gateway import get_decision, is_expired
 from trading_agent.utils import append_json, day_dir
 
@@ -66,6 +72,10 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
         raise OrderRefused(breach)
 
     breach = position_size_reason(rec["ticker"], rec["action"], qty)
+    if breach:
+        raise OrderRefused(breach)
+
+    breach = position_count_reason(rec["ticker"], rec["action"])
     if breach:
         raise OrderRefused(breach)
 

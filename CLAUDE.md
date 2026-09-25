@@ -176,7 +176,7 @@ actionable recommendation, confidence-blind.
 
 ## Portfolio guardrails (hard requirement)
 
-`guardrails.py` holds four checks. Each returns a refusal reason or `None`;
+`guardrails.py` holds five checks. Each returns a refusal reason or `None`;
 callers turn that into `RoutineHalted` (orchestrator) or `OrderRefused`
 (order_manager). They are enforced at *both* boundaries — a rule that only
 applies at execution time would let the routine spend a day proposing trades
@@ -205,10 +205,61 @@ it can never place.
    SELL recommendation on a ticker you don't hold would open unbounded short
    exposure with no guardrail on it at all — there is deliberately no config
    key to allow shorting, same as the options ban.
+5. **Max concurrent positions** — `position_count_reason()`, checked before
+   any BUY that would open a symbol not already held. Closes a real gap: the
+   5% cap is *per position*, so nothing previously stopped many individual
+   BUYs — each legitimately under 5% on its own — from collectively consuming
+   the whole account (confirmed live: a `pre_open` run where every
+   recommendation shared one flat, wrong confidence score, see below, drove
+   auto-apply toward exactly that). Adding to a symbol you already hold isn't
+   a *new* position, so it isn't counted here — `position_size_reason()`
+   already bounds that case. Cap: `risk_limits.yaml ->
+   position.max_concurrent_positions`; unset/zero means no cap (fails open on
+   a config that was never set, not on missing account data — see below).
 
 These **fail closed**: if Alpaca account state can't be read, the
 account-dependent checks report a breach rather than assume the portfolio is
 healthy. A guardrail that passes when it can't see anything isn't a guardrail.
+
+## Research data quality (hard requirement)
+
+Two related production fixes, both from the same incident (a `pre_open` run
+where all 15 recommendations came back with an identical, wrong confidence of
+72 and one auto-applied BUY blew past the per-position cap):
+
+- **No recommendation is ever scored on missing research.**
+  `research.perplexity_client.research_ticker()` tries Perplexity first; if
+  that call fails outright or synthesizes nothing usable (no text, no
+  sources), it falls back to `data/market_data.py`'s
+  `fetch_news_headlines()` — free, keyless Yahoo Finance headlines, tagged
+  `research_source: "yahoo_finance_fallback"` on the recommendation so the
+  audit trail never confuses a fallback run with a real Perplexity one. If
+  *both* sources come back empty, `research_ticker()` raises rather than
+  returning a placeholder, and `orchestrator.run_checkpoint()`'s existing
+  per-ticker try/except skips that ticker entirely (into `failed_tickers`) —
+  analysis without real research data is refused, not guessed at. (Google was
+  considered as a second fallback and deliberately left out: it would need a
+  new API credential under the policy above, a reviewed decision, not
+  something to wire in silently.)
+- **A flat confidence score across many tickers is a data-quality failure,
+  reported and blocked, never trusted.** The 72-for-everyone incident traced
+  to `technical_score()` silently returning its neutral 0.5 fallback for
+  every ticker — `get_recent_bars()`'s old 60-day default yielded fewer
+  trading days than the 50-day SMA needs, so the "not enough history" branch
+  fired every single time, for every ticker, without error. Two fixes:
+  `get_recent_bars()`'s default is now 120 days (safe margin above 50 trading
+  days), and — belt and suspenders — `score_candidate()` now takes
+  `technical: float | None` and excludes it from the weighted sum (like
+  `fundamental`/`historical_hitrate` already do) whenever there isn't enough
+  bar history, rather than ever treating "not enough data" as a real neutral
+  reading again. Because `technical` is the formula's only directional input,
+  a missing one also now forces `action = "HOLD"` — no more guessing BUY from
+  a placeholder. On top of that, `orchestrator.run_checkpoint()` checks after
+  scoring whether ≥3 actionable (BUY/SELL) candidates share one identical
+  confidence value; if so it's reported (`DATA QUALITY ALERT`, unconditional
+  on console, headlined in the email/SMS digest via
+  `notify_digest(data_quality_alert=...)`) and **auto-apply is skipped
+  entirely for that checkpoint** — a flat score never reaches an order.
 
 ## What's not built yet
 

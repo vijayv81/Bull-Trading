@@ -20,6 +20,15 @@ def limits(monkeypatch):
     )
 
 
+@pytest.fixture
+def concurrent_cap(monkeypatch):
+    monkeypatch.setattr(
+        g,
+        "load_risk_limits",
+        lambda: {"position": {"max_concurrent_positions": 2}},
+    )
+
+
 def _account(monkeypatch, equity, last_equity=100_000.0):
     monkeypatch.setattr(
         g, "_account", lambda: {"equity": equity, "last_equity": last_equity}
@@ -138,6 +147,45 @@ def test_position_size_fails_closed_when_account_unreadable(limits, flat_book, m
 def test_position_size_fails_closed_on_zero_equity(limits, flat_book, monkeypatch):
     _account(monkeypatch, equity=0.0)
     assert "Cannot verify" in g.position_size_reason("TSLA", "BUY", qty=1)
+
+
+# --- max concurrent positions -------------------------------------------------
+
+
+def test_new_symbol_under_cap_passes(concurrent_cap, monkeypatch):
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": "GOOG"}])
+    assert g.position_count_reason("TSLA", "BUY") is None
+
+
+def test_new_symbol_at_cap_refuses(concurrent_cap, monkeypatch):
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": "GOOG"}, {"symbol": "AAPL"}])
+    reason = g.position_count_reason("TSLA", "BUY")
+    assert "2-position concurrent-positions cap" in reason
+
+
+def test_adding_to_existing_symbol_not_counted_as_new(concurrent_cap, monkeypatch):
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": "GOOG"}, {"symbol": "AAPL"}])
+    # Already held — this is position_size_reason()'s job to cap, not this check's.
+    assert g.position_count_reason("AAPL", "BUY") is None
+
+
+def test_sell_never_checked_for_concurrent_cap(concurrent_cap, monkeypatch):
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": "GOOG"}, {"symbol": "AAPL"}])
+    assert g.position_count_reason("TSLA", "SELL") is None
+
+
+def test_no_cap_configured_never_refuses(monkeypatch):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"position": {}})
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": s} for s in "ABCDEFGHIJ"])
+    assert g.position_count_reason("TSLA", "BUY") is None
+
+
+def test_position_count_fails_closed_when_positions_unreadable(concurrent_cap, monkeypatch):
+    def boom():
+        raise RuntimeError("alpaca unreachable")
+
+    monkeypatch.setattr(g, "_positions", boom)
+    assert "refusing to proceed blind" in g.position_count_reason("TSLA", "BUY")
 
 
 # --- no short positions, ever ------------------------------------------------
