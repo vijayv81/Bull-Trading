@@ -176,7 +176,7 @@ actionable recommendation, confidence-blind.
 
 ## Portfolio guardrails (hard requirement)
 
-`guardrails.py` holds five checks. Each returns a refusal reason or `None`;
+`guardrails.py` holds six checks. Each returns a refusal reason or `None`;
 callers turn that into `RoutineHalted` (orchestrator) or `OrderRefused`
 (order_manager). They are enforced at *both* boundaries — a rule that only
 applies at execution time would let the routine spend a day proposing trades
@@ -216,6 +216,14 @@ it can never place.
    already bounds that case. Cap: `risk_limits.yaml ->
    position.max_concurrent_positions`; unset/zero means no cap (fails open on
    a config that was never set, not on missing account data — see below).
+6. **Max daily trade count, every source combined** — `daily_trade_count_reason()`,
+   checked before any order (BUY or SELL, human or auto). Counts
+   `data/trades/<today>/orders_submitted.json`, which every submitted order
+   is already appended to, so there's nothing extra to keep in sync. Distinct
+   from `operational.auto_apply.max_trades_per_day` (below): that one only
+   paces auto_apply's own trades and never sees a human's; this is the real
+   ceiling on the day's total order count regardless of who approved it. Cap:
+   `risk_limits.yaml -> portfolio.max_daily_trades`; unset/zero means no cap.
 
 These **fail closed**: if Alpaca account state can't be read, the
 account-dependent checks report a breach rather than assume the portfolio is

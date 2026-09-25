@@ -120,6 +120,10 @@ erroring. Read the reason back to the user in plain language and stop there:
   position past the cap. Not fixable by a smaller qty; they'd need to close
   something else first or raise the cap deliberately in
   `config/risk_limits.yaml`.
+- **Daily trade cap reached** — `portfolio.max_daily_trades` orders (any
+  ticker, any side, human or auto-applied) have already gone through today.
+  Done for the day, same as the daily loss cap — not fixable by trying a
+  different ticker or a smaller qty, and not worth re-running.
 - **Daily loss cap reached** — done for the day. Not negotiable, not worth
   re-running.
 - **Options contract** — never tradeable here, at any size, under any config.

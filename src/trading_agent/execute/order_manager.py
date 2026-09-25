@@ -15,6 +15,7 @@ from trading_agent.config import TRADES_DIR, load_risk_limits
 from trading_agent.data.alpaca_client import submit_market_order
 from trading_agent.guardrails import (
     daily_loss_reason,
+    daily_trade_count_reason,
     options_reason,
     position_count_reason,
     position_size_reason,
@@ -43,6 +44,11 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
 
     # Absolute and free to check, so it comes before anything that touches the network.
     breach = options_reason(rec["ticker"])
+    if breach:
+        raise OrderRefused(breach)
+
+    # Local file read, no network — cheap enough to check this early too.
+    breach = daily_trade_count_reason()
     if breach:
         raise OrderRefused(breach)
 

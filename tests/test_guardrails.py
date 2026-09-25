@@ -149,6 +149,64 @@ def test_position_size_fails_closed_on_zero_equity(limits, flat_book, monkeypatc
     assert "Cannot verify" in g.position_size_reason("TSLA", "BUY", qty=1)
 
 
+# --- max daily trade count (all sources combined) ------------------------------
+
+
+@pytest.fixture
+def daily_trade_cap(monkeypatch, tmp_path):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"portfolio": {"max_daily_trades": 5}})
+    monkeypatch.setattr(g, "TRADES_DIR", tmp_path)
+    return tmp_path
+
+
+def _write_trades(tmp_path, n, day=None):
+    import json
+
+    from trading_agent.utils import today
+
+    day_path = tmp_path / (day or today())
+    day_path.mkdir(parents=True, exist_ok=True)
+    (day_path / "orders_submitted.json").write_text(
+        json.dumps([{"order": {"symbol": "X"}, "source": "human"} for _ in range(n)])
+    )
+
+
+def test_under_daily_trade_cap_passes(daily_trade_cap):
+    _write_trades(daily_trade_cap, 3)
+    assert g.daily_trade_count_reason() is None
+
+
+def test_at_daily_trade_cap_refuses(daily_trade_cap):
+    _write_trades(daily_trade_cap, 5)
+    reason = g.daily_trade_count_reason()
+    assert "5 of 5 orders already submitted today" in reason
+
+
+def test_over_daily_trade_cap_refuses(daily_trade_cap):
+    _write_trades(daily_trade_cap, 7)
+    assert "Daily trade cap reached" in g.daily_trade_count_reason()
+
+
+def test_no_trades_yet_today_passes(daily_trade_cap):
+    assert g.daily_trade_count_reason() is None
+
+
+def test_no_daily_trade_cap_configured_never_refuses(monkeypatch, tmp_path):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"portfolio": {}})
+    monkeypatch.setattr(g, "TRADES_DIR", tmp_path)
+    _write_trades(tmp_path, 100)
+    assert g.daily_trade_count_reason() is None
+
+
+def test_daily_trade_count_fails_closed_on_unreadable_file(daily_trade_cap):
+    from trading_agent.utils import today
+
+    day_path = daily_trade_cap / today()
+    day_path.mkdir(parents=True, exist_ok=True)
+    (day_path / "orders_submitted.json").write_text("{not valid json")
+    assert "refusing to proceed blind" in g.daily_trade_count_reason()
+
+
 # --- max concurrent positions -------------------------------------------------
 
 
