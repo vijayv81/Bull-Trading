@@ -96,6 +96,22 @@ def cmd_approvals_list(args: argparse.Namespace) -> None:
         )
 
 
+def cmd_approvals_remind(args: argparse.Namespace) -> None:
+    from trading_agent.notify.approval_gateway import notify_pending_reminder, pending_approvals_today
+
+    pending = pending_approvals_today()
+    if not pending:
+        print("Nothing pending across today's checkpoints — no reminder sent.")
+        return
+    notify_pending_reminder()
+    still_actionable = [r for r in pending if not r["expired"]]
+    expired = [r for r in pending if r["expired"]]
+    print(f"Reminder sent: {len(still_actionable)} still pending, {len(expired)} expired with no decision.")
+    for rec in pending:
+        status = "EXPIRED" if rec["expired"] else "pending"
+        print(f"  {rec['ticker']} [{rec['checkpoint']}]: {rec['action']} (confidence {rec['confidence']}) — {status}")
+
+
 def cmd_approvals_decide(args: argparse.Namespace) -> None:
     from trading_agent.notify.approval_gateway import record_decision
 
@@ -312,6 +328,12 @@ def build_parser() -> argparse.ArgumentParser:
     approvals_reject.add_argument("checkpoint")
     approvals_reject.add_argument("--qty", type=float)
     approvals_reject.set_defaults(func=cmd_approvals_decide, decision="reject")
+
+    approvals_remind = approvals_sub.add_parser(
+        "remind",
+        help="Email/SMS a reminder for every still-pending, non-expired recommendation across today's checkpoints.",
+    )
+    approvals_remind.set_defaults(func=cmd_approvals_remind)
 
     execute = sub.add_parser("execute", help="Submit an approved recommendation as a paper order (gated).")
     execute.add_argument("ticker")
