@@ -99,9 +99,22 @@ add` — `data/raw/` and `data/processed/` are gitignored because they're bulky
 and may contain raw API responses, and you want to notice immediately if
 something unexpected is staged.
 
-Ask before pushing. Committing locally is easily undone; a push is visible to
-anyone with access to the repo, and the user may want to look at the day's
-records first.
+**A human is present in this conversation (interactive use):** ask before
+pushing. Committing locally is easily undone; a push is visible to anyone
+with access to the repo, and the user may want to look at the day's records
+first.
+
+**No human is present (a scheduled routine, per its prompt saying so
+explicitly):** push, open a PR against `main`, and merge it yourself —
+there's no one to ask, and a commit that only exists in this session's local
+checkout or on an unreviewed branch nobody ever merges is indistinguishable
+from the audit trail never having been written at all. This mirrors step 0's
+`add_repo(access="push")` — that step exists specifically so this one can
+complete unattended. Use a plain, factual PR title/body (e.g. "Daily
+snapshot 2026-09-25: 6 recommendations, 2 approved") — this is data landing
+in git, not a change under review. If the push, PR, or merge fails, say so
+plainly in your summary rather than silently dropping it; the commit is
+still safe locally for a later run or the user to pick up.
 
 ## Capturing feedback
 
