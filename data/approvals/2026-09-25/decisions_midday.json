@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "ABLVW",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 109960.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T17:57:05.316351+00:00"
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 1533.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T17:57:07.985377+00:00"
+  },
+  {
+    "ticker": "APUS",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 405.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T17:57:10.878053+00:00"
+  },
+  {
+    "ticker": "GOOG",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T17:57:13.273956+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-25T17:57:15.998834+00:00"
+  }
+]
