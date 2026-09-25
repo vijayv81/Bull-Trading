@@ -24,7 +24,9 @@ def guardrails_satisfied(monkeypatch):
     Without this they would reach for live Alpaca account data.
     """
     monkeypatch.setattr(om, "daily_loss_reason", lambda: None)
+    monkeypatch.setattr(om, "daily_trade_count_reason", lambda: None)
     monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty: None)
+    monkeypatch.setattr(om, "position_count_reason", lambda ticker, side: None)
     monkeypatch.setattr(om, "short_sale_reason", lambda ticker, side, qty: None)
 
 
@@ -160,6 +162,47 @@ def test_position_size_breach_refuses(monkeypatch):
     monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
 
     with pytest.raises(om.OrderRefused, match="over the 5.0% cap"):
+        om.submit_approved_order(REC, qty=10)
+
+
+def test_daily_trade_count_breach_refuses(monkeypatch):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(
+        om, "daily_trade_count_reason", lambda: "Daily trade cap reached: 5 of 5 orders already submitted today"
+    )
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
+
+    with pytest.raises(om.OrderRefused, match="Daily trade cap reached"):
+        om.submit_approved_order(REC, qty=10)
+
+
+def test_daily_trade_count_checked_before_approval_lookup(monkeypatch):
+    """Cheap/local check — must refuse before ever consulting the approval record."""
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "daily_trade_count_reason", lambda: "Daily trade cap reached: 5 of 5")
+
+    def fail(*args, **kwargs):
+        raise AssertionError("should have been refused before the approval lookup")
+
+    monkeypatch.setattr(om, "get_decision", fail)
+    with pytest.raises(om.OrderRefused, match="Daily trade cap reached"):
+        om.submit_approved_order(REC, qty=10)
+
+
+def test_position_count_breach_refuses(monkeypatch):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(
+        om,
+        "position_count_reason",
+        lambda ticker, side: "Opening TSLA would exceed the 10-position concurrent-positions cap",
+    )
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
+
+    with pytest.raises(om.OrderRefused, match="concurrent-positions cap"):
         om.submit_approved_order(REC, qty=10)
 
 

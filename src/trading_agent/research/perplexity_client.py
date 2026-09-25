@@ -131,14 +131,87 @@ def _extract_sources(raw: dict[str, Any]) -> list[str]:
     return urls
 
 
+def _perplexity_extraction(ticker: str, checkpoint: str, prompt: str) -> dict[str, Any] | None:
+    """Perplexity attempt. Returns None (never raises past this point) when
+    the call fails outright OR succeeds but synthesizes nothing usable (no
+    text, no sources) — either way the caller falls back to
+    _yahoo_fallback_extraction() rather than scoring on empty research.
+    """
+    try:
+        raw = query_perplexity(prompt)
+    except Exception as exc:
+        print(f"Perplexity research failed for {ticker}: {exc} — trying the Yahoo Finance fallback.")
+        return None
+
+    text = _extract_text(raw)
+    sources = _extract_sources(raw)
+    if not text and not sources:
+        print(f"Perplexity returned no usable content for {ticker} — trying the Yahoo Finance fallback.")
+        return None
+
+    return {
+        "raw_response": raw,
+        "extraction": {
+            "ticker": ticker,
+            "checkpoint": checkpoint,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "headline_summary": text,
+            "sources": sources,
+            "confidence_of_extraction": 1.0 if sources else 0.6,
+            "research_source": "perplexity",
+        },
+    }
+
+
+def _yahoo_fallback_extraction(ticker: str, checkpoint: str) -> dict[str, Any] | None:
+    """Fallback when Perplexity is unavailable or empty (see module docstring
+    and CLAUDE.md's credential policy — this needs no new credential, unlike
+    a Google-backed fallback would, so it's the one wired up here). Returns
+    None if Yahoo Finance also has nothing — the caller must then refuse to
+    score this ticker at all rather than fabricate an analysis with no real
+    research behind it.
+    """
+    from trading_agent.data.market_data import fetch_news_headlines
+
+    headlines = fetch_news_headlines(ticker)
+    if not headlines:
+        return None
+
+    sources = [h["url"] for h in headlines if h.get("url")]
+    return {
+        "raw_response": {"provider": "yahoo_finance_fallback", "headlines": headlines},
+        "extraction": {
+            "ticker": ticker,
+            "checkpoint": checkpoint,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "headline_summary": " | ".join(h["title"] for h in headlines),
+            "sources": sources,
+            # Headlines alone, no synthesis — deliberately below Perplexity's
+            # floor (0.6) so a fallback run never outscores a real one.
+            "confidence_of_extraction": 0.5 if sources else 0.4,
+            "research_source": "yahoo_finance_fallback",
+        },
+    }
+
+
 def research_ticker(ticker: str, checkpoint: str, force_refresh: bool = False) -> dict[str, Any]:
     """Research a ticker's latest news/catalysts, caching per checkpoint.
 
     Returns a structured extraction:
-    {ticker, timestamp, headline_summary, sources, confidence_of_extraction}.
-    `catalysts` and `sentiment_score` are intentionally left for a follow-up
-    pass (e.g. a scoring-time NLP or Claude call) rather than guessed here —
-    see scoring/recommendation_engine.py for how the extraction is consumed.
+    {ticker, timestamp, headline_summary, sources, confidence_of_extraction,
+    research_source}. `catalysts` and `sentiment_score` are intentionally left
+    for a follow-up pass (e.g. a scoring-time NLP or Claude call) rather than
+    guessed here — see scoring/recommendation_engine.py for how the
+    extraction is consumed.
+
+    Perplexity is the primary source; if it's unreachable or returns nothing
+    usable, this falls back to Yahoo Finance headlines (data/market_data.py's
+    fetch_news_headlines() — free, no credential needed). If BOTH come back
+    empty, this raises rather than returning a placeholder: scoring a ticker
+    with no real research behind it — from either source — is exactly the
+    failure mode this function exists to prevent, and the caller
+    (orchestrator.run_checkpoint()) already treats an exception here as "skip
+    this ticker," not "crash the checkpoint."
     """
     if not force_refresh:
         cached = _cached_extraction(ticker, checkpoint)
@@ -149,31 +222,27 @@ def research_ticker(ticker: str, checkpoint: str, force_refresh: bool = False) -
         f"Latest news, catalysts, and analyst rating changes for {ticker} in the "
         "last 24 hours. Include any notable options flow or unusual volume commentary."
     )
-    raw = query_perplexity(prompt)
-    sources = _extract_sources(raw)
-
-    extraction = {
-        "ticker": ticker,
-        "checkpoint": checkpoint,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "headline_summary": _extract_text(raw),
-        "sources": sources,
-        "confidence_of_extraction": 1.0 if sources else 0.5,
-    }
+    result = _perplexity_extraction(ticker, checkpoint, prompt) or _yahoo_fallback_extraction(ticker, checkpoint)
+    if result is None:
+        raise RuntimeError(
+            f"No research data available for {ticker} — Perplexity returned nothing usable and "
+            "the Yahoo Finance fallback found no recent headlines either. Refusing to score "
+            f"{ticker} on no research data."
+        )
 
     path = _raw_path(ticker, checkpoint)
     path.write_text(
         json.dumps(
             {
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
-                "raw_response": raw,
-                "extraction": extraction,
+                "raw_response": result["raw_response"],
+                "extraction": result["extraction"],
             },
             indent=2,
             default=str,
         )
     )
-    return extraction
+    return result["extraction"]
 
 
 def screen_market(prompt_override: str | None = None) -> dict[str, Any]:

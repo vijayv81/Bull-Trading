@@ -154,3 +154,85 @@ def test_query_perplexity_does_not_retry_non_retryable_4xx(monkeypatch, api_key)
     with pytest.raises(requests.exceptions.HTTPError):
         pc.query_perplexity("prompt")
     assert calls["n"] == 1
+
+
+# --- research_ticker: Yahoo Finance fallback + "no fake analysis" ---------------
+#
+# Regression coverage for: "if data is unavailable from Perplexity, other
+# sources (Yahoo Finance) should be used; analysis without research data must
+# be avoided."
+
+
+@pytest.fixture
+def no_cache(monkeypatch, tmp_path):
+    monkeypatch.setattr(pc, "RAW_DATA_DIR", tmp_path)
+
+
+def test_uses_perplexity_when_it_returns_usable_content(monkeypatch, no_cache):
+    monkeypatch.setattr(pc, "query_perplexity", lambda prompt: _agent_response(text="real analysis"))
+
+    def fail_fallback(ticker, limit=5):
+        raise AssertionError("Yahoo fallback must not be called when Perplexity succeeds")
+
+    monkeypatch.setattr("trading_agent.data.market_data.fetch_news_headlines", fail_fallback)
+
+    extraction = pc.research_ticker("TSLA", "pre_open")
+    assert extraction["research_source"] == "perplexity"
+    assert extraction["headline_summary"] == "real analysis"
+
+
+def test_falls_back_to_yahoo_when_perplexity_errors(monkeypatch, no_cache):
+    def boom(prompt):
+        raise requests.exceptions.Timeout("read timed out")
+
+    monkeypatch.setattr(pc, "query_perplexity", boom)
+    monkeypatch.setattr(
+        "trading_agent.data.market_data.fetch_news_headlines",
+        lambda ticker, limit=5: [{"title": "TSLA rallies on delivery beat", "url": "http://y.example"}],
+    )
+
+    extraction = pc.research_ticker("TSLA", "pre_open")
+    assert extraction["research_source"] == "yahoo_finance_fallback"
+    assert "TSLA rallies" in extraction["headline_summary"]
+    assert extraction["sources"] == ["http://y.example"]
+
+
+def test_falls_back_to_yahoo_when_perplexity_returns_nothing_usable(monkeypatch, no_cache):
+    monkeypatch.setattr(pc, "query_perplexity", lambda prompt: {"output": []})  # no text, no sources
+    monkeypatch.setattr(
+        "trading_agent.data.market_data.fetch_news_headlines",
+        lambda ticker, limit=5: [{"title": "headline", "url": ""}],
+    )
+
+    extraction = pc.research_ticker("TSLA", "pre_open")
+    assert extraction["research_source"] == "yahoo_finance_fallback"
+
+
+def test_raises_when_both_sources_have_nothing(monkeypatch, no_cache):
+    monkeypatch.setattr(pc, "query_perplexity", lambda prompt: {"output": []})
+    monkeypatch.setattr("trading_agent.data.market_data.fetch_news_headlines", lambda ticker, limit=5: [])
+
+    with pytest.raises(RuntimeError, match="No research data available"):
+        pc.research_ticker("TSLA", "pre_open")
+
+
+def test_raises_when_perplexity_errors_and_yahoo_also_fails(monkeypatch, no_cache):
+    def boom(prompt):
+        raise requests.exceptions.ConnectionError("unreachable")
+
+    monkeypatch.setattr(pc, "query_perplexity", boom)
+    monkeypatch.setattr("trading_agent.data.market_data.fetch_news_headlines", lambda ticker, limit=5: [])
+
+    with pytest.raises(RuntimeError, match="No research data available"):
+        pc.research_ticker("TSLA", "pre_open")
+
+
+def test_yahoo_fallback_confidence_never_outranks_a_real_perplexity_call(monkeypatch, no_cache):
+    monkeypatch.setattr(pc, "query_perplexity", lambda prompt: {"output": []})
+    monkeypatch.setattr(
+        "trading_agent.data.market_data.fetch_news_headlines",
+        lambda ticker, limit=5: [{"title": "headline", "url": "http://y.example"}],
+    )
+
+    extraction = pc.research_ticker("TSLA", "pre_open")
+    assert extraction["confidence_of_extraction"] < 1.0

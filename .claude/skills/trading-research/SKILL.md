@@ -44,6 +44,19 @@ A halt reading `Cannot verify ... refusing to proceed blind` means Alpaca was
 unreachable, not that money was lost. Say so plainly, since the remedy is
 completely different — check credentials and connectivity, then re-run.
 
+## When you see a DATA QUALITY ALERT
+
+This isn't a halt — the checkpoint still completes and still writes
+recommendations — but treat it as seriously as one. It means several
+actionable recommendations came back with the exact same confidence score,
+which orchestrator.py has already determined is not a real signal (see
+CLAUDE.md's "Research data quality" section) — auto-apply was skipped for
+the entire checkpoint because of it. Lead with this, not with the
+recommendation list: tell the user plainly that this run's numbers can't be
+trusted, and don't encourage approving anything off it until the cause is
+found. Don't quietly proceed to "here's what's pending" as if nothing were
+wrong.
+
 ## Reporting back
 
 The routine's completion message is the only thing the user may ever read, so
@@ -51,6 +64,14 @@ it has to stand on its own. For each recommendation give ticker, action,
 confidence, and the one-line rationale — and lead with what changed since the
 last checkpoint rather than restating the whole list, because a routine that
 reports identical output four times a day trains the user to ignore it.
+
+Check each recommendation's `research_source`. Most will be `"perplexity"`;
+say nothing extra about those. One reading `"yahoo_finance_fallback"` means
+Perplexity was unavailable or returned nothing usable for that ticker and the
+system fell back to raw Yahoo Finance headlines instead — flag it inline
+("TSLA, via Yahoo fallback — Perplexity had nothing"), since it's a weaker
+research basis than the rest of the list and the user deciding on it should
+know that.
 
 Then point them at the review step:
 

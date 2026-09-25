@@ -73,7 +73,12 @@ def cmd_approvals_list(args: argparse.Namespace) -> None:
     from trading_agent.notify.approval_gateway import list_pending
 
     for rec in list_pending(args.checkpoint):
-        print(f"{rec['ticker']}: {rec['action']} (confidence {rec['confidence']}) — {rec.get('rationale', '')}")
+        source = rec.get("research_source", "perplexity")
+        source_note = f" [source: {source}]" if source != "perplexity" else ""
+        print(
+            f"{rec['ticker']}: {rec['action']} (confidence {rec['confidence']}) — "
+            f"{rec.get('rationale', '')}{source_note}"
+        )
 
 
 def cmd_approvals_decide(args: argparse.Namespace) -> None:

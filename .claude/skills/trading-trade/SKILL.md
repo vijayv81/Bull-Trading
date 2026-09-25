@@ -114,6 +114,16 @@ erroring. Read the reason back to the user in plain language and stop there:
   makes the error go away.
 - **Over the 5% per-position cap** — includes what they already hold in that
   symbol. Offer the qty that fits, and let them choose it.
+- **Over the concurrent-positions cap** — opening this symbol would exceed
+  `position.max_concurrent_positions` distinct positions at once. Adding to a
+  symbol already held is never blocked by this one — only a brand-new
+  position past the cap. Not fixable by a smaller qty; they'd need to close
+  something else first or raise the cap deliberately in
+  `config/risk_limits.yaml`.
+- **Daily trade cap reached** — `portfolio.max_daily_trades` orders (any
+  ticker, any side, human or auto-applied) have already gone through today.
+  Done for the day, same as the daily loss cap — not fixable by trying a
+  different ticker or a smaller qty, and not worth re-running.
 - **Daily loss cap reached** — done for the day. Not negotiable, not worth
   re-running.
 - **Options contract** — never tradeable here, at any size, under any config.

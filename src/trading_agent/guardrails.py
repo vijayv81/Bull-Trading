@@ -20,7 +20,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from trading_agent.config import load_risk_limits
+from trading_agent.config import TRADES_DIR, load_risk_limits
+from trading_agent.utils import load_json_list, today
 
 # OCC contract symbol: root + YYMMDD + C/P + 8-digit strike, e.g. AAPL240119C00150000.
 # Anchored, so ordinary equity tickers can never match.
@@ -158,6 +159,94 @@ def position_size_reason(symbol: str, side: str, qty: float) -> str | None:
         return (
             f"{symbol} would reach {pct:.2f}% of the {equity:,.2f} portfolio "
             f"({projected:,.2f} incl. {existing:,.2f} already held), over the {cap}% cap."
+        )
+    return None
+
+
+def _todays_trade_count() -> int:
+    path = TRADES_DIR / today() / "orders_submitted.json"
+    return len(load_json_list(path))
+
+
+def daily_trade_count_reason() -> str | None:
+    """Breach reason once today's total submitted orders — every source, BUY
+    and SELL alike — reach portfolio.max_daily_trades.
+
+    Distinct from execute.auto_pilot's own `auto_apply.max_trades_per_day`:
+    that one paces how many of *auto-apply's own* trades happen today and
+    never sees a human's; this is a hard ceiling on the day's order count
+    regardless of source, enforced at the same execution boundary as every
+    other guardrail (execute.order_manager.submit_approved_order()), so 5
+    auto-applied trades plus several more a human approves can't quietly add
+    up past the real limit either.
+
+    Counts data/trades/<today>/orders_submitted.json — the same file every
+    order is already appended to on submission, so there's no separate
+    counter to keep in sync or reset at day boundary; it resets naturally
+    because the path is date-partitioned.
+
+    No config key defaults this away silently: a missing/zero
+    max_daily_trades is "no cap configured" (None), not always-refuse — same
+    convention as position_count_reason().
+    """
+    cap = load_risk_limits().get("portfolio", {}).get("max_daily_trades")
+    if not cap:
+        return None
+
+    try:
+        count = _todays_trade_count()
+    except Exception as exc:
+        return f"Cannot verify the {cap}-trade daily cap ({exc}) — refusing to proceed blind."
+
+    if count >= cap:
+        return (
+            f"Daily trade cap reached: {count} of {cap} orders already submitted today "
+            "(counts every source — human and auto-applied alike)."
+        )
+    return None
+
+
+def position_count_reason(symbol: str, side: str) -> str | None:
+    """Breach reason when a BUY would open a brand-new position past
+    position.max_concurrent_positions.
+
+    position_size_reason() bounds any ONE position to 5% of the portfolio,
+    but nothing else bounded how many different positions could each sit near
+    that cap at once — 10 positions at ~5% each is already half the account,
+    20 is all of it, with every individual buy still passing the per-position
+    check. This is the aggregate-exposure check that was missing: it counts
+    distinct symbols currently held and refuses a BUY that would open a new
+    one past the configured cap. Adding to a symbol already held doesn't
+    increase that count, so it isn't refused here — position_size_reason()
+    is what bounds that case.
+
+    No config key defaults this away silently: a missing/zero
+    max_concurrent_positions is treated as "no cap configured" (None) rather
+    than always-refuse, matching how the rest of this file only enforces caps
+    that are actually set.
+    """
+    if side.upper() != "BUY":
+        return None
+
+    cap = load_risk_limits()["position"].get("max_concurrent_positions")
+    if not cap:
+        return None
+
+    try:
+        held_symbols = {str(p.get("symbol", "")).upper() for p in _positions()}
+    except Exception as exc:
+        return (
+            f"Cannot verify the {cap}-position concurrent-positions cap ({exc}) — "
+            "refusing to proceed blind."
+        )
+
+    if symbol.upper() in held_symbols:
+        return None
+
+    if len(held_symbols) >= cap:
+        return (
+            f"Opening {symbol} would exceed the {cap}-position concurrent-positions cap "
+            f"(already holding {len(held_symbols)}: {', '.join(sorted(held_symbols)) or 'none'})."
         )
     return None
 

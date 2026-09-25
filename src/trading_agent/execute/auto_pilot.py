@@ -8,9 +8,9 @@ writes its OWN approve decision for the day's highest-confidence actionable
 recommendations (tagged terms.source: "auto" in data/approvals/, never
 indistinguishable from a human's) and submits them through the exact same
 execute.order_manager.submit_approved_order() a human's approval would use —
-every guardrail (kill switch, 5% cap, no shorts, no options, daily-loss halt)
-still applies unchanged. This only automates the decision step, nothing else
-in the gate.
+every guardrail (kill switch, 5% per-position cap, max concurrent positions,
+no shorts, no options, daily-loss halt, max daily trade count) still applies
+unchanged. This only automates the decision step, nothing else in the gate.
 """
 
 from __future__ import annotations

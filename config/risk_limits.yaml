@@ -8,6 +8,9 @@ position:
   # partial buys can't stack past it one approval at a time.
   max_position_pct_of_portfolio: 5.0
   min_position_pct_of_portfolio: 1.0
+  # Enforced in guardrails.position_count_reason(), checked before any BUY
+  # that would open a symbol not already held — bounds aggregate exposure
+  # across positions, since the 5% cap above only bounds any ONE of them.
   max_concurrent_positions: 10
   mandatory_stop_loss: true
   min_confidence_to_notify: 50 # below this, don't even surface a notification
@@ -28,6 +31,17 @@ portfolio:
   max_daily_drawdown_pct: 2.0
   max_sector_concentration_pct: 25.0
   max_new_proposals_per_checkpoint: 5 # ranked by confidence, avoids notification fatigue
+
+  # Hard ceiling on today's total submitted orders, every source combined
+  # (human approvals AND auto_apply). Enforced in
+  # guardrails.daily_trade_count_reason(), checked in
+  # execute.order_manager.submit_approved_order() before every order — the
+  # only sanctioned path to an Alpaca call, so this holds regardless of who
+  # (or what) approved the trade. Distinct from
+  # operational.auto_apply.max_trades_per_day below, which only paces
+  # auto_apply's own trades and never sees a human's; this is the real
+  # ceiling on the day's order count.
+  max_daily_trades: 5
 
 operational:
   # Kill switch: order_manager.submit_approved_order() checks this FIRST, before

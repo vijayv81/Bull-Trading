@@ -88,6 +88,48 @@ def test_partial_missing_component_still_discriminates(monkeypatch, fixed_config
     assert high["confidence"] > low["confidence"]
 
 
+def test_missing_technical_is_excluded_not_defaulted_to_neutral(monkeypatch, fixed_config):
+    # technical=None (e.g. not enough bars — see MIN_BARS_FOR_TECHNICAL) must drop
+    # out of the weighted sum exactly like fundamental=None/historical_hitrate=None,
+    # not silently act like every ticker had a real, identical neutral technical.
+    monkeypatch.setattr(engine, "historical_hitrate", lambda ticker: None)
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=None, fundamental=0.8, catalyst=0.8
+    )
+    assert rec["component_scores"]["technical"] is None
+    # Only sentiment(0.25) + fundamental(0.15) + catalyst(0.20) remain, renormalized.
+    assert rec["confidence"] == pytest.approx(80.0)
+
+
+def test_missing_technical_forces_hold_even_at_high_confidence(monkeypatch, fixed_config):
+    # technical is the formula's only directional input (BUY vs SELL). With no
+    # technical signal there is no basis to guess a direction, so action must be
+    # HOLD regardless of how high confidence is from the other components alone.
+    monkeypatch.setattr(engine, "historical_hitrate", lambda ticker: None)
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.95, technical=None, fundamental=0.95, catalyst=0.95
+    )
+    assert rec["confidence"] > 90
+    assert rec["action"] == "HOLD"
+    assert rec["suggested_size_pct_of_portfolio"] == 0.0
+
+
+def test_flat_technical_and_flat_proxies_reproduce_the_reported_incident(monkeypatch, fixed_config):
+    # Regression test for the production incident: sentiment=1.0 (sources present),
+    # catalyst=0.7 (sources present), technical=0.5 (insufficient bars, pre-fix
+    # fallback) produced an identical 72.0 confidence for every ticker — fundamental
+    # and historical_hitrate were both None in production too (no vendor wired up,
+    # no journal history yet), which is what this test reproduces. This proves the
+    # exact arithmetic that made every one of 15 tickers score 72 — the real fix is
+    # that technical=0.5 should never have been possible in the first place (see
+    # orchestrator.py / MIN_BARS_FOR_TECHNICAL), verified in test_orchestrator.py.
+    monkeypatch.setattr(engine, "historical_hitrate", lambda ticker: None)
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=1.0, technical=0.5, fundamental=None, catalyst=0.7
+    )
+    assert rec["confidence"] == pytest.approx(72.0)
+
+
 def test_no_components_available_raises(monkeypatch, fixed_config):
     monkeypatch.setattr(engine, "historical_hitrate", lambda ticker: None)
     with pytest.raises(ValueError):
