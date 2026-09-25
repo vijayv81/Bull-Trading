@@ -15,6 +15,7 @@ old "approve" as still valid.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Literal
 
 from trading_agent.config import APPROVALS_DIR, RECOMMENDATIONS_DIR, load_agent_config, load_risk_limits
@@ -216,6 +217,47 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
             send_sms(headline[:300])
         except Exception as exc:  # noqa: BLE001
             print(f"NOTIFY (daily summary sms) failed: {exc}")
+
+
+def notify_weekly_report(report_path: Path) -> None:
+    """Emails/texts the weekly report once it's built
+    (reporting.report_builder.build_weekly_report()'s return path) — that
+    function only ever wrote a file; nothing sent it anywhere until this.
+
+    The full markdown goes in the email body as-is — it's already
+    human-readable plain text, nothing to reformat. SMS gets just the
+    `## Summary` section (the report's fixed structure makes that a simple
+    split), truncated to 300 chars like every other SMS this module sends;
+    the full report is what the email is for.
+
+    Not gated by a config flag of its own (unlike daily_summary_enabled) —
+    whether it sends at all is already gated by notification_channels(),
+    same as notify_digest(). A send failure is reported, not raised, same as
+    every other notify_* function here.
+    """
+    channels = notification_channels()
+    if not channels & {"email", "sms"}:
+        return
+
+    full_text = report_path.read_text()
+    subject = f"[Bull-Trading] Weekly report — {report_path.stem}"
+
+    if "email" in channels:
+        try:
+            from trading_agent.notify.senders import send_email
+
+            send_email(subject, full_text)
+        except Exception as exc:  # noqa: BLE001 - a broken channel must not halt the routine
+            print(f"NOTIFY (weekly report email) failed: {exc}")
+
+    if "sms" in channels:
+        try:
+            from trading_agent.notify.senders import send_sms
+
+            summary = full_text.split("## Summary", 1)[-1].split("##", 1)[0].strip()
+            send_sms(f"Bull-Trading weekly report ({report_path.stem}):\n{summary}"[:300])
+        except Exception as exc:  # noqa: BLE001
+            print(f"NOTIFY (weekly report sms) failed: {exc}")
 
 
 def record_decision(

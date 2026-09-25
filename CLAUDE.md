@@ -113,6 +113,15 @@ over the same window. Either return being unavailable (Alpaca unreachable, or
 insufficient benchmark bars) is reported as unavailable, never guessed at or
 silently shown as 0%.
 
+`trading-agent weekly-report` builds `reporting/report_builder.py`'s weekly
+markdown rollup (`reports/weekly/<year>-W<week>.md`) *and* emails/SMS it —
+`build_weekly_report()` itself only ever wrote the file; nothing sent it
+anywhere before `notify_weekly_report()`. No separate scheduled trigger for
+this: the `trading-report` skill runs it from `pre_close` on Fridays only
+(the last checkpoint of the trading week), reusing the existing Mon-Fri
+`pre_close` schedule rather than adding a new automation object for a
+once-a-week job.
+
 ## Human-approval notifications (plan §8/§12)
 
 Two, deliberately different in cadence:

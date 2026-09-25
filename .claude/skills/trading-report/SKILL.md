@@ -57,6 +57,26 @@ when nothing's pending, so a quiet day stays quiet. Report in one line
 whether it found anything and, if so, how many are still within the
 approval window vs. expired with no decision ever recorded.
 
+## Send the weekly report (Fridays only)
+
+Also at `pre_close`, after the pending-approvals reminder: if today (US/Eastern)
+is a Friday, also build and send the weekly report — `pre_close` is the last
+checkpoint of the trading week, so this is the natural point to close it out.
+On any other weekday, skip this step entirely; there's no separate weekly
+trigger, this is the only place it runs.
+
+```bash
+trading-agent weekly-report
+```
+
+This builds `reports/weekly/<year>-W<week>.md` (same as `report weekly`
+above) *and* emails/SMS it in one step — the full markdown by email, just
+the `## Summary` section by SMS (carrier gateways truncate anything longer).
+It's silent (nothing sent) only if the channel config itself has neither
+email nor sms — otherwise it always sends, unlike the pending-approvals
+reminder, since a weekly close-out is expected weekly, not conditional on
+something being outstanding.
+
 ## Say what the numbers aren't
 
 The weekly report's `## P&L` section has two different kinds of number in it,
