@@ -341,3 +341,77 @@ def test_notify_pending_reminder_send_failure_does_not_raise(monkeypatch):
 
     monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
     gw.notify_pending_reminder()  # must not raise
+
+
+# --- notify_weekly_report -------------------------------------------------------
+
+
+_WEEKLY_REPORT_TEXT = """# Weekly Report — week of 2026-09-21
+
+## Summary
+- Total recommendations: 12
+- Approved: 5 | Rejected: 2 | Expired: 5
+- Trades executed (paper): 5
+
+## P&L
+- Realized this week: $123.45
+- Unrealized (live, open positions right now): $67.89
+
+## Daily breakdown
+- 2026-09-22: 4 recommendations, 2 approved, 1 rejected, 1 expired, 2 trades
+"""
+
+
+def test_notify_weekly_report_skips_when_no_email_or_sms_channel(monkeypatch, tmp_path):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["console"]}})
+    report_path = tmp_path / "2026-W39.md"
+    report_path.write_text(_WEEKLY_REPORT_TEXT)
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+
+    gw.notify_weekly_report(report_path)
+    assert calls == []
+
+
+def test_notify_weekly_report_sends_full_markdown_by_email(monkeypatch, tmp_path):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    report_path = tmp_path / "2026-W39.md"
+    report_path.write_text(_WEEKLY_REPORT_TEXT)
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    gw.notify_weekly_report(report_path)
+
+    assert len(email_calls) == 1
+    subject, body = email_calls[0]
+    assert "2026-W39" in subject
+    assert body == _WEEKLY_REPORT_TEXT
+    assert "Realized this week: $123.45" in body
+
+
+def test_notify_weekly_report_sms_gets_just_the_summary_section(monkeypatch, tmp_path):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["sms"]}})
+    report_path = tmp_path / "2026-W39.md"
+    report_path.write_text(_WEEKLY_REPORT_TEXT)
+    sms_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
+
+    gw.notify_weekly_report(report_path)
+
+    assert len(sms_calls) == 1
+    body = sms_calls[0][0]
+    assert "Total recommendations: 12" in body
+    assert "Daily breakdown" not in body  # only the Summary section, not the whole report
+    assert len(body) <= 300
+
+
+def test_notify_weekly_report_send_failure_does_not_raise(monkeypatch, tmp_path):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    report_path = tmp_path / "2026-W39.md"
+    report_path.write_text(_WEEKLY_REPORT_TEXT)
+
+    def boom(*a, **k):
+        raise RuntimeError("RESEND_API_KEY not set")
+
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
+    gw.notify_weekly_report(report_path)  # must not raise

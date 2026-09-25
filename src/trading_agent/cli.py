@@ -8,7 +8,8 @@ Command groups map onto the plan's modules:
   approvals                 -> notify/approval_gateway.py (hard requirement: human in the loop,
                                except execute/auto_pilot.py when operational.auto_apply is on)
   execute                   -> execute/order_manager.py (approval + kill-switch gated)
-  report / daily-summary    -> reporting/report_builder.py, notify/approval_gateway.py
+  report / daily-summary /
+    weekly-report            -> reporting/report_builder.py, notify/approval_gateway.py
   propose-weights           -> scoring/recommendation_engine.py (never auto-applies)
   notify-test / cron-status -> notify/senders.py, scheduling.py
   chat                      -> agents/orchestrator.py (interactive Claude Agent SDK research)
@@ -233,6 +234,15 @@ def cmd_report_daily_summary(args: argparse.Namespace) -> None:
     print(f"{len(summary['journal_entries'])} journaled decision(s) with an outcome today.")
 
 
+def cmd_weekly_report(args: argparse.Namespace) -> None:
+    from trading_agent.notify.approval_gateway import notify_weekly_report
+    from trading_agent.reporting.report_builder import build_weekly_report
+
+    path = build_weekly_report(args.week_start)
+    notify_weekly_report(path)
+    print(f"Wrote and sent {path}")
+
+
 def cmd_propose_weights(args: argparse.Namespace) -> None:
     from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
 
@@ -384,6 +394,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     daily_summary.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
     daily_summary.set_defaults(func=cmd_report_daily_summary)
+
+    weekly_report = sub.add_parser(
+        "weekly-report", help="Build the weekly markdown report and email/SMS it."
+    )
+    weekly_report.add_argument("--week-start", help="YYYY-MM-DD Monday, defaults to this week.")
+    weekly_report.set_defaults(func=cmd_weekly_report)
 
     propose = sub.add_parser("propose-weights", help="Print (never apply) proposed scoring-weight changes.")
     propose.set_defaults(func=cmd_propose_weights)
