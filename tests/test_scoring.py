@@ -333,3 +333,18 @@ def test_stop_loss_and_take_profit_pct_come_from_config(monkeypatch, fixed_confi
     )
     assert rec["stop_loss_pct"] == 2.0
     assert rec["take_profit_pct"] == 6.0
+
+
+def test_reference_price_recorded_on_the_rec(fixed_config):
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=0.8, fundamental=0.8, catalyst=0.8,
+        reference_price=123.45,
+    )
+    assert rec["reference_price"] == 123.45
+
+
+def test_reference_price_defaults_to_none(fixed_config):
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.8, technical=0.8, fundamental=0.8, catalyst=0.8
+    )
+    assert rec["reference_price"] is None

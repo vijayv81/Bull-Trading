@@ -28,6 +28,7 @@ def guardrails_satisfied(monkeypatch):
     monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty: None)
     monkeypatch.setattr(om, "position_count_reason", lambda ticker, side: None)
     monkeypatch.setattr(om, "short_sale_reason", lambda ticker, side, qty: None)
+    monkeypatch.setattr(om, "stale_recommendation_reason", lambda rec: None)
 
 
 def _approved(qty=10):
@@ -149,6 +150,38 @@ def test_daily_loss_breach_refuses(monkeypatch):
     monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
 
     with pytest.raises(om.OrderRefused, match="2.0% cap"):
+        om.submit_approved_order(REC, qty=10)
+
+
+def test_stale_recommendation_breach_refuses(monkeypatch):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(
+        om,
+        "stale_recommendation_reason",
+        lambda rec: "TSLA's price has moved 5.20% since this recommendation was scored",
+    )
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
+
+    with pytest.raises(om.OrderRefused, match="price has moved"):
+        om.submit_approved_order(REC, qty=10)
+
+
+def test_stale_recommendation_checked_before_risk_cap_guardrails(monkeypatch):
+    """Staleness is checked first among the account-state guardrails — no
+    point evaluating risk caps against an intent the market has already
+    moved past."""
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(om, "stale_recommendation_reason", lambda rec: "stale — re-run the checkpoint")
+
+    def fail(*args, **kwargs):
+        raise AssertionError("should have been refused before reaching position_size_reason")
+
+    monkeypatch.setattr(om, "position_size_reason", fail)
+    with pytest.raises(om.OrderRefused, match="stale"):
         om.submit_approved_order(REC, qty=10)
 
 

@@ -93,6 +93,7 @@ def score_candidate(
     fundamental: float | None,
     catalyst: float,
     position_pnl_pct: float | None = None,
+    reference_price: float | None = None,
 ) -> dict[str, Any]:
     """Combine component scores (each 0-1) into a 0-100 confidence + action.
 
@@ -122,6 +123,13 @@ def score_candidate(
     `risk_limits.yaml -> position.mandatory_stop_loss` (default true) —
     false is a one-line revert to pure-technical direction, unconditionally,
     same convention as confidence_scaled_sizing/auto_apply.enabled.
+
+    reference_price (the last close technical_score() was actually computed
+    from, when bars were available) is recorded on the returned dict so
+    guardrails.stale_recommendation_reason() can catch a stale recommendation
+    at order-submission time — a recommendation can sit for up to
+    approval_expiry_hours waiting on a human, and the market doesn't wait
+    with it.
     """
     weights = load_agent_config()["scoring_weights"]
     hitrate = historical_hitrate(ticker)
@@ -164,6 +172,7 @@ def score_candidate(
         "take_profit_pct": take_profit_pct,
         "position_pnl_pct": position_pnl_pct,
         "sell_pressure": round(sell_pressure, 2),
+        "reference_price": reference_price,
         "note": "Research-only output, not investment advice.",
     }
 

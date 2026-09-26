@@ -124,6 +124,13 @@ erroring. Read the reason back to the user in plain language and stop there:
   ticker, any side, human or auto-applied) have already gone through today.
   Done for the day, same as the daily loss cap — not fixable by trying a
   different ticker or a smaller qty, and not worth re-running.
+- **Price has moved / technical signal has flipped since scoring** — the
+  market moved between when this recommendation was made and when you tried
+  to submit it (this check runs right before every order, re-comparing
+  against the live quote and a freshly recomputed technical read). Not
+  fixable by re-approving the same recommendation — tell them the checkpoint
+  needs a fresh run (`trading-agent checkpoint <checkpoint>`) so the
+  approval reflects current reality, not a stale read.
 - **Daily loss cap reached** — done for the day. Not negotiable, not worth
   re-running.
 - **Options contract** — never tradeable here, at any size, under any config.

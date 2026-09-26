@@ -251,6 +251,80 @@ def position_count_reason(symbol: str, side: str) -> str | None:
     return None
 
 
+def stale_recommendation_reason(rec: dict[str, Any]) -> str | None:
+    """Breach reason when the market has moved since a recommendation was
+    scored, checked right before every order submission (auto or human) —
+    the only point where it's guaranteed the order is actually about to go
+    out. A recommendation can sit for up to
+    operational.approval_expiry_hours waiting on a human decision, and even
+    auto-apply's own scoring-to-submission gap isn't instantaneous; the
+    market doesn't wait with it either way.
+
+    Two independent checks, either one refuses; both fail closed (an
+    unreadable quote/bars looks like a breach, not a pass):
+
+    1. **Price drift** — current quote vs. `rec["reference_price"]` (the
+       price technical_score() was actually computed from — see
+       recommendation_engine.score_candidate()). Refused past
+       `execution.max_price_drift_pct`. Skipped (not failed) when the
+       recommendation itself has no reference_price — an older record from
+       before this field existed, or an ad hoc one from agents/tools.py —
+       since there's nothing to compare against.
+    2. **Direction re-check** (`execution.reverify_technical`, default
+       true) — recomputes technical_score() from fresh bars right now, and
+       refuses if the direction it implies (BUY when >= 0.5, else SELL) no
+       longer agrees with the recommendation's own `action`. Skipped when
+       there still isn't enough bar history to compute one (same
+       MIN_BARS_FOR_TECHNICAL threshold used everywhere else).
+
+    Only applies to BUY/SELL — a HOLD never reaches order submission at all.
+    """
+    action = rec.get("action")
+    if action not in ("BUY", "SELL"):
+        return None
+
+    symbol = rec["ticker"]
+    cfg = load_risk_limits().get("execution", {})
+    max_drift_pct = cfg.get("max_price_drift_pct")
+    reference_price = rec.get("reference_price")
+
+    if max_drift_pct and reference_price:
+        try:
+            current_price = _reference_price(symbol)
+        except Exception as exc:
+            return f"Cannot verify {symbol}'s current price before submission ({exc}) — refusing to proceed blind."
+
+        drift_pct = abs(current_price - reference_price) / reference_price * 100
+        if drift_pct > max_drift_pct:
+            return (
+                f"{symbol}'s price has moved {drift_pct:.2f}% since this recommendation was scored "
+                f"({reference_price:.2f} -> {current_price:.2f}), past the {max_drift_pct}% drift limit — "
+                "re-run the checkpoint for a fresh recommendation before approving/executing."
+            )
+
+    if cfg.get("reverify_technical", True):
+        try:
+            import pandas as pd
+
+            from trading_agent.data.alpaca_client import get_recent_bars
+            from trading_agent.scoring.recommendation_engine import MIN_BARS_FOR_TECHNICAL, technical_score
+
+            bars = pd.DataFrame(get_recent_bars(symbol))
+        except Exception as exc:
+            return f"Cannot re-verify {symbol}'s technical signal before submission ({exc}) — refusing to proceed blind."
+
+        if len(bars) >= MIN_BARS_FOR_TECHNICAL:
+            fresh_action = "BUY" if technical_score(bars) >= 0.5 else "SELL"
+            if fresh_action != action:
+                return (
+                    f"{symbol}'s technical signal has flipped since this recommendation was scored "
+                    f"({action} then, {fresh_action} now) — re-run the checkpoint for a fresh read "
+                    "before approving/executing."
+                )
+
+    return None
+
+
 def _existing_position_value(symbol: str) -> float:
     for position in _positions():
         if str(position.get("symbol", "")).upper() == symbol.upper():
