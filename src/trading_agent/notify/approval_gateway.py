@@ -85,6 +85,16 @@ def notify_digest(
     "email" channel would be the mistake, so it can't be silenced by channel
     config the way the rest of this function's output can.
 
+    `portfolio.max_new_proposals_per_checkpoint` (declared from the start,
+    never enforced anywhere until now) caps how many actionable
+    recommendations this digest headlines, ranked by confidence — a
+    mover-heavy checkpoint surfacing a dozen actionable calls at once was
+    exactly the notification fatigue that key's own comment already
+    described. Every recommendation is still saved to
+    data/recommendations/ regardless (the audit trail stays complete); this
+    only trims what the email/SMS actually leads with. Unset/zero means no
+    cap, same convention as every other guardrail here.
+
     A send failure (bad API key, unreachable host) is reported, not
     raised — a broken notification channel should never halt the pipeline
     that produced the recommendations it was trying to deliver.
@@ -97,12 +107,25 @@ def notify_digest(
         return
 
     actionable = [r for r in recs if r.get("action") in ("BUY", "SELL")]
+    total_actionable = len(actionable)
+    max_proposals = load_risk_limits().get("portfolio", {}).get("max_new_proposals_per_checkpoint")
+    if max_proposals:
+        actionable = sorted(actionable, key=lambda r: r["confidence"], reverse=True)[:max_proposals]
+
     lines = [
         f"{r['action']} {r['ticker']} (confidence {r['confidence']}) — {r.get('rationale', '')[:120]}"
         for r in actionable
     ]
     subject = f"[Bull-Trading] {checkpoint}: {len(actionable)} recommendation(s)"
+    if max_proposals and total_actionable > len(actionable):
+        subject += f" (top {len(actionable)} of {total_actionable})"
     body = "\n".join(lines) if lines else "No actionable recommendations this checkpoint (all HOLD, or nothing scored)."
+    if max_proposals and total_actionable > len(actionable):
+        body += (
+            f"\n\n({total_actionable - len(actionable)} more actionable recommendation(s) this checkpoint, "
+            "below the cap shown here — all saved to data/recommendations/, see `trading-agent approvals list` "
+            "for the full set.)"
+        )
 
     if data_quality_alert:
         body = f"** DATA QUALITY ALERT **\n{data_quality_alert}\n\n" + body

@@ -21,6 +21,10 @@ def _rec(ticker, action="BUY", confidence=70, suggested_pct=5.0, checkpoint="pre
 @pytest.fixture(autouse=True)
 def isolated(monkeypatch, tmp_path):
     monkeypatch.setattr(ap, "TRADES_DIR", tmp_path / "trades")
+    # Real journal.record_entry() hits live Alpaca (_reference_price) and
+    # writes to the real data/journal/ — tests that care about journaling
+    # override this again themselves.
+    monkeypatch.setattr("trading_agent.journal.record_entry", lambda *a, **k: None)
 
 
 def _enabled(max_trades_per_day=5):
@@ -194,3 +198,103 @@ def test_one_candidate_error_does_not_stop_the_rest(monkeypatch):
     results = ap.auto_apply(recs, "pre_open")
     assert results[0]["status"] == "error"
     assert results[1]["status"] == "submitted"
+
+
+# --- auto-applied trades get journaled ------------------------------------------
+
+
+def test_submitted_trade_is_journaled(monkeypatch):
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled())
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+    monkeypatch.setattr(ap, "submit_approved_order", lambda rec, qty, source: {"id": "x"})
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account", lambda: {"equity": "100000"}
+    )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"ask_price": "100"}
+    )
+    calls = []
+    monkeypatch.setattr(
+        "trading_agent.journal.record_entry",
+        lambda ticker, checkpoint, decision, reasoning, action=None, confidence=None: calls.append(
+            {"ticker": ticker, "checkpoint": checkpoint, "decision": decision, "action": action}
+        ),
+    )
+
+    rec = _rec("TSLA", confidence=85)
+    rec["component_scores"] = {"technical": 0.8, "sentiment": 0.7, "catalyst": 0.6, "fundamental": None}
+    results = ap.auto_apply([rec], "pre_open")
+
+    assert results[0]["status"] == "submitted"
+    assert len(calls) == 1
+    assert calls[0] == {"ticker": "TSLA", "checkpoint": "pre_open", "decision": "approve", "action": "BUY"}
+
+
+def test_refused_or_skipped_candidates_are_not_journaled(monkeypatch):
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled())
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+
+    def refuse(rec, qty, source):
+        raise ap.OrderRefused("over the 5.0% cap")
+
+    monkeypatch.setattr(ap, "submit_approved_order", refuse)
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account", lambda: {"equity": "100000"}
+    )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"ask_price": "100"}
+    )
+    calls = []
+    monkeypatch.setattr("trading_agent.journal.record_entry", lambda *a, **k: calls.append(1))
+
+    results = ap.auto_apply([_rec("TSLA")], "pre_open")
+
+    assert results[0]["status"] == "refused"
+    assert calls == []
+
+
+def test_journal_failure_does_not_turn_a_submission_into_an_error(monkeypatch):
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled())
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+    monkeypatch.setattr(ap, "submit_approved_order", lambda rec, qty, source: {"id": "x"})
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account", lambda: {"equity": "100000"}
+    )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"ask_price": "100"}
+    )
+
+    def boom(*a, **k):
+        raise RuntimeError("journal write failed")
+
+    monkeypatch.setattr("trading_agent.journal.record_entry", boom)
+
+    results = ap.auto_apply([_rec("TSLA")], "pre_open")
+
+    assert results[0]["status"] == "submitted"
+
+
+def test_journal_reasoning_includes_sell_pressure_when_present(monkeypatch):
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled())
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+    monkeypatch.setattr(ap, "submit_approved_order", lambda rec, qty, source: {"id": "x"})
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account", lambda: {"equity": "100000"}
+    )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"ask_price": "100"}
+    )
+    reasonings = []
+    monkeypatch.setattr(
+        "trading_agent.journal.record_entry",
+        lambda ticker, checkpoint, decision, reasoning, action=None, confidence=None: reasonings.append(reasoning),
+    )
+
+    rec = _rec("TSLA", action="SELL", confidence=85)
+    rec["component_scores"] = {"technical": 0.3, "sentiment": None, "catalyst": None, "fundamental": None}
+    rec["sell_pressure"] = 0.8
+    rec["position_pnl_pct"] = -6.4
+    ap.auto_apply([rec], "pre_open")
+
+    assert "sell_pressure=0.8" in reasonings[0]
+    assert "position_pnl_pct=-6.4" in reasonings[0]

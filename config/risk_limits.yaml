@@ -42,8 +42,21 @@ portfolio:
   # Past this, guardrails.daily_loss_reason() halts the checkpoint routine before
   # it researches anything AND refuses any order submission for the rest of the day.
   max_daily_drawdown_pct: 2.0
+  # Enforced in guardrails.sector_concentration_reason(), checked before any
+  # BUY — bounds a whole axis position_size_reason()/position_count_reason()
+  # don't: several different positions could each pass those checks
+  # individually while the account is entirely one sector's risk. Sector
+  # comes from data/market_data.py's get_sector() (yfinance, free/keyless);
+  # an unknown sector skips this one check rather than failing closed — see
+  # that function's docstring for why. Unset/zero means no cap.
   max_sector_concentration_pct: 25.0
-  max_new_proposals_per_checkpoint: 5 # ranked by confidence, avoids notification fatigue
+  # Enforced in notify.approval_gateway.notify_digest() — caps how many
+  # actionable recommendations the email/SMS digest headlines, ranked by
+  # confidence. Every recommendation is still saved to data/recommendations/
+  # regardless; this only trims what the notification leads with, so a
+  # mover-heavy checkpoint surfacing a dozen actionable calls doesn't read
+  # like a dozen equally-urgent texts. Unset/zero means no cap.
+  max_new_proposals_per_checkpoint: 5
 
   # Hard ceiling on today's total submitted orders, every source combined
   # (human approvals AND auto_apply). Enforced in

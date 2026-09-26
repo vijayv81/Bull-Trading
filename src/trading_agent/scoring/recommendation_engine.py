@@ -29,6 +29,16 @@ Action = Literal["BUY", "SELL", "HOLD"]
 MIN_BARS_FOR_TECHNICAL = 50
 
 
+# orchestrator.run_checkpoint() seeds candidates from top-10 "gainer" movers
+# (plan §4) alongside the watchlist — without a cap, a stock already up 20-30%
+# in 5 days would score MORE bullish for it, systematically favoring buying
+# into an already-extended move. Capped here, not filtered upstream: the
+# spread (trend) term is untouched, only the momentum term saturates past
+# this, so a genuinely strong trend still scores well without extra credit
+# for how far a short-term move has already run.
+MOMENTUM_CAP = 0.10
+
+
 def technical_score(bars: pd.DataFrame, fast: int = 20, slow: int = MIN_BARS_FOR_TECHNICAL) -> float:
     """0-1 technical score from a fast/slow SMA spread plus short-term momentum.
 
@@ -46,7 +56,8 @@ def technical_score(bars: pd.DataFrame, fast: int = 20, slow: int = MIN_BARS_FOR
     slow_ma = close.rolling(slow).mean()
     spread = (fast_ma.iloc[-1] - slow_ma.iloc[-1]) / slow_ma.iloc[-1]
     momentum = close.pct_change(5).iloc[-1] if len(close) > 5 else 0.0
-    score = 0.5 + (spread * 5) + (momentum * 2)
+    momentum_capped = max(-MOMENTUM_CAP, min(MOMENTUM_CAP, momentum))
+    score = 0.5 + (spread * 5) + (momentum_capped * 2)
     return max(0.0, min(1.0, score))
 
 
@@ -156,9 +167,21 @@ def score_candidate(
         sell_pressure = position_sell_pressure(position_pnl_pct, stop_loss_pct, take_profit_pct)
 
     action: Action = "HOLD"
-    if confidence >= risk["min_confidence_to_notify"] and technical is not None:
+    if technical is not None:
         effective_technical = technical * (1 - sell_pressure)
-        action = "BUY" if effective_technical >= 0.5 else "SELL"
+        if confidence >= risk["min_confidence_to_notify"]:
+            action = "BUY" if effective_technical >= 0.5 else "SELL"
+        elif sell_pressure > 0 and effective_technical < 0.5:
+            # A stop-loss/take-profit breach on a held position must still
+            # force a SELL even when the fresh confidence blend doesn't
+            # clear the notify threshold on its own — cutting a loss (or
+            # locking in a gain) is a risk-management decision, not a fresh
+            # conviction call, so it can't be silently gated behind the same
+            # bar a brand-new BUY idea has to clear. Without this branch, a
+            # held position with weak/bearish sentiment+catalyst+technical
+            # AND a deep stop-loss breach would report HOLD — exactly the
+            # position stop_loss_pct/take_profit_pct exist to catch.
+            action = "SELL"
 
     return {
         "ticker": ticker,

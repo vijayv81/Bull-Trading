@@ -20,7 +20,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from trading_agent.backtest.engine import backtest_moving_average
+from trading_agent.backtest.engine import backtest_moving_average, backtest_strategy
 from trading_agent.config import load_watchlist
 from trading_agent.data.market_data import fetch_watchlist, load_cached_price_history
 
@@ -50,7 +50,8 @@ def cmd_backtest(args: argparse.Namespace) -> None:
     tickers = args.tickers or load_watchlist()
     for ticker in tickers:
         df = load_cached_price_history(ticker)
-        print(f"{ticker}: {backtest_moving_average(df)}")
+        print(f"{ticker} [moving_average, standalone comparison]: {backtest_moving_average(df)}")
+        print(f"{ticker} [strategy, the actual live formula]: {backtest_strategy(df)}")
 
 
 def cmd_chat(args: argparse.Namespace) -> None:
@@ -298,7 +299,9 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--period", default="1y")
     ingest.set_defaults(func=cmd_ingest)
 
-    backtest = sub.add_parser("backtest", help="Backtest the moving-average strategy on cached data.")
+    backtest = sub.add_parser(
+        "backtest", help="Backtest on cached data: the standalone crossover, and the actual live scoring formula."
+    )
     backtest.add_argument("tickers", nargs="*")
     backtest.set_defaults(func=cmd_backtest)
 

@@ -288,3 +288,56 @@ def test_held_option_symbol_is_filtered_out(monkeypatch):
 
     assert "AAPL240119C00150000" not in researched
     assert set(researched) == {"GOOD", "BAD"}
+
+
+# --- real sentiment/catalyst text signals (not the old source-presence proxy) --
+
+
+def test_sentiment_and_catalyst_derived_from_research_text(monkeypatch):
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {
+            "confidence_of_extraction": 1.0,
+            "headline_summary": "Analysts upgraded the stock after strong earnings beat expectations.",
+            "sources": ["http://x"],
+        },
+    )
+    seen = {}
+
+    def fake_score(**kwargs):
+        seen[kwargs["ticker"]] = (kwargs["sentiment"], kwargs["catalyst"])
+        return {"ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"], "action": "HOLD", "confidence": 50}
+
+    monkeypatch.setattr(orch, "score_candidate", fake_score)
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    sentiment, catalyst = seen["GOOD"]
+    assert sentiment is not None and sentiment > 0.5  # bullish keywords present
+    assert catalyst is not None and catalyst > 0.0  # "earnings", "upgraded" present
+
+
+def test_sentiment_and_catalyst_none_when_research_text_has_no_signal(monkeypatch):
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {
+            "confidence_of_extraction": 1.0,
+            "headline_summary": "Shares traded flat in a quiet session.",
+            "sources": ["http://x"],
+        },
+    )
+    seen = {}
+
+    def fake_score(**kwargs):
+        seen[kwargs["ticker"]] = (kwargs["sentiment"], kwargs["catalyst"])
+        return {"ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"], "action": "HOLD", "confidence": 50}
+
+    monkeypatch.setattr(orch, "score_candidate", fake_score)
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    sentiment, catalyst = seen["GOOD"]
+    assert sentiment is None
+    assert catalyst is None

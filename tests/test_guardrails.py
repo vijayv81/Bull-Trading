@@ -246,6 +246,93 @@ def test_position_count_fails_closed_when_positions_unreadable(concurrent_cap, m
     assert "refusing to proceed blind" in g.position_count_reason("TSLA", "BUY")
 
 
+# --- sector concentration -------------------------------------------------------
+
+
+@pytest.fixture
+def sector_cap(monkeypatch):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"portfolio": {"max_sector_concentration_pct": 25.0}})
+
+
+def _sectors(mapping, monkeypatch):
+    monkeypatch.setattr("trading_agent.data.market_data.get_sector", lambda symbol: mapping.get(symbol))
+
+
+def test_sector_reason_none_when_no_cap_configured(monkeypatch):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"portfolio": {}})
+    assert g.sector_concentration_reason("TSLA", "BUY", qty=1) is None
+
+
+def test_sector_reason_sell_never_checked(sector_cap):
+    assert g.sector_concentration_reason("TSLA", "SELL", qty=1_000_000) is None
+
+
+def test_sector_reason_skips_when_sector_unknown(sector_cap, monkeypatch):
+    _sectors({"TSLA": None}, monkeypatch)
+
+    def fail():
+        raise AssertionError("must not read account state when the sector itself is unknown")
+
+    monkeypatch.setattr(g, "_account", fail)
+    assert g.sector_concentration_reason("TSLA", "BUY", qty=1) is None
+
+
+def test_sector_reason_within_cap_passes(sector_cap, monkeypatch):
+    _sectors({"TSLA": "Automotive"}, monkeypatch)
+    monkeypatch.setattr(g, "_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_positions", lambda: [])
+    assert g.sector_concentration_reason("TSLA", "BUY", qty=200) is None  # $20,000 = 20%
+
+
+def test_sector_reason_over_cap_refuses(sector_cap, monkeypatch):
+    _sectors({"TSLA": "Automotive"}, monkeypatch)
+    monkeypatch.setattr(g, "_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_positions", lambda: [])
+    reason = g.sector_concentration_reason("TSLA", "BUY", qty=300)  # $30,000 = 30%
+    assert "Automotive" in reason
+    assert "over the 25.0% cap" in reason
+
+
+def test_sector_reason_other_symbols_same_sector_count_toward_cap(sector_cap, monkeypatch):
+    _sectors({"TSLA": "Automotive", "F": "Automotive", "GOOG": "Technology"}, monkeypatch)
+    monkeypatch.setattr(g, "_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(
+        g,
+        "_positions",
+        lambda: [
+            {"symbol": "F", "market_value": "20000"},  # same sector, counts
+            {"symbol": "GOOG", "market_value": "50000"},  # different sector, doesn't count
+        ],
+    )
+    # 20,000 (F, same sector) + 10,000 (this buy) = 30,000 = 30%, over the 25% cap.
+    reason = g.sector_concentration_reason("TSLA", "BUY", qty=100)
+    assert "over the 25.0% cap" in reason
+
+
+def test_sector_reason_existing_same_symbol_not_double_counted(sector_cap, monkeypatch):
+    _sectors({"TSLA": "Automotive"}, monkeypatch)
+    monkeypatch.setattr(g, "_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": "TSLA", "market_value": "10000"}])
+    # existing 10,000 + this buy's 10,000 = 20,000 = 20%, within the 25% cap —
+    # TSLA's own existing position must not also be summed into "other sector value".
+    assert g.sector_concentration_reason("TSLA", "BUY", qty=100) is None
+
+
+def test_sector_reason_fails_closed_when_account_unreadable(sector_cap, monkeypatch):
+    _sectors({"TSLA": "Automotive"}, monkeypatch)
+
+    def boom():
+        raise RuntimeError("alpaca unreachable")
+
+    monkeypatch.setattr(g, "_account", boom)
+    reason = g.sector_concentration_reason("TSLA", "BUY", qty=1)
+    assert "refusing to proceed blind" in reason
+
+
 # --- no short positions, ever ------------------------------------------------
 
 
