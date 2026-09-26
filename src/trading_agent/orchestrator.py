@@ -126,7 +126,12 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             # ever return its neutral 0.5 fallback — that's not a real reading,
             # so score_candidate() must exclude it (None) rather than treat a
             # placeholder as this ticker's actual technical signal.
-            tech = technical_score(bars) if len(bars) >= MIN_BARS_FOR_TECHNICAL else None
+            have_bars = len(bars) >= MIN_BARS_FOR_TECHNICAL
+            tech = technical_score(bars) if have_bars else None
+            # The price technical_score() actually read — recorded so a later
+            # order submission can catch the market having moved since
+            # (guardrails.stale_recommendation_reason()).
+            reference_price = float(bars["close"].iloc[-1]) if have_bars else None
 
             rec = score_candidate(
                 ticker=ticker,
@@ -136,6 +141,7 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
                 fundamental=None,  # no fundamentals vendor wired up yet — excluded from the score, not neutral
                 catalyst=0.7 if research.get("sources") else 0.3,
                 position_pnl_pct=held_pnl.get(ticker),
+                reference_price=reference_price,
             )
             rec["rationale"] = (research.get("headline_summary") or "")[:280]
             rec["sources"] = research.get("sources", [])

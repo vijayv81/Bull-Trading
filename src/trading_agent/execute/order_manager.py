@@ -20,6 +20,7 @@ from trading_agent.guardrails import (
     position_count_reason,
     position_size_reason,
     short_sale_reason,
+    stale_recommendation_reason,
 )
 from trading_agent.notify.approval_gateway import get_decision, is_expired
 from trading_agent.utils import append_json, day_dir
@@ -72,7 +73,13 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
             )
 
     # Account-state guardrails last: they cost API calls, and an order that fails
-    # the cheaper checks above never needs them.
+    # the cheaper checks above never needs them. Staleness first among them — if
+    # the market has already moved past the recommendation, the risk-cap checks
+    # below would be evaluating an intent that's no longer actually held.
+    breach = stale_recommendation_reason(rec)
+    if breach:
+        raise OrderRefused(breach)
+
     breach = daily_loss_reason()
     if breach:
         raise OrderRefused(breach)

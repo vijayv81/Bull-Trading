@@ -206,7 +206,7 @@ actionable recommendation, confidence-blind.
 
 ## Portfolio guardrails (hard requirement)
 
-`guardrails.py` holds six checks. Each returns a refusal reason or `None`;
+`guardrails.py` holds seven checks. Each returns a refusal reason or `None`;
 callers turn that into `RoutineHalted` (orchestrator) or `OrderRefused`
 (order_manager). They are enforced at *both* boundaries — a rule that only
 applies at execution time would let the routine spend a day proposing trades
@@ -254,6 +254,23 @@ it can never place.
    paces auto_apply's own trades and never sees a human's; this is the real
    ceiling on the day's total order count regardless of who approved it. Cap:
    `risk_limits.yaml -> portfolio.max_daily_trades`; unset/zero means no cap.
+7. **Stale recommendation re-check, right before submission** —
+   `stale_recommendation_reason()`, checked before any order (BUY or SELL,
+   human or auto) — the only guardrail that isn't itself an execution-time
+   version of a proposal-time rule; there is no equivalent check at
+   proposal time because the whole point is *what changed since then*. Two
+   independent sub-checks: (a) current quote vs. the recommendation's own
+   `reference_price` (the price `technical_score()` was actually computed
+   from), refused past `execution.max_price_drift_pct`; (b) a fresh
+   `technical_score()` recomputed from current bars, refused if the
+   direction it implies no longer agrees with the recommendation's
+   `action`. Either catches the same failure mode: a recommendation can sit
+   for up to `operational.approval_expiry_hours` waiting on a human, and
+   the market doesn't wait with it. `execution.reverify_technical: false`
+   is a one-line revert to price-drift-only checking; an unset/missing
+   `reference_price` (an older record, or an ad hoc one from
+   `agents/tools.py`) skips the price check rather than failing — nothing
+   to compare against, not a breach.
 
 These **fail closed**: if Alpaca account state can't be read, the
 account-dependent checks report a breach rather than assume the portfolio is

@@ -86,6 +86,24 @@ operational:
     enabled: true
     max_trades_per_day: 5 # across ALL checkpoints combined for the day, not per checkpoint
 
+execution:
+  # Re-verified right before every order submission (auto or human) —
+  # guardrails.stale_recommendation_reason(), enforced in
+  # execute.order_manager.submit_approved_order(). A recommendation can sit
+  # for up to operational.approval_expiry_hours waiting on a human decision,
+  # and the market doesn't wait with it. Refuses if the current quote has
+  # moved more than this % from the recommendation's own reference_price
+  # (the price technical_score() was actually computed from). Unset/zero
+  # skips this specific check (no config to compare against), same
+  # unset-means-uncapped convention as the guardrails above.
+  max_price_drift_pct: 3.0
+  # Also recomputes technical_score() from fresh bars right before
+  # submission and refuses if the direction it implies no longer agrees
+  # with the recommendation's own action — catches a signal that reversed
+  # even when price alone hasn't drifted past the cap above. false is a
+  # one-line revert to price-drift-only checking.
+  reverify_technical: true
+
 # Equities only — there is deliberately no `allow_options` key here. The ban is
 # code-level (guardrails.is_option_symbol, enforced in both order_manager and
 # alpaca_client.submit_market_order) precisely so it can't be undone by editing
