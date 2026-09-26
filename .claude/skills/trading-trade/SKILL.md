@@ -120,6 +120,13 @@ erroring. Read the reason back to the user in plain language and stop there:
   position past the cap. Not fixable by a smaller qty; they'd need to close
   something else first or raise the cap deliberately in
   `config/risk_limits.yaml`.
+- **Over the sector concentration cap** — this BUY would push that sector's
+  total value (across every position in it, plus this one) past
+  `portfolio.max_sector_concentration_pct`. Offer a smaller qty if that fits
+  under the cap, or a different ticker outside that sector; not fixable by
+  re-approving the same qty. Skipped rather than enforced when the ticker's
+  sector can't be determined — that's not a workaround, just what the check
+  does when it has nothing to compare.
 - **Daily trade cap reached** — `portfolio.max_daily_trades` orders (any
   ticker, any side, human or auto-applied) have already gone through today.
   Done for the day, same as the daily loss cap — not fixable by trying a

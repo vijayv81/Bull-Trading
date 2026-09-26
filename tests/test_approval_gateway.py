@@ -63,6 +63,57 @@ def test_notify_digest_skips_when_no_email_or_sms_channel(monkeypatch):
     assert calls == []
 
 
+def test_notify_digest_caps_headlined_proposals_per_checkpoint(monkeypatch):
+    monkeypatch.setattr(
+        gw, "load_agent_config",
+        lambda: {"notifications": {"channel": ["email", "sms"]}},
+    )
+    monkeypatch.setattr(
+        gw, "load_risk_limits",
+        lambda: {"portfolio": {"max_new_proposals_per_checkpoint": 2}},
+    )
+    email_calls = []
+    sms_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+    monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
+
+    recs = [
+        {"ticker": "LOW", "action": "BUY", "confidence": 55},
+        {"ticker": "HIGH", "action": "BUY", "confidence": 95},
+        {"ticker": "MID", "action": "BUY", "confidence": 75},
+    ]
+    gw.notify_digest(recs, "midday")
+
+    subject, body = email_calls[0]
+    assert "2 recommendation(s) (top 2 of 3)" in subject
+    assert "HIGH" in body and "MID" in body
+    assert "LOW" not in body.split("more actionable")[0]  # not in the headlined list
+    assert "1 more actionable recommendation" in body
+    assert "HIGH" in sms_calls[0][0] and "MID" in sms_calls[0][0]
+    assert "LOW" not in sms_calls[0][0]
+
+
+def test_notify_digest_no_cap_configured_shows_everything(monkeypatch):
+    monkeypatch.setattr(
+        gw, "load_agent_config",
+        lambda: {"notifications": {"channel": ["email"]}},
+    )
+    monkeypatch.setattr(gw, "load_risk_limits", lambda: {"portfolio": {}})
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    recs = [
+        {"ticker": "LOW", "action": "BUY", "confidence": 55},
+        {"ticker": "HIGH", "action": "BUY", "confidence": 95},
+        {"ticker": "MID", "action": "BUY", "confidence": 75},
+    ]
+    gw.notify_digest(recs, "midday")
+
+    subject, body = email_calls[0]
+    assert "(top" not in subject
+    assert all(t in body for t in ("LOW", "HIGH", "MID"))
+
+
 def test_notify_digest_sends_email_and_suppresses_sms_when_nothing_actionable(monkeypatch):
     monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email", "sms"]}})
     email_calls = []

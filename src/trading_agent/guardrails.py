@@ -325,6 +325,67 @@ def stale_recommendation_reason(rec: dict[str, Any]) -> str | None:
     return None
 
 
+def sector_concentration_reason(symbol: str, side: str, qty: float) -> str | None:
+    """Breach reason when a BUY would push one sector's share of the
+    portfolio past portfolio.max_sector_concentration_pct — a config key
+    declared from the start but never enforced anywhere: the 5% per-position
+    cap and the max-concurrent-positions cap each bound one axis (how big
+    ONE position gets, how many distinct ones you hold) but neither bounds
+    how concentrated those positions are by sector. Ten different tech
+    names could each individually pass both those checks while the account
+    is entirely one sector's risk.
+
+    Sector comes from data/market_data.py's get_sector() — yfinance's own
+    classification, free and keyless, no new vendor (CLAUDE.md §7.1). Unlike
+    every other check in this file, an unknown sector (routine for ETFs
+    like SPY, sometimes for newer/foreign listings, or any lookup failure)
+    SKIPS this specific check rather than failing closed: sector is a
+    best-effort enrichment layer on top of the core account-state
+    guardrails above, not something this project can independently verify
+    the way it can equity/positions/quotes, and refusing every trade
+    whenever a free classification happens to be missing would make the
+    cap far more disruptive than protective. Account-state reads (equity,
+    positions, quote) still fail closed once a sector IS known — only the
+    "do we know the sector at all" gate is soft.
+    """
+    if side.upper() != "BUY":
+        return None
+
+    cap = load_risk_limits().get("portfolio", {}).get("max_sector_concentration_pct")
+    if not cap:
+        return None
+
+    from trading_agent.data.market_data import get_sector
+
+    sector = get_sector(symbol)
+    if not sector:
+        return None
+
+    try:
+        equity = float(_account()["equity"])
+        price = _reference_price(symbol)
+        positions = _positions()
+    except Exception as exc:
+        return f"Cannot verify the {cap}% sector concentration cap ({exc}) — refusing to proceed blind."
+
+    if equity <= 0:
+        return f"Cannot verify the {cap}% sector concentration cap: account equity is {equity}."
+
+    other_sector_value = sum(
+        abs(float(p.get("market_value") or 0.0))
+        for p in positions
+        if str(p.get("symbol", "")).upper() != symbol.upper() and get_sector(str(p.get("symbol", ""))) == sector
+    )
+    projected = other_sector_value + _existing_position_value(symbol) + qty * price
+    pct = projected / equity * 100
+    if pct > cap:
+        return (
+            f"{symbol} ({sector}) would push that sector to {pct:.2f}% of the {equity:,.2f} "
+            f"portfolio, over the {cap}% cap."
+        )
+    return None
+
+
 def _existing_position_value(symbol: str) -> float:
     for position in _positions():
         if str(position.get("symbol", "")).upper() == symbol.upper():

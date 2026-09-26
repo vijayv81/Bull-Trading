@@ -62,7 +62,9 @@ src/trading_agent/
   execute/                 order_manager.py — approval + kill-switch gated Alpaca submission; auto_pilot.py — opt-in auto-apply (see below)
   reporting/               report_builder.py — daily/weekly markdown reports + realized/unrealized P&L
   agents/                  interactive Claude Agent SDK research (see above)
-  backtest/                unchanged from the original scaffold
+  backtest/                engine.py — backtest_moving_average() (standalone SMA-crossover
+                           comparison, from the original scaffold) + backtest_strategy()
+                           (walks the real technical_score()/score_candidate() formula)
 routines/                 trading_checkpoints.md — spec for the 4 scheduled routines (/schedule)
 scripts/check_no_secrets.py   pre-commit credential scanner (plan §7.1 backstop)
 data/                     raw+processed are gitignored; recommendations/approvals/trades/performance ARE tracked (audit trail)
@@ -143,6 +145,13 @@ Two, deliberately different in cadence:
    runs). Silent (sends nothing) when nothing's outstanding — this is a nudge,
    not a daily status ping.
 
+`notify_digest()` also caps how many actionable recommendations it *headlines*
+at `risk_limits.yaml -> portfolio.max_new_proposals_per_checkpoint`, ranked by
+confidence, so a mover-heavy checkpoint surfacing a dozen actionable calls
+doesn't read like a dozen equally-urgent texts (the subject line notes
+`(top N of total)`). This is a display cap only — every recommendation is
+still written to `data/recommendations/` regardless; unset/zero means no cap.
+
 ## Approval + execution (hard requirement, plan §8)
 
 `execute/order_manager.py:submit_approved_order()` is the only sanctioned
@@ -191,6 +200,15 @@ one-line revert with no code change.
   that candidate's own outcome and never stops the rest, and never raises
   into `run_checkpoint()` — a broken auto-apply run must not also break
   research/scoring/notification for the checkpoint.
+- Every submitted trade is also journaled (`journal.record_entry()`, the same
+  call the human `trading-agent journal` path makes), tagged with the
+  recommendation's own component scores and, when present, its sell-pressure
+  reasoning. Auto-apply used to bypass this entirely — `historical_hitrate()`
+  and `propose_weight_adjustments()` learn from `data/journal/`, and with
+  auto-apply doing most of the actual trading, skipping the journal meant the
+  learning loop was blind to most of what the system does. A journal write
+  failure is caught and logged, never turned into a submission error — the
+  order already went through; only the audit note failed.
 
 Turning `enabled` back to `false` is sufficient and complete: nothing else
 needs to change, and no auto-approved history is rewritten or hidden by it.
@@ -206,7 +224,7 @@ actionable recommendation, confidence-blind.
 
 ## Portfolio guardrails (hard requirement)
 
-`guardrails.py` holds seven checks. Each returns a refusal reason or `None`;
+`guardrails.py` holds eight checks. Each returns a refusal reason or `None`;
 callers turn that into `RoutineHalted` (orchestrator) or `OrderRefused`
 (order_manager). They are enforced at *both* boundaries — a rule that only
 applies at execution time would let the routine spend a day proposing trades
@@ -271,10 +289,24 @@ it can never place.
    `reference_price` (an older record, or an ad hoc one from
    `agents/tools.py`) skips the price check rather than failing — nothing
    to compare against, not a breach.
+8. **Max sector concentration** — `sector_concentration_reason()`, checked
+   before any BUY. Closes a gap the per-position and position-count caps
+   both miss: several different positions can each individually pass those
+   checks while the account is entirely one sector's risk. Sector comes from
+   `data/market_data.py:get_sector()` (yfinance, free/keyless, same
+   credential-policy reasoning as the news fallback). Cap:
+   `risk_limits.yaml -> portfolio.max_sector_concentration_pct`; unset/zero
+   means no cap. **Deliberate exception to fail-closed**: an unknown sector
+   for the candidate *skips* this one check rather than refusing — sector
+   classification is best-effort enrichment, not core account state, and
+   every other guardrail here still fails closed on genuinely unreadable
+   account/quote data.
 
 These **fail closed**: if Alpaca account state can't be read, the
 account-dependent checks report a breach rather than assume the portfolio is
-healthy. A guardrail that passes when it can't see anything isn't a guardrail.
+healthy. A guardrail that passes when it can't see anything isn't a
+guardrail — the one disclosed exception is sector concentration's
+unknown-sector skip above, which isn't account state at all.
 
 ## Research data quality (hard requirement)
 
@@ -315,6 +347,48 @@ where all 15 recommendations came back with an identical, wrong confidence of
   on console, headlined in the email/SMS digest via
   `notify_digest(data_quality_alert=...)`) and **auto-apply is skipped
   entirely for that checkpoint** — a flat score never reaches an order.
+
+## Text-derived signals (sentiment/catalyst)
+
+`sentiment` and `catalyst` used to be crude proxies — essentially "did
+research return any sources at all" — not derived from what the research
+text actually said, so two tickers with opposite news could still get near-
+identical scores on these components. `scoring/text_signals.py` replaces both
+with real keyword-lexicon scoring over the research's own headline/summary
+text (`sentiment_score()`: bullish-vs-bearish term ratio;
+`catalyst_score()`: hits against a catalyst-term lexicon, capped at 1.0).
+Deliberately not a paid/credentialed NLP or sentiment API — that would be a
+new vendor under the credential policy above, a reviewed decision. Either
+function returns `None` when no keywords match, same "exclude, don't fake"
+convention as every other component: `score_candidate()` drops it from the
+weighted sum and renormalizes rather than scoring a silent 0.5.
+
+## Momentum cap (recommendation_engine.py)
+
+`technical_score()`'s momentum term used to be unbounded, so an
+already-extended move fed the same signal that rewards a fresh breakout —
+scoring reasons to chase a rally that's already run, not just to catch one
+starting. `MOMENTUM_CAP` (0.10) clamps the 5-day momentum term before it
+factors into the score, so a stock that's already moved far keeps
+contributing at the cap rather than an ever-larger, cumulative momentum
+number swamping the SMA-crossover trend term.
+
+## Backtest parity (backtest/engine.py)
+
+`backtest_moving_average()` (kept, from the original scaffold) only ever
+validated a standalone SMA-crossover reimplementation — never the actual
+deployed confidence formula or guardrails, so a passing backtest said nothing
+about whether the live strategy was sound. `backtest_strategy()` instead
+walks the real `technical_score()`/`score_candidate()` functions bar-by-bar
+against historical data, simulating a single position (BUY opens it, SELL
+closes it) and feeding simulated cost-basis P&L back in as
+`position_pnl_pct`, the same input the live stop-loss/take-profit bias uses.
+Returns CAGR/Sharpe/max-drawdown plus a buy-and-hold baseline. Its `note`
+field discloses what it *can't* validate: `sentiment`/`catalyst`/
+`fundamental`/`historical_hitrate` are always `None` here, since there's no
+historical archive of research text to derive them from — only `technical`
+(and, on a held position, the P&L-driven sell-pressure bias) is exercised.
+`trading-agent backtest` prints both functions' results side by side.
 
 ## Continuous position monitoring (plan §6)
 
@@ -358,6 +432,15 @@ Auto-apply treats a stop-loss/take-profit-biased SELL exactly like any other
 recommendation — no special human-only gate — since every guardrail
 (kill switch, short-sale ban, daily-loss halt, daily trade cap) already
 applies unchanged regardless of what produced the `action`.
+
+**Bug fix:** the stop-loss/take-profit bias used to be gated behind
+`confidence >= min_confidence_to_notify`, so a held position with a severe
+stop-loss breach but low blended confidence reported `HOLD` instead of
+`SELL` — defeating the point of a stop-loss. `score_candidate()` now forces
+`SELL` whenever `sell_pressure > 0` and the pressure-adjusted technical read
+is bearish, independent of the notify threshold; the threshold still gates
+whether a *fresh* (non-position) signal counts as actionable enough to
+surface.
 
 ## What's not built yet
 

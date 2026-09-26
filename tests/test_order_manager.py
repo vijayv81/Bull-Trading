@@ -27,6 +27,7 @@ def guardrails_satisfied(monkeypatch):
     monkeypatch.setattr(om, "daily_trade_count_reason", lambda: None)
     monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty: None)
     monkeypatch.setattr(om, "position_count_reason", lambda ticker, side: None)
+    monkeypatch.setattr(om, "sector_concentration_reason", lambda ticker, side, qty: None)
     monkeypatch.setattr(om, "short_sale_reason", lambda ticker, side, qty: None)
     monkeypatch.setattr(om, "stale_recommendation_reason", lambda rec: None)
 
@@ -236,6 +237,21 @@ def test_position_count_breach_refuses(monkeypatch):
     monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
 
     with pytest.raises(om.OrderRefused, match="concurrent-positions cap"):
+        om.submit_approved_order(REC, qty=10)
+
+
+def test_sector_concentration_breach_refuses(monkeypatch):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(
+        om,
+        "sector_concentration_reason",
+        lambda ticker, side, qty: "TSLA (Technology) would push that sector to 30.00% ... over the 25.0% cap",
+    )
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
+
+    with pytest.raises(om.OrderRefused, match="over the 25.0% cap"):
         om.submit_approved_order(REC, qty=10)
 
 

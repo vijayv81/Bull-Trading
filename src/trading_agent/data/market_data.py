@@ -74,3 +74,29 @@ def fetch_news_headlines(ticker: str, limit: int = 5) -> list[dict[str, str]]:
         if title:
             headlines.append({"title": title, "url": url})
     return headlines
+
+
+_SECTOR_CACHE: dict[str, str | None] = {}
+
+
+def get_sector(ticker: str) -> str | None:
+    """GICS-style sector from yfinance's own classification (free, keyless,
+    no new vendor — same policy reasoning as fetch_news_headlines() above),
+    used by guardrails.sector_concentration_reason() to enforce
+    risk_limits.yaml -> portfolio.max_sector_concentration_pct.
+
+    None when yfinance has no sector for this symbol — routine for ETFs
+    (e.g. SPY) and sometimes for newer/foreign listings — or on any lookup
+    failure. Cached in-process for the life of the run: sector
+    classification doesn't change intraday, and a BUY guardrail check may
+    look this up for every currently-held position on top of the candidate
+    itself, so repeat lookups within one checkpoint/order-submission should
+    cost one network call per symbol, not one per check.
+    """
+    ticker = ticker.upper()
+    if ticker not in _SECTOR_CACHE:
+        try:
+            _SECTOR_CACHE[ticker] = yf.Ticker(ticker).info.get("sector") or None
+        except Exception:
+            _SECTOR_CACHE[ticker] = None
+    return _SECTOR_CACHE[ticker]

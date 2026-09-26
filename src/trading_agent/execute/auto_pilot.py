@@ -11,6 +11,12 @@ execute.order_manager.submit_approved_order() a human's approval would use —
 every guardrail (kill switch, 5% per-position cap, max concurrent positions,
 no shorts, no options, daily-loss halt, max daily trade count) still applies
 unchanged. This only automates the decision step, nothing else in the gate.
+
+Every successful submission also gets a synthetic journal.record_entry() —
+see _journal_auto_decision() — so the improvement loop
+(journal.aggregate_performance() -> historical_hitrate() ->
+propose_weight_adjustments()) isn't blind to the majority of this project's
+actual trading activity just because no human typed a reasoning string.
 """
 
 from __future__ import annotations
@@ -26,6 +32,46 @@ from trading_agent.utils import load_json_list, today
 def _todays_auto_trade_count(day: str | None = None) -> int:
     path = TRADES_DIR / (day or today()) / "orders_submitted.json"
     return sum(1 for t in load_json_list(path) if t.get("source") == "auto")
+
+
+def _journal_auto_decision(rec: dict[str, Any], checkpoint: str) -> None:
+    """Auto-apply picks its own trades with no human reasoning to record —
+    but journal.record_entry() was previously only ever called from the
+    human-driven CLI (`trading-agent journal record`), so an auto-applied
+    order never generated a journal entry at all. That silently starved
+    journal.aggregate_performance() (and therefore
+    recommendation_engine.historical_hitrate(), the 5th confidence
+    component) of the majority of this project's actual trading activity,
+    since auto-apply is what does most of the trading.
+
+    A synthetic reasoning string — the same component scores a human
+    reviewing this recommendation would have seen — stands in for
+    "reasoning in the user's own words." Never allowed to turn a successful
+    submission into an "error" result: a broken journal write is logged,
+    not raised, same as every other best-effort side effect in this module.
+    """
+    try:
+        from trading_agent.journal import record_entry
+
+        scores = rec.get("component_scores", {})
+        reasoning = (
+            f"Auto-applied: confidence {rec['confidence']} "
+            f"(technical={scores.get('technical')}, sentiment={scores.get('sentiment')}, "
+            f"catalyst={scores.get('catalyst')}, fundamental={scores.get('fundamental')})"
+        )
+        if rec.get("sell_pressure"):
+            reasoning += f", sell_pressure={rec['sell_pressure']} (position_pnl_pct={rec.get('position_pnl_pct')})"
+
+        record_entry(
+            rec["ticker"],
+            checkpoint,
+            decision="approve",
+            reasoning=reasoning,
+            action=rec["action"],
+            confidence=rec["confidence"],
+        )
+    except Exception as exc:  # noqa: BLE001 - a broken journal write must not undo a real submission
+        print(f"Could not journal auto-applied {rec['ticker']}: {exc}")
 
 
 def qty_for_recommendation(rec: dict[str, Any], equity: float, price: float) -> float:
@@ -80,6 +126,7 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
 
             record_decision(rec["ticker"], checkpoint, "approve", {"qty": qty, "source": "auto"})
             order = submit_approved_order(rec, qty, source="auto")
+            _journal_auto_decision(rec, checkpoint)
             results.append({"ticker": rec["ticker"], "status": "submitted", "qty": qty, "order": order})
         except OrderRefused as exc:
             results.append({"ticker": rec["ticker"], "status": "refused", "reason": str(exc)})

@@ -20,6 +20,28 @@ def test_technical_score_empty_frame_is_neutral():
     assert engine.technical_score(pd.DataFrame()) == 0.5
 
 
+def test_technical_score_caps_momentum_for_an_already_extended_move():
+    """A stock already up 30% in the last 5 days shouldn't score MORE
+    bullish for it than one up exactly at the 10% cap — chasing an extended
+    move is a real risk, not a stronger signal (mitigates buying into
+    top-gainer movers purely because they already ran).
+
+    fast == slow makes the spread (trend) term exactly 0 for every row,
+    isolating the momentum term this test is actually about.
+    """
+    base = [100.0] * 55
+    modest = pd.DataFrame({"close": base + [100.0, 100.0, 100.0, 100.0, 103.0]})  # +3%, under the cap
+    at_cap = pd.DataFrame({"close": base + [100.0, 100.0, 100.0, 100.0, 110.0]})  # +10%, right at the cap
+    way_past_cap = pd.DataFrame({"close": base + [100.0, 100.0, 100.0, 100.0, 130.0]})  # +30%, well past it
+
+    score_modest = engine.technical_score(modest, fast=20, slow=20)
+    score_at_cap = engine.technical_score(at_cap, fast=20, slow=20)
+    score_way_past = engine.technical_score(way_past_cap, fast=20, slow=20)
+
+    assert score_at_cap == pytest.approx(score_way_past)  # saturated — no extra credit past the cap
+    assert score_modest < score_at_cap <= 1.0  # still rewards a real, moderate move
+
+
 @pytest.fixture
 def fixed_config(monkeypatch):
     monkeypatch.setattr(
@@ -348,3 +370,27 @@ def test_reference_price_defaults_to_none(fixed_config):
         "TSLA", "midday", sentiment=0.8, technical=0.8, fundamental=0.8, catalyst=0.8
     )
     assert rec["reference_price"] is None
+
+
+def test_stop_loss_sell_fires_even_below_notify_threshold(fixed_config):
+    """Regression: a held position with weak technical/sentiment/catalyst
+    (confidence below min_confidence_to_notify) but a deep stop-loss breach
+    must still SELL — this is a risk-management cutoff, not a fresh
+    conviction call, and shouldn't be silently gated behind the same bar a
+    brand-new BUY idea has to clear."""
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.2, technical=0.2, fundamental=0.2, catalyst=0.2,
+        position_pnl_pct=-20.0,  # deep past the 4% stop-loss -> sell_pressure 1.0
+    )
+    assert rec["confidence"] < 50  # would have been HOLD before this fix
+    assert rec["action"] == "SELL"
+
+
+def test_no_sell_pressure_below_threshold_still_holds(fixed_config):
+    """Without any position (no sell_pressure), low confidence still HOLDs —
+    the fix above only forces SELL when there's real stop-loss/take-profit
+    pressure, never as a general override of the notify threshold."""
+    rec = engine.score_candidate(
+        "TSLA", "midday", sentiment=0.2, technical=0.2, fundamental=0.2, catalyst=0.2,
+    )
+    assert rec["action"] == "HOLD"

@@ -19,6 +19,7 @@ from trading_agent.guardrails import (
     options_reason,
     position_count_reason,
     position_size_reason,
+    sector_concentration_reason,
     short_sale_reason,
     stale_recommendation_reason,
 )
@@ -89,6 +90,10 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
         raise OrderRefused(breach)
 
     breach = position_count_reason(rec["ticker"], rec["action"])
+    if breach:
+        raise OrderRefused(breach)
+
+    breach = sector_concentration_reason(rec["ticker"], rec["action"], qty)
     if breach:
         raise OrderRefused(breach)
 

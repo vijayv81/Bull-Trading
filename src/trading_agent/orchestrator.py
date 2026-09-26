@@ -31,6 +31,7 @@ from trading_agent.scoring.recommendation_engine import (
     score_candidate,
     technical_score,
 )
+from trading_agent.scoring.text_signals import catalyst_score, sentiment_score
 
 VALID_CHECKPOINTS = {"pre_open", "market_open", "midday", "pre_close"}
 
@@ -133,13 +134,18 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             # (guardrails.stale_recommendation_reason()).
             reference_price = float(bars["close"].iloc[-1]) if have_bars else None
 
+            headline_text = research.get("headline_summary") or ""
             rec = score_candidate(
                 ticker=ticker,
                 checkpoint=checkpoint,
-                sentiment=research.get("confidence_of_extraction", 0.5),
+                # Keyword-derived from what the research actually said, not
+                # from whether the research call merely succeeded — see
+                # scoring/text_signals.py. None (excluded, not faked) when
+                # the text has no detectable sentiment/catalyst language.
+                sentiment=sentiment_score(headline_text),
                 technical=tech,
                 fundamental=None,  # no fundamentals vendor wired up yet — excluded from the score, not neutral
-                catalyst=0.7 if research.get("sources") else 0.3,
+                catalyst=catalyst_score(headline_text),
                 position_pnl_pct=held_pnl.get(ticker),
                 reference_price=reference_price,
             )
