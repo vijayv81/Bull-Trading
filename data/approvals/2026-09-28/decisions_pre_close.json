@@ -1,0 +1,82 @@
+[
+  {
+    "ticker": "AIFF",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2764.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T19:55:23.315305+00:00"
+  },
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 12512.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T19:55:26.632769+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 4018.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T19:55:38.368321+00:00"
+  },
+  {
+    "ticker": "NTRBW",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 8844.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T19:55:39.983844+00:00"
+  },
+  {
+    "ticker": "TSLA",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T19:55:40.908984+00:00"
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2765.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T19:56:40.724011+00:00"
+  },
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 11281.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T19:56:44.033521+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 4019.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T19:56:44.997407+00:00"
+  }
+]
