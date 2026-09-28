@@ -1,0 +1,36 @@
+[
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 91.1,
+    "reasoning": "Auto-applied: confidence 91.1 (technical=1.0, sentiment=1.0, catalyst=0.6666666666666666, fundamental=None)",
+    "reference_price": 0.33494999999999997,
+    "recorded_at": "2026-09-28T19:55:37.556695+00:00",
+    "outcome": {
+      "price_at_decision": 0.33494999999999997,
+      "price_at_measurement": 0.3537,
+      "pct_change": 5.6,
+      "directionally_correct": true,
+      "measured_at": "2026-09-28T19:56:50.253614+00:00"
+    }
+  },
+  {
+    "ticker": "TSLA",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 77.8,
+    "reasoning": "Auto-applied: confidence 77.8 (technical=0.6682398977563412, sentiment=1.0, catalyst=0.6666666666666666, fundamental=None)",
+    "reference_price": 356.98,
+    "recorded_at": "2026-09-28T19:55:46.908343+00:00",
+    "outcome": {
+      "price_at_decision": 356.98,
+      "price_at_measurement": 357.32500000000005,
+      "pct_change": 0.1,
+      "directionally_correct": true,
+      "measured_at": "2026-09-28T19:56:50.677128+00:00"
+    }
+  }
+]
