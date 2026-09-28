@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "SOAR",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 14319.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T13:52:35.283995+00:00"
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2704.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T13:52:36.561638+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 3254.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T13:52:39.804390+00:00"
+  },
+  {
+    "ticker": "MGLD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1860.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T13:52:41.025905+00:00"
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 337439.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-28T13:52:44.530636+00:00"
+  }
+]
