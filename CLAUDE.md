@@ -195,7 +195,17 @@ one-line revert with no code change.
   as it would for a human decision, because it *is* a decision, just not a
   human's.
 - Qty comes from `suggested_size_pct_of_portfolio` (see below), converted to
-  whole shares at the current quote — never rounds up.
+  whole shares at the current quote — never rounds up. For a SELL, that qty
+  is additionally capped at what's actually held
+  (`auto_pilot._held_qty()`) — `suggested_size_pct_of_portfolio` is a
+  fresh-position-sizing target with no idea how much of the ticker exists,
+  so uncapped it almost always exceeded a real holding and got refused by
+  `short_sale_reason()` as an attempted short. That silently defeated the
+  continuous-position-monitoring stop-loss/take-profit SELLs below —
+  confirmed live 2026-09-28, where GRMLW/ABLVW/APUS all correctly scored
+  SELL on a stop-loss breach and every auto-apply attempt on them was
+  refused, so the losses just kept compounding. A BUY is unaffected — held
+  qty is irrelevant to opening or adding to a position, only to closing one.
 - One candidate failing (a guardrail refusal, an Alpaca error) is recorded as
   that candidate's own outcome and never stops the rest, and never raises
   into `run_checkpoint()` — a broken auto-apply run must not also break

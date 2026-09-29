@@ -50,6 +50,45 @@ def test_qty_for_recommendation_zero_when_price_unavailable():
     assert ap.qty_for_recommendation(rec, equity=100_000.0, price=0.0) == 0.0
 
 
+def _held(monkeypatch, ticker, qty):
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_positions",
+        lambda: [{"symbol": ticker, "qty": qty}],
+    )
+
+
+def test_qty_for_recommendation_sell_capped_at_held_qty(monkeypatch):
+    # suggested_size_pct_of_portfolio sizes a SELL the same way it would a
+    # fresh BUY — 5% of 100_000 at $110/share = 45 shares — with no idea how
+    # much is actually held. A stop-loss/take-profit SELL on a small
+    # existing position must be capped at what's held, not the fresh-position
+    # target, or short_sale_reason() refuses it as an attempted short.
+    _held(monkeypatch, "GRMLW", qty=10)
+    rec = _rec("GRMLW", action="SELL", suggested_pct=5.0)
+    assert ap.qty_for_recommendation(rec, equity=100_000.0, price=110.0) == 10.0
+
+
+def test_qty_for_recommendation_sell_not_inflated_past_suggested(monkeypatch):
+    # Held far exceeds the suggested size — the cap is a ceiling, never a floor.
+    _held(monkeypatch, "GRMLW", qty=10_000)
+    rec = _rec("GRMLW", action="SELL", suggested_pct=5.0)
+    assert ap.qty_for_recommendation(rec, equity=100_000.0, price=110.0) == 45.0
+
+
+def test_qty_for_recommendation_sell_zero_when_nothing_held(monkeypatch):
+    _held(monkeypatch, "GRMLW", qty=0)
+    rec = _rec("GRMLW", action="SELL", suggested_pct=5.0)
+    assert ap.qty_for_recommendation(rec, equity=100_000.0, price=110.0) == 0.0
+
+
+def test_qty_for_recommendation_buy_ignores_held_qty(monkeypatch):
+    # A BUY is sized purely off suggested_size_pct_of_portfolio — held qty is
+    # irrelevant to opening/adding to a position, only to closing one.
+    _held(monkeypatch, "TSLA", qty=1)
+    rec = _rec("TSLA", action="BUY", suggested_pct=5.0)
+    assert ap.qty_for_recommendation(rec, equity=100_000.0, price=110.0) == 45.0
+
+
 # --- auto_apply: on/off + cap --------------------------------------------------
 
 
