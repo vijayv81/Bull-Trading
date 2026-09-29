@@ -294,19 +294,24 @@ it can never place.
    both miss: several different positions can each individually pass those
    checks while the account is entirely one sector's risk. Sector comes from
    `data/market_data.py:get_sector()` (yfinance, free/keyless, same
-   credential-policy reasoning as the news fallback). Cap:
-   `risk_limits.yaml -> portfolio.max_sector_concentration_pct`; unset/zero
-   means no cap. **Deliberate exception to fail-closed**: an unknown sector
-   for the candidate *skips* this one check rather than refusing — sector
-   classification is best-effort enrichment, not core account state, and
-   every other guardrail here still fails closed on genuinely unreadable
-   account/quote data.
+   credential-policy reasoning as the news fallback), via
+   `guardrails._sector_bucket()`, which folds every symbol yfinance can't
+   classify (ETFs, warrants, some foreign/newer listings) into one synthetic
+   `"Unclassified"` sector rather than exempting it — several individually-
+   unclassified symbols used to each skip this check while collectively
+   growing past the cap (confirmed live 2026-09-29: three unclassified
+   warrants alone made up over 8% of the portfolio, invisible to this
+   guardrail). Cap: `risk_limits.yaml -> portfolio.max_sector_concentration_pct`
+   (30%, raised from 25% per user instruction 2026-09-29); unset/zero means
+   no cap.
 
 These **fail closed**: if Alpaca account state can't be read, the
 account-dependent checks report a breach rather than assume the portfolio is
 healthy. A guardrail that passes when it can't see anything isn't a
-guardrail — the one disclosed exception is sector concentration's
-unknown-sector skip above, which isn't account state at all.
+guardrail — every check here, sector concentration included, fails closed on
+genuinely unreadable account/quote data; only the sector *label* itself is a
+best-effort classification (unknown lands in `"Unclassified"`, not an
+exemption).
 
 ## Research data quality (hard requirement)
 

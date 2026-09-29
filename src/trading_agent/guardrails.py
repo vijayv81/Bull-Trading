@@ -325,6 +325,31 @@ def stale_recommendation_reason(rec: dict[str, Any]) -> str | None:
     return None
 
 
+UNCLASSIFIED_SECTOR = "Unclassified"
+
+
+def _sector_bucket(symbol: str) -> str:
+    """get_sector(), normalized so every symbol lands in *some* bucket.
+
+    A `None` classification (routine for ETFs like SPY, warrants like
+    `GRMLW`/`DAICW`, sometimes newer/foreign listings, or any yfinance lookup
+    failure) used to exempt a symbol from sector_concentration_reason()
+    entirely. That left a real hole: several individually-unclassified
+    symbols could collectively grow past the cap while each one, checked on
+    its own, reported "unknown, skip" — confirmed live on 2026-09-29, where
+    three unclassified warrants (`DAICW`/`GRMLW`/`ABLVW`) together already
+    made up over 8% of the portfolio with no guardrail watching that total.
+    Bucketing every unclassified symbol into one `Unclassified` sector closes
+    that hole; it's an approximation (an S&P 500 ETF and a SPAC warrant have
+    nothing in common risk-wise, but both land here), not a precise
+    classification, but it's strictly more protective than exempting them
+    outright, and it's what "no domain over cap%" actually requires.
+    """
+    from trading_agent.data.market_data import get_sector
+
+    return get_sector(symbol) or UNCLASSIFIED_SECTOR
+
+
 def sector_concentration_reason(symbol: str, side: str, qty: float) -> str | None:
     """Breach reason when a BUY would push one sector's share of the
     portfolio past portfolio.max_sector_concentration_pct — a config key
@@ -336,17 +361,13 @@ def sector_concentration_reason(symbol: str, side: str, qty: float) -> str | Non
     is entirely one sector's risk.
 
     Sector comes from data/market_data.py's get_sector() — yfinance's own
-    classification, free and keyless, no new vendor (CLAUDE.md §7.1). Unlike
-    every other check in this file, an unknown sector (routine for ETFs
-    like SPY, sometimes for newer/foreign listings, or any lookup failure)
-    SKIPS this specific check rather than failing closed: sector is a
-    best-effort enrichment layer on top of the core account-state
-    guardrails above, not something this project can independently verify
-    the way it can equity/positions/quotes, and refusing every trade
-    whenever a free classification happens to be missing would make the
-    cap far more disruptive than protective. Account-state reads (equity,
-    positions, quote) still fail closed once a sector IS known — only the
-    "do we know the sector at all" gate is soft.
+    classification, free and keyless, no new vendor (CLAUDE.md §7.1) — via
+    _sector_bucket() above, which folds every unclassified symbol into one
+    synthetic "Unclassified" bucket rather than exempting it, so that bucket
+    is capped like any other sector too. Account-state reads (equity,
+    positions, quote) still fail closed exactly as everywhere else in this
+    file — only the sector *label* is a best-effort/approximate one, never
+    the account data the cap is measured against.
     """
     if side.upper() != "BUY":
         return None
@@ -355,11 +376,7 @@ def sector_concentration_reason(symbol: str, side: str, qty: float) -> str | Non
     if not cap:
         return None
 
-    from trading_agent.data.market_data import get_sector
-
-    sector = get_sector(symbol)
-    if not sector:
-        return None
+    sector = _sector_bucket(symbol)
 
     try:
         equity = float(_account()["equity"])
@@ -374,7 +391,7 @@ def sector_concentration_reason(symbol: str, side: str, qty: float) -> str | Non
     other_sector_value = sum(
         abs(float(p.get("market_value") or 0.0))
         for p in positions
-        if str(p.get("symbol", "")).upper() != symbol.upper() and get_sector(str(p.get("symbol", ""))) == sector
+        if str(p.get("symbol", "")).upper() != symbol.upper() and _sector_bucket(str(p.get("symbol", ""))) == sector
     )
     projected = other_sector_value + _existing_position_value(symbol) + qty * price
     pct = projected / equity * 100

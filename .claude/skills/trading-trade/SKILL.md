@@ -124,9 +124,11 @@ erroring. Read the reason back to the user in plain language and stop there:
   total value (across every position in it, plus this one) past
   `portfolio.max_sector_concentration_pct`. Offer a smaller qty if that fits
   under the cap, or a different ticker outside that sector; not fixable by
-  re-approving the same qty. Skipped rather than enforced when the ticker's
-  sector can't be determined — that's not a workaround, just what the check
-  does when it has nothing to compare.
+  re-approving the same qty. A ticker yfinance can't classify (an ETF, a
+  warrant, some foreign/newer listings) isn't exempt — it's bucketed into a
+  synthetic "Unclassified" sector and capped the same way, so several
+  such tickers can trip this together even if none of them individually
+  looks concentrated.
 - **Daily trade cap reached** — `portfolio.max_daily_trades` orders (any
   ticker, any side, human or auto-applied) have already gone through today.
   Done for the day, same as the daily loss cap — not fixable by trying a
