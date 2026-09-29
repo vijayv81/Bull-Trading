@@ -48,8 +48,9 @@ portfolio:
   # individually while the account is entirely one sector's risk. Sector
   # comes from data/market_data.py's get_sector() (yfinance, free/keyless);
   # an unknown sector skips this one check rather than failing closed — see
-  # that function's docstring for why. Unset/zero means no cap.
-  max_sector_concentration_pct: 25.0
+  # that function's docstring for why. Unset/zero means no cap. 30% per
+  # user instruction 2026-09-29 (previously 25%).
+  max_sector_concentration_pct: 30.0
   # Enforced in notify.approval_gateway.notify_digest() — caps how many
   # actionable recommendations the email/SMS digest headlines, ranked by
   # confidence. Every recommendation is still saved to data/recommendations/
