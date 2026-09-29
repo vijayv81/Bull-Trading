@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "SDEV",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 1208.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T19:55:04.057376+00:00"
+  },
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 9295.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T19:55:08.204953+00:00"
+  },
+  {
+    "ticker": "IREN",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 87.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T19:55:10.099787+00:00"
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2154.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T19:55:13.730515+00:00"
+  },
+  {
+    "ticker": "ACONW",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 158994.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T19:55:16.567943+00:00"
+  }
+]
