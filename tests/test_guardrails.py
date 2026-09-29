@@ -267,14 +267,31 @@ def test_sector_reason_sell_never_checked(sector_cap):
     assert g.sector_concentration_reason("TSLA", "SELL", qty=1_000_000) is None
 
 
-def test_sector_reason_skips_when_sector_unknown(sector_cap, monkeypatch):
+def test_sector_reason_unknown_sector_is_checked_not_skipped(sector_cap, monkeypatch):
     _sectors({"TSLA": None}, monkeypatch)
+    monkeypatch.setattr(g, "_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_positions", lambda: [])
+    # An unknown sector used to exempt the symbol entirely; it must now be
+    # bucketed as "Unclassified" and checked like any other sector.
+    assert g.sector_concentration_reason("TSLA", "BUY", qty=200) is None  # 20%, within cap
+    reason = g.sector_concentration_reason("TSLA", "BUY", qty=300)  # 30%, over cap
+    assert "Unclassified" in reason
+    assert "over the 25.0% cap" in reason
 
-    def fail():
-        raise AssertionError("must not read account state when the sector itself is unknown")
 
-    monkeypatch.setattr(g, "_account", fail)
-    assert g.sector_concentration_reason("TSLA", "BUY", qty=1) is None
+def test_sector_reason_unclassified_symbols_aggregate_together(sector_cap, monkeypatch):
+    # Two individually-unclassified symbols (e.g. warrants yfinance has no
+    # sector for) must count toward the same "Unclassified" bucket, not be
+    # treated as two separate, uncapped exemptions.
+    _sectors({"GRMLW": None, "DAICW": None}, monkeypatch)
+    monkeypatch.setattr(g, "_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_positions", lambda: [{"symbol": "DAICW", "market_value": "20000"}])
+    # 20,000 (DAICW, unclassified) + 10,000 (this GRMLW buy) = 30,000 = 30%, over the 25% cap.
+    reason = g.sector_concentration_reason("GRMLW", "BUY", qty=100)
+    assert "Unclassified" in reason
+    assert "over the 25.0% cap" in reason
 
 
 def test_sector_reason_within_cap_passes(sector_cap, monkeypatch):

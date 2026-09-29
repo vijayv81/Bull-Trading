@@ -74,14 +74,39 @@ def _journal_auto_decision(rec: dict[str, Any], checkpoint: str) -> None:
         print(f"Could not journal auto-applied {rec['ticker']}: {exc}")
 
 
+def _held_qty(ticker: str) -> float:
+    from trading_agent.data.alpaca_client import get_positions
+
+    for p in get_positions():
+        if str(p.get("symbol", "")).upper() == ticker.upper():
+            return float(p.get("qty") or 0.0)
+    return 0.0
+
+
 def qty_for_recommendation(rec: dict[str, Any], equity: float, price: float) -> float:
     """suggested_size_pct_of_portfolio, in dollars of equity, converted to a
     whole share count at `price`. Rounds down — this only ever sizes at or
-    under the suggested %, never over it."""
+    under the suggested %, never over it.
+
+    suggested_size_pct_of_portfolio is a fresh-position-sizing target — it
+    has no idea how much of a held ticker actually exists. That's fine for a
+    BUY (position_size_reason() bounds it against the 5% cap either way),
+    but for a SELL it produced a qty sized as if opening a new position,
+    almost always bigger than what's actually held. guardrails.short_sale_reason()
+    then refused it as an attempted short — which meant a stop-loss/
+    take-profit-triggered SELL (recommendation_engine.position_sell_pressure())
+    could score correctly and still never execute through auto-apply.
+    Confirmed live 2026-09-28: GRMLW/ABLVW/APUS all scored SELL on a
+    stop-loss breach and every auto-apply attempt on them was refused.
+    A SELL is now capped at what's actually held, matching
+    short_sale_reason()'s own bound, same as a human sizing an exit would."""
     pct = rec.get("suggested_size_pct_of_portfolio") or 0.0
     if pct <= 0 or price <= 0:
         return 0.0
-    return float(int((equity * (pct / 100)) // price))
+    qty = float(int((equity * (pct / 100)) // price))
+    if rec.get("action") == "SELL":
+        qty = min(qty, _held_qty(rec["ticker"]))
+    return qty
 
 
 def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, Any]]:

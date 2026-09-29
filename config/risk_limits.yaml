@@ -47,9 +47,11 @@ portfolio:
   # don't: several different positions could each pass those checks
   # individually while the account is entirely one sector's risk. Sector
   # comes from data/market_data.py's get_sector() (yfinance, free/keyless);
-  # an unknown sector skips this one check rather than failing closed — see
-  # that function's docstring for why. Unset/zero means no cap. 30% per
-  # user instruction 2026-09-29 (previously 25%).
+  # a symbol with no classification (ETFs, warrants, some foreign/newer
+  # listings) is bucketed into a synthetic "Unclassified" sector rather than
+  # exempted, so that bucket is capped too — see guardrails._sector_bucket()'s
+  # docstring for why. Unset/zero means no cap. 30% per user instruction
+  # 2026-09-29 (previously 25%).
   max_sector_concentration_pct: 30.0
   # Enforced in notify.approval_gateway.notify_digest() — caps how many
   # actionable recommendations the email/SMS digest headlines, ranked by
