@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 11597.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T12:57:24.352758+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T12:57:26.411737+00:00"
+  },
+  {
+    "ticker": "MGLD",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1860.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T12:57:27.868891+00:00"
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 352457.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T12:57:32.405271+00:00"
+  },
+  {
+    "ticker": "KNRX",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1254.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-09-29T12:57:33.867338+00:00"
+  }
+]
