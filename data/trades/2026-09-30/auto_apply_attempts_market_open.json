@@ -1,0 +1,56 @@
+[
+  {
+    "ticker": "AIFF",
+    "status": "refused",
+    "reason": "AIFF would reach 7.50% of the 98,097.09 portfolio (7,354.92 incl. 2,452.80 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "SOAR",
+    "status": "refused",
+    "reason": "SOAR's price has moved 3.77% since this recommendation was scored (0.36 -> 0.37), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "TSLA",
+    "status": "refused",
+    "reason": "TSLA's technical signal has flipped since this recommendation was scored (SELL then, BUY now) \u2014 re-run the checkpoint for a fresh read before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "GRMLW",
+    "status": "refused",
+    "reason": "GRMLW's price has moved 17.12% since this recommendation was scored (0.73 -> 0.85), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABLVW",
+    "status": "refused",
+    "reason": "ABLVW's price has moved 13.33% since this recommendation was scored (0.03 -> 0.03), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "LIQT",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "HIMS",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "CNTB",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "DKI",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  }
+]
