@@ -1,0 +1,50 @@
+[
+  {
+    "ticker": "MGLD",
+    "status": "refused",
+    "reason": "MGLD would reach 9.56% of the 97,766.42 portfolio (9,350.66 incl. 4,464.02 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "SOAR",
+    "status": "refused",
+    "reason": "SOAR's price has moved 7.03% since this recommendation was scored (0.38 -> 0.40), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "AIFF",
+    "status": "refused",
+    "reason": "AIFF's technical signal has flipped since this recommendation was scored (SELL then, BUY now) \u2014 re-run the checkpoint for a fresh read before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "GRMLW",
+    "status": "refused",
+    "reason": "GRMLW's price has moved 18.38% since this recommendation was scored (0.78 -> 0.92), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "INLF",
+    "status": "refused",
+    "reason": "INLF's price has moved 14.98% since this recommendation was scored (4.34 -> 4.99), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "CYCUW",
+    "status": "refused",
+    "reason": "CYCUW's price has moved 12.23% since this recommendation was scored (0.02 -> 0.02), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "CHGA",
+    "status": "refused",
+    "reason": "CHGA's price has moved 4.01% since this recommendation was scored (3.24 -> 3.11), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "NIVF",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "midday"
+  }
+]
