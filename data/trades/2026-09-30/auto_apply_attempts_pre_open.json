@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "AIFF",
+    "status": "refused",
+    "reason": "AIFF would reach 7.53% of the 97,040.47 portfolio (7,303.78 incl. 2,453.26 already held), over the 5.0% cap.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "MGLD",
+    "status": "refused",
+    "reason": "MGLD would reach 9.58% of the 97,040.47 portfolio (9,292.36 incl. 4,441.36 already held), over the 5.0% cap.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "SOAR",
+    "status": "refused",
+    "reason": "SOAR's price has moved 15.56% since this recommendation was scored (0.39 -> 0.45), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "GOOG",
+    "status": "refused",
+    "reason": "GOOG's price has moved 4.70% since this recommendation was scored (337.32 -> 321.45), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "ABLVW",
+    "status": "refused",
+    "reason": "ABLVW's price has moved 49.79% since this recommendation was scored (0.02 -> 0.01), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "SDEV",
+    "status": "refused",
+    "reason": "SDEV's price has moved 8.56% since this recommendation was scored (3.27 -> 2.99), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "AIXC",
+    "status": "refused",
+    "reason": "AIXC's price has moved 18.81% since this recommendation was scored (1.01 -> 1.20), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "FLDDW",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "HIMS",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "KNRX",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_open"
+  }
+]
