@@ -78,13 +78,13 @@ def test_notify_digest_caps_headlined_proposals_per_checkpoint(monkeypatch):
     monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
 
     recs = [
-        {"ticker": "LOW", "action": "BUY", "confidence": 55},
-        {"ticker": "HIGH", "action": "BUY", "confidence": 95},
-        {"ticker": "MID", "action": "BUY", "confidence": 75},
+        {"ticker": "LOW", "action": "BUY", "confidence": 55, "rationale": "low conviction setup"},
+        {"ticker": "HIGH", "action": "BUY", "confidence": 95, "rationale": "strong breakout"},
+        {"ticker": "MID", "action": "BUY", "confidence": 75, "rationale": "moderate setup"},
     ]
     gw.notify_digest(recs, "midday")
 
-    subject, body = email_calls[0]
+    subject, body = email_calls[0][:2]
     assert "2 recommendation(s) (top 2 of 3)" in subject
     assert "HIGH" in body and "MID" in body
     assert "LOW" not in body.split("more actionable")[0]  # not in the headlined list
@@ -103,18 +103,23 @@ def test_notify_digest_no_cap_configured_shows_everything(monkeypatch):
     monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
 
     recs = [
-        {"ticker": "LOW", "action": "BUY", "confidence": 55},
-        {"ticker": "HIGH", "action": "BUY", "confidence": 95},
-        {"ticker": "MID", "action": "BUY", "confidence": 75},
+        {"ticker": "LOW", "action": "BUY", "confidence": 55, "rationale": "low conviction setup"},
+        {"ticker": "HIGH", "action": "BUY", "confidence": 95, "rationale": "strong breakout"},
+        {"ticker": "MID", "action": "BUY", "confidence": 75, "rationale": "moderate setup"},
     ]
     gw.notify_digest(recs, "midday")
 
-    subject, body = email_calls[0]
+    subject, body = email_calls[0][:2]
     assert "(top" not in subject
     assert all(t in body for t in ("LOW", "HIGH", "MID"))
 
 
-def test_notify_digest_sends_email_and_suppresses_sms_when_nothing_actionable(monkeypatch):
+def test_notify_digest_silent_when_nothing_actionable(monkeypatch):
+    """Per user instruction 2026-09-30 ("crisp ... only show actionable
+    items"): a checkpoint with nothing actionable, nothing auto-applied, and
+    no data-quality problem sends nothing at all, on either channel — same
+    "silence is fine on a quiet run" convention as notify_pending_reminder().
+    """
     monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email", "sms"]}})
     email_calls = []
     sms_calls = []
@@ -123,8 +128,7 @@ def test_notify_digest_sends_email_and_suppresses_sms_when_nothing_actionable(mo
 
     gw.notify_digest([{"ticker": "GOOG", "action": "HOLD", "confidence": 40}], "midday")
 
-    assert len(email_calls) == 1
-    assert "No actionable" in email_calls[0][1]
+    assert email_calls == []
     assert sms_calls == []
 
 
@@ -134,10 +138,31 @@ def test_notify_digest_sends_sms_when_actionable(monkeypatch):
     monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: None)
     monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: sms_calls.append(a))
 
-    gw.notify_digest([{"ticker": "TSLA", "action": "BUY", "confidence": 70}], "midday")
+    gw.notify_digest(
+        [{"ticker": "TSLA", "action": "BUY", "confidence": 70, "rationale": "breakout above resistance"}], "midday"
+    )
 
     assert len(sms_calls) == 1
     assert "TSLA" in sms_calls[0][0]
+
+
+def test_notify_digest_skips_a_recommendation_with_no_analysis(monkeypatch):
+    """Per user instruction 2026-09-30: a stock with no real analysis behind
+    it (blank rationale) is skipped from the notification entirely, not
+    shown as an empty-looking entry."""
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    recs = [
+        {"ticker": "NOINFO", "action": "BUY", "confidence": 90, "rationale": ""},
+        {"ticker": "GOODINFO", "action": "BUY", "confidence": 80, "rationale": "clear breakout setup"},
+    ]
+    gw.notify_digest(recs, "midday")
+
+    body = email_calls[0][1]
+    assert "GOODINFO" in body
+    assert "NOINFO" not in body
 
 
 def test_notify_digest_send_failure_does_not_raise(monkeypatch):
@@ -147,7 +172,9 @@ def test_notify_digest_send_failure_does_not_raise(monkeypatch):
         raise RuntimeError("RESEND_API_KEY not set")
 
     monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
-    gw.notify_digest([{"ticker": "TSLA", "action": "BUY", "confidence": 70}], "midday")  # must not raise
+    gw.notify_digest(
+        [{"ticker": "TSLA", "action": "BUY", "confidence": 70, "rationale": "breakout above resistance"}], "midday"
+    )  # must not raise
 
 
 def test_notify_digest_includes_auto_apply_section(monkeypatch):
@@ -172,20 +199,65 @@ def test_notify_digest_includes_auto_apply_section(monkeypatch):
     assert "AUTO: TSLA x12" in sms_calls[0][0]
 
 
-def test_notify_digest_includes_failed_tickers_section(monkeypatch):
+def test_notify_digest_never_shows_failed_tickers(monkeypatch):
+    """Per user instruction 2026-09-30 ("only show actionable items"):
+    research failures aren't actionable and are already visible in the
+    checkpoint session's own console output — the digest itself never
+    mentions them, whether or not something else is actionable."""
     monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
     email_calls = []
     monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
 
     gw.notify_digest(
-        [{"ticker": "TSLA", "action": "BUY", "confidence": 90}],
+        [{"ticker": "TSLA", "action": "BUY", "confidence": 90, "rationale": "breakout above resistance"}],
         "pre_open",
         failed_tickers=[{"ticker": "BAD", "error": "ReadTimeout"}],
     )
 
     body = email_calls[0][1]
-    assert "Research failed" in body
-    assert "BAD: ReadTimeout" in body
+    assert "TSLA" in body
+    assert "Research failed" not in body
+    assert "BAD" not in body
+
+
+def test_notify_digest_failed_tickers_alone_sends_nothing(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    gw.notify_digest([], "pre_open", failed_tickers=[{"ticker": "BAD", "error": "ReadTimeout"}])
+
+    assert email_calls == []
+
+
+def test_notify_digest_sends_mobile_friendly_html_body(monkeypatch):
+    """Per user instruction 2026-09-30 ("crisp and mobile friendly"):
+    the email carries an HTML rendering alongside the plain-text body."""
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    gw.notify_digest(
+        [{"ticker": "TSLA", "action": "BUY", "confidence": 91, "rationale": "breakout above resistance"}],
+        "pre_open",
+    )
+
+    subject, body, html_body = email_calls[0]
+    assert html_body is not None
+    assert "TSLA" in html_body
+    assert "BUY" in html_body
+    assert "max-width:600px" in html_body  # mobile-width single column
+
+
+def test_notify_digest_html_includes_data_quality_alert(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    gw.notify_digest([], "pre_open", data_quality_alert="every ticker scored an identical confidence")
+
+    html_body = email_calls[0][2]
+    assert "identical confidence" in html_body
 
 
 def test_notify_digest_auto_results_alone_still_sms_when_no_actionable(monkeypatch):

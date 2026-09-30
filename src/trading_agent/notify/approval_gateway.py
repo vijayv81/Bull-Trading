@@ -71,19 +71,38 @@ def notify_digest(
     already got every recommendation individually via notify(); this only
     fires for the "email"/"sms" channels.
 
+    Per user instruction 2026-09-30 ("crisp and mobile friendly ... only
+    show actionable items ... if any stock has no analysis info, it should
+    be skipped"):
+    - A recommendation with no real analysis behind it (blank `rationale` —
+      a research call that technically succeeded but produced no usable
+      summary) is dropped from the actionable list entirely, rather than
+      shown as an empty-looking entry.
+    - `failed_tickers` (orchestrator.run_checkpoint()'s per-ticker
+      research/scoring failures) is no longer shown in the email/SMS at
+      all — it isn't actionable, and it's already visible where it happens
+      (the checkpoint session's own console output); this digest is for
+      what a human needs to act on, not an error log.
+    - A checkpoint with nothing actionable, nothing auto-applied, and no
+      data-quality problem sends nothing at all, on either channel — same
+      "silence is fine on a quiet run" convention notify_pending_reminder()
+      already uses, rather than a "nothing to see here" email every time.
+    - The email carries a mobile-friendly HTML rendering (notify.html)
+      alongside the plain-text body senders.send_email() already sent —
+      plain text is unchanged as the fallback for clients that strip HTML.
+
     `auto_results` (execute.auto_pilot.auto_apply()'s return, when that's
-    enabled) gets its own section — a human reading this must be able to tell
-    a recommendation the system already acted on apart from one still waiting
-    on them, never have to guess. `failed_tickers` (orchestrator.run_checkpoint()'s
-    per-ticker research/scoring failures) gets one too, for the same reason: a
-    quiet checkpoint and a checkpoint that silently dropped half the watchlist
-    to a research API error must not read the same to a human skimming this.
+    enabled) gets its own section — a human reading this must be able to
+    tell a recommendation the system already acted on apart from one still
+    waiting on them, never have to guess.
 
     `data_quality_alert` (orchestrator._flat_confidence_alert()'s return) is
     printed to console unconditionally, independent of the configured
     notification channel — this is exactly the run where trusting only the
     "email" channel would be the mistake, so it can't be silenced by channel
-    config the way the rest of this function's output can.
+    config the way the rest of this function's output can. Unlike a quiet
+    checkpoint, this always sends even with nothing else actionable — it's
+    a warning, not routine noise.
 
     `portfolio.max_new_proposals_per_checkpoint` (declared from the start,
     never enforced anywhere until now) caps how many actionable
@@ -107,10 +126,14 @@ def notify_digest(
         return
 
     actionable = [r for r in recs if r.get("action") in ("BUY", "SELL")]
+    actionable = [r for r in actionable if (r.get("rationale") or "").strip()]
     total_actionable = len(actionable)
     max_proposals = load_risk_limits().get("portfolio", {}).get("max_new_proposals_per_checkpoint")
     if max_proposals:
         actionable = sorted(actionable, key=lambda r: r["confidence"], reverse=True)[:max_proposals]
+
+    if not actionable and not auto_results and not data_quality_alert:
+        return
 
     lines = [
         f"{r['action']} {r['ticker']} (confidence {r['confidence']}) — {r.get('rationale', '')[:120]}"
@@ -119,7 +142,7 @@ def notify_digest(
     subject = f"[Bull-Trading] {checkpoint}: {len(actionable)} recommendation(s)"
     if max_proposals and total_actionable > len(actionable):
         subject += f" (top {len(actionable)} of {total_actionable})"
-    body = "\n".join(lines) if lines else "No actionable recommendations this checkpoint (all HOLD, or nothing scored)."
+    body = "\n".join(lines) if lines else "No actionable recommendations this checkpoint."
     if max_proposals and total_actionable > len(actionable):
         body += (
             f"\n\n({total_actionable - len(actionable)} more actionable recommendation(s) this checkpoint, "
@@ -134,16 +157,13 @@ def notify_digest(
     if auto_results:
         body += "\n\nAuto-applied:\n" + "\n".join(_auto_result_line(r) for r in auto_results)
 
-    if failed_tickers:
-        body += "\n\nResearch failed (skipped, not scored):\n" + "\n".join(
-            f"- {f['ticker']}: {f['error'][:120]}" for f in failed_tickers
-        )
+    html_body = _digest_html(checkpoint, actionable, total_actionable, max_proposals, auto_results, data_quality_alert)
 
     if "email" in channels:
         try:
             from trading_agent.notify.senders import send_email
 
-            send_email(subject, body)
+            send_email(subject, body, html_body)
         except Exception as exc:  # noqa: BLE001 - a broken channel must not halt the routine
             print(f"NOTIFY (email) failed: {exc}")
 
@@ -165,6 +185,52 @@ def notify_digest(
             print(f"NOTIFY (sms) failed: {exc}")
 
 
+def _digest_html(
+    checkpoint: str,
+    actionable: list[dict[str, Any]],
+    total_actionable: int,
+    max_proposals: int | None,
+    auto_results: list[dict[str, Any]] | None,
+    data_quality_alert: str | None,
+) -> str:
+    from trading_agent.notify import html as h
+
+    inner = ""
+    if data_quality_alert:
+        inner += h.alert_banner(data_quality_alert)
+
+    if actionable:
+        inner += "".join(
+            h.rec_row(r["ticker"], r["action"], r["confidence"], (r.get("rationale") or "")[:160])
+            for r in actionable
+        )
+        if max_proposals and total_actionable > len(actionable):
+            inner += h.muted(
+                f"+{total_actionable - len(actionable)} more actionable this checkpoint, below the cap "
+                "shown here — run `trading-agent approvals list` for the full set."
+            )
+    else:
+        inner += h.muted("No actionable recommendations this checkpoint.")
+
+    if auto_results:
+        inner += h.section_heading("Auto-applied")
+        for r in auto_results:
+            if r["status"] == "submitted":
+                inner += (
+                    f'<div style="padding:6px 0;font-size:14px;">{h.chip("SUBMITTED", "positive")} '
+                    f'<b>{r["ticker"]}</b> qty={r["qty"]}</div>'
+                )
+            else:
+                inner += (
+                    f'<div style="padding:6px 0;font-size:14px;">{h.chip(r["status"].upper(), "neutral")} '
+                    f'<b>{r["ticker"]}</b> — {r.get("reason", "")[:120]}</div>'
+                )
+
+    subtitle = checkpoint.replace("_", " ").title()
+    title = "Data Quality Alert" if data_quality_alert else f"{len(actionable)} Actionable"
+    return h.wrap(title, subtitle, inner)
+
+
 def _auto_result_line(result: dict[str, Any]) -> str:
     status = result["status"]
     if status == "submitted":
@@ -176,6 +242,18 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
     """End-of-day learnings + benchmark comparison email/SMS (plan §12) — one
     per day, separate from notify_digest()'s per-checkpoint messages. `summary`
     is reporting.report_builder.build_daily_summary()'s return.
+
+    Per user instruction 2026-09-30 ("should be detailed and capture
+    everything done during the day by the agent" / "richer font n colors"):
+    beyond the portfolio-vs-benchmark comparison and journaled findings this
+    always had, the plain-text body now also covers the per-checkpoint
+    BUY/SELL/HOLD breakdown, approvals (human vs. auto), every trade
+    executed, and every auto-apply attempt regardless of outcome (not just
+    successes) — see reporting.report_builder.build_daily_summary()'s
+    docstring for where each of those fields comes from. The email also
+    carries a richly styled HTML rendering (notify.html) alongside the same
+    plain-text body senders.send_email() already sent; SMS is unchanged
+    (a carrier gateway has no use for either the detail or the color).
 
     Config-gated independently of the channel list itself:
     notifications.daily_summary_enabled (default true) — false is a one-line
@@ -203,6 +281,46 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
 
     lines.append(f"Recommendations: {summary['recommendations_count']} | Trades: {summary['trades_count']}")
 
+    by_checkpoint = summary.get("by_checkpoint") or {}
+    if by_checkpoint:
+        lines.append("")
+        lines.append("By checkpoint:")
+        for cp, counts in by_checkpoint.items():
+            lines.append(
+                f"- {cp}: {counts['total']} scored "
+                f"({counts['buy']} BUY / {counts['sell']} SELL / {counts['hold']} HOLD)"
+            )
+
+    approvals = summary.get("approvals") or {}
+    if approvals.get("approved") or approvals.get("rejected"):
+        lines.append("")
+        lines.append(
+            f"Approvals: {approvals.get('approved', 0)} approved "
+            f"({approvals.get('auto', 0)} auto / {approvals.get('human', 0)} human), "
+            f"{approvals.get('rejected', 0)} rejected"
+        )
+
+    trades = summary.get("trades") or []
+    lines.append("")
+    if trades:
+        lines.append("Trades executed:")
+        for t in trades:
+            lines.append(f"- {t['ticker']} {t['side']} qty={t['qty']} [{t['source']}, {t['checkpoint']}]")
+    else:
+        lines.append("No trades executed today.")
+
+    attempts = summary.get("auto_apply_attempts") or []
+    if attempts:
+        lines.append("")
+        lines.append("Auto-apply attempts:")
+        for a in attempts:
+            if a["status"] == "submitted":
+                lines.append(f"- {a['ticker']} [{a.get('checkpoint', '')}]: submitted qty={a.get('qty')}")
+            else:
+                lines.append(
+                    f"- {a['ticker']} [{a.get('checkpoint', '')}]: {a['status']} — {a.get('reason', '')[:120]}"
+                )
+
     entries = summary["journal_entries"]
     lines.append("")
     if entries:
@@ -217,12 +335,13 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
 
     subject = f"[Bull-Trading] Daily summary — {summary['day']}"
     body = "\n".join(lines)
+    html_body = _daily_summary_html(summary)
 
     if "email" in channels:
         try:
             from trading_agent.notify.senders import send_email
 
-            send_email(subject, body)
+            send_email(subject, body, html_body)
         except Exception as exc:  # noqa: BLE001 - a broken channel must not halt the routine
             print(f"NOTIFY (daily summary email) failed: {exc}")
 
@@ -240,6 +359,107 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
             send_sms(headline[:300])
         except Exception as exc:  # noqa: BLE001
             print(f"NOTIFY (daily summary sms) failed: {exc}")
+
+
+def _daily_summary_html(summary: dict[str, Any]) -> str:
+    from trading_agent.notify import html as h
+
+    portfolio_pct = summary["portfolio_return_pct"]
+    benchmark_pct = summary["benchmark_return_pct"]
+    outperformance_pct = summary["outperformance_pct"]
+    border = h.COLORS["border"]
+    muted = h.COLORS["muted"]
+
+    inner = ""
+    inner += h.stat_card("Portfolio return", h.signed_pct(portfolio_pct))
+    inner += h.stat_card(f"{summary['benchmark_symbol']} return", h.signed_pct(benchmark_pct))
+    if outperformance_pct is not None:
+        inner += h.stat_card(f"Vs. {summary['benchmark_symbol']}", h.signed_pct(outperformance_pct) + " pts")
+    if portfolio_pct is None or benchmark_pct is None:
+        inner += h.muted("One or both returns unavailable today — see the weekly report's P&L section instead.")
+
+    inner += h.section_heading("Activity")
+    inner += (
+        f'<div style="font-size:14px;padding:4px 0;">'
+        f"{summary['recommendations_count']} recommendations &middot; {summary['trades_count']} trades executed"
+        f"</div>"
+    )
+
+    by_checkpoint = summary.get("by_checkpoint") or {}
+    if by_checkpoint:
+        inner += h.section_heading("By checkpoint")
+        for cp, counts in by_checkpoint.items():
+            buy_chip = h.chip(f"{counts['buy']} BUY", "positive")
+            sell_chip = h.chip(f"{counts['sell']} SELL", "negative")
+            hold_chip = h.chip(f"{counts['hold']} HOLD", "neutral")
+            inner += (
+                f'<div style="padding:8px 0;font-size:14px;border-bottom:1px solid {border};">'
+                f'<b>{cp.replace("_", " ").title()}</b> — {counts["total"]} scored '
+                f'<span style="margin-left:6px;">{buy_chip}</span> '
+                f"<span>{sell_chip}</span> "
+                f"<span>{hold_chip}</span>"
+                f"</div>"
+            )
+
+    approvals = summary.get("approvals") or {}
+    if approvals.get("approved") or approvals.get("rejected"):
+        inner += h.section_heading("Approvals")
+        approved_chip = h.chip(f"{approvals.get('approved', 0)} approved", "positive")
+        rejected_chip = h.chip(f"{approvals.get('rejected', 0)} rejected", "negative")
+        inner += (
+            f'<div style="font-size:14px;padding:6px 0;">'
+            f"{approved_chip} "
+            f'<span style="color:{muted};">({approvals.get("auto", 0)} auto / '
+            f'{approvals.get("human", 0)} human)</span> &nbsp; '
+            f"{rejected_chip}"
+            f"</div>"
+        )
+
+    trades = summary.get("trades") or []
+    inner += h.section_heading("Trades executed")
+    if trades:
+        for t in trades:
+            side_kind = "positive" if (t.get("side") or "").lower() == "buy" else "negative"
+            inner += (
+                f'<div style="padding:8px 0;font-size:14px;border-bottom:1px solid {border};">'
+                f'{h.chip((t.get("side") or "").upper(), side_kind)} <b>{t.get("ticker")}</b> '
+                f'qty={t.get("qty")} <span style="color:{muted};">'
+                f'[{t.get("source")}, {t.get("checkpoint")}]</span></div>'
+            )
+    else:
+        inner += h.muted("No trades executed today.")
+
+    attempts = summary.get("auto_apply_attempts") or []
+    if attempts:
+        inner += h.section_heading("Auto-apply attempts")
+        status_kind = {"submitted": "positive", "refused": "negative", "error": "negative", "skipped": "neutral"}
+        for a in attempts:
+            detail = f"qty={a.get('qty')}" if a["status"] == "submitted" else (a.get("reason") or "")[:120]
+            inner += (
+                f'<div style="padding:8px 0;font-size:14px;border-bottom:1px solid {border};">'
+                f'{h.chip(a["status"].upper(), status_kind.get(a["status"], "neutral"))} '
+                f'<b>{a["ticker"]}</b> <span style="color:{muted};">[{a.get("checkpoint", "")}]</span> '
+                f"&mdash; {detail}</div>"
+            )
+
+    entries = summary["journal_entries"]
+    inner += h.section_heading("Findings")
+    if entries:
+        for e in entries:
+            outcome = e.get("outcome") or {}
+            verdict = outcome.get("directionally_correct")
+            verdict_kind = "positive" if verdict is True else ("negative" if verdict is False else "neutral")
+            verdict_label = {"positive": "CORRECT", "negative": "WRONG", "neutral": "N/A"}[verdict_kind]
+            inner += (
+                f'<div style="padding:8px 0;font-size:14px;border-bottom:1px solid {border};">'
+                f'{h.chip(verdict_label, verdict_kind)} <b>{e["ticker"]}</b> '
+                f'<span style="color:{muted};">[{e["checkpoint"]}] {e["decision"]}</span>'
+                f'<div style="margin-top:3px;">{e["reasoning"][:160]}</div></div>'
+            )
+    else:
+        inner += h.muted("No journaled decisions today.")
+
+    return h.wrap("Daily Summary", summary["day"], inner)
 
 
 def notify_weekly_report(report_path: Path) -> None:

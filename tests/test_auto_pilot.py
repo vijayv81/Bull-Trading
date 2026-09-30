@@ -3,6 +3,8 @@ own on/off switch and daily cap, and one candidate's failure must not stop
 the rest.
 """
 
+import json
+
 import pytest
 
 from trading_agent.execute import auto_pilot as ap
@@ -214,6 +216,40 @@ def test_zero_qty_is_skipped_not_submitted(monkeypatch):
     results = ap.auto_apply([_rec("TSLA", suggested_pct=0.0)], "pre_open")
     assert results[0]["status"] == "skipped"
     assert submitted == []
+
+
+def test_every_attempt_is_persisted_regardless_of_outcome(monkeypatch, tmp_path):
+    """data/trades/ used to only ever record a SUCCESSFUL auto-apply order
+    (orders_submitted.json) — a day of nothing-but-refusals was
+    indistinguishable from a day nothing was attempted. Every candidate
+    auto_apply() considers must now be persisted, refusals/skips/errors
+    included, so the daily summary can show what the agent actually did.
+    """
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled())
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+
+    def submit(rec, qty, source):
+        if rec["ticker"] == "REFUSED":
+            raise ap.OrderRefused("over the 5.0% cap")
+        return {"id": "x"}
+
+    monkeypatch.setattr(ap, "submit_approved_order", submit)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"ask_price": "100"})
+
+    recs = [
+        _rec("SUBMITTED", confidence=95),
+        _rec("REFUSED", confidence=90),
+        _rec("SKIPPED", confidence=80, suggested_pct=0.0),
+    ]
+    ap.auto_apply(recs, "pre_open")
+
+    saved = json.loads((tmp_path / "trades" / ap.today() / "auto_apply_attempts_pre_open.json").read_text())
+    by_ticker = {a["ticker"]: a for a in saved}
+    assert by_ticker["SUBMITTED"]["status"] == "submitted"
+    assert by_ticker["REFUSED"]["status"] == "refused"
+    assert by_ticker["SKIPPED"]["status"] == "skipped"
+    assert all(a["checkpoint"] == "pre_open" for a in saved)
 
 
 def test_one_candidate_error_does_not_stop_the_rest(monkeypatch):
