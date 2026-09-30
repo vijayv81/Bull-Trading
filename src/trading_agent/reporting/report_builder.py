@@ -35,6 +35,58 @@ def _day_trades(day: str) -> list[dict]:
     return load_json_list(path)
 
 
+def _day_auto_apply_attempts(day: str) -> list[dict]:
+    """Every candidate execute.auto_pilot.auto_apply() considered that day,
+    across all checkpoints — submitted, refused, skipped, or errored, not
+    just the successes _day_trades() already covers. See
+    auto_pilot._persist_attempt()'s docstring for why this exists: a day of
+    nothing-but-refusals used to be indistinguishable from a day nothing was
+    attempted.
+    """
+    items = []
+    day_path = TRADES_DIR / day
+    if day_path.exists():
+        for path in sorted(day_path.glob("auto_apply_attempts_*.json")):
+            items.extend(load_json_list(path))
+    return items
+
+
+_CHECKPOINTS = ("pre_open", "market_open", "midday", "pre_close")
+
+
+def _by_checkpoint_breakdown(recs: list[dict]) -> dict[str, dict[str, int]]:
+    """BUY/SELL/HOLD counts per checkpoint, in checkpoint order — a quick
+    "what did each checkpoint actually find" view for build_daily_summary(),
+    distinct from the flat recommendations_count it already reported.
+    """
+    breakdown = {}
+    for cp in _CHECKPOINTS:
+        cp_recs = [r for r in recs if r.get("checkpoint") == cp]
+        if not cp_recs:
+            continue
+        breakdown[cp] = {
+            "total": len(cp_recs),
+            "buy": sum(1 for r in cp_recs if r.get("action") == "BUY"),
+            "sell": sum(1 for r in cp_recs if r.get("action") == "SELL"),
+            "hold": sum(1 for r in cp_recs if r.get("action") == "HOLD"),
+        }
+    return breakdown
+
+
+def _approvals_summary(decisions: list[dict]) -> dict[str, int]:
+    """Approve/reject counts, split by who decided (terms.source == "auto"
+    vs. a human) — the same human/auto distinction data/trades/ already
+    tags submitted orders with, applied here to every decision recorded,
+    not just the ones that went on to execute.
+    """
+    return {
+        "approved": sum(1 for d in decisions if d.get("decision") == "approve"),
+        "rejected": sum(1 for d in decisions if d.get("decision") == "reject"),
+        "auto": sum(1 for d in decisions if (d.get("terms") or {}).get("source") == "auto"),
+        "human": sum(1 for d in decisions if (d.get("terms") or {}).get("source") != "auto"),
+    }
+
+
 def _unrealized_pnl() -> dict:
     """Live snapshot straight from Alpaca's own per-position figures — Alpaca
     already tracks unrealized P&L against real-time price and cost basis, so
@@ -272,10 +324,22 @@ def build_daily_summary(day: str | None = None) -> dict:
     build_daily_report()'s activity log. Pulls today's journaled reasoning and
     outcomes (data/journal/) as the "findings", and compares the account's
     own return today against BENCHMARK_SYMBOL's.
+
+    Per user instruction 2026-09-30 ("capture everything done during the day
+    by the agent"), also includes: a per-checkpoint BUY/SELL/HOLD breakdown
+    (`by_checkpoint`), every approve/reject decision split human vs. auto
+    (`approvals`), the day's executed trades (`trades`, ticker/side/qty/
+    source/checkpoint), and every auto-apply attempt regardless of outcome
+    (`auto_apply_attempts` — see auto_pilot._persist_attempt()), so a day
+    that was all refusals is visibly different from a quiet one instead of
+    the two looking identical.
     """
     from trading_agent.journal import load_entries
 
     day = day or today()
+    recs = _day_recs(day)
+    decisions = _day_decisions(day)
+    trades = _day_trades(day)
     entries = load_entries(day)
     marked_entries = [e for e in entries if e.get("outcome") is not None]
 
@@ -291,7 +355,20 @@ def build_daily_summary(day: str | None = None) -> dict:
         "benchmark_symbol": BENCHMARK_SYMBOL,
         "benchmark_return_pct": benchmark_pct,
         "outperformance_pct": outperformance_pct,
-        "recommendations_count": len(_day_recs(day)),
-        "trades_count": len(_day_trades(day)),
+        "recommendations_count": len(recs),
+        "trades_count": len(trades),
         "journal_entries": marked_entries,
+        "by_checkpoint": _by_checkpoint_breakdown(recs),
+        "approvals": _approvals_summary(decisions),
+        "trades": [
+            {
+                "ticker": t.get("order", {}).get("symbol"),
+                "side": t.get("order", {}).get("side"),
+                "qty": t.get("order", {}).get("qty"),
+                "source": t.get("source", "human"),
+                "checkpoint": t.get("recommendation", {}).get("checkpoint"),
+            }
+            for t in trades
+        ],
+        "auto_apply_attempts": _day_auto_apply_attempts(day),
     }

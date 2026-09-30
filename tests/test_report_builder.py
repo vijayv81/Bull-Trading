@@ -1,6 +1,7 @@
 import pytest
 
 from trading_agent.reporting import report_builder as rb
+from trading_agent.utils import append_json, day_dir
 
 
 def _order(symbol, side, filled_qty=None, filled_avg_price=None, submitted_at="2026-09-24T00:00:00+00:00"):
@@ -211,3 +212,65 @@ def test_build_daily_summary_combines_portfolio_benchmark_and_journal(monkeypatc
     assert summary["benchmark_symbol"] == "SPY"
     assert len(summary["journal_entries"]) == 1
     assert summary["journal_entries"][0]["ticker"] == "TSLA"
+
+
+def test_build_daily_summary_reports_everything_done_during_the_day(monkeypatch, tmp_path):
+    """Per user instruction 2026-09-30 ("capture everything done during the
+    day by the agent"): per-checkpoint breakdown, approvals (human vs auto),
+    executed trades, and every auto-apply attempt (not just successes)."""
+    monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
+    monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
+    monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account",
+        lambda: {"equity": "100000", "last_equity": "100000"},
+    )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_recent_bars",
+        lambda symbol, lookback_days=5: [{"close": 500.0}, {"close": 500.0}],
+    )
+    monkeypatch.setattr("trading_agent.journal.load_entries", lambda day: [])
+
+    day = "2026-09-24"
+    append_json(
+        day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json",
+        {"ticker": "TSLA", "checkpoint": "pre_open", "action": "BUY", "confidence": 90},
+    )
+    append_json(
+        day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json",
+        {"ticker": "GOOG", "checkpoint": "pre_open", "action": "HOLD", "confidence": 40},
+    )
+    append_json(
+        day_dir(rb.APPROVALS_DIR, day) / "decisions_pre_open.json",
+        {"ticker": "TSLA", "decision": "approve", "terms": {"source": "auto", "qty": 5}},
+    )
+    append_json(
+        day_dir(rb.APPROVALS_DIR, day) / "decisions_pre_open.json",
+        {"ticker": "GOOG", "decision": "reject", "terms": {}},
+    )
+    append_json(
+        day_dir(rb.TRADES_DIR, day) / "orders_submitted.json",
+        {
+            "order": {"symbol": "TSLA", "side": "buy", "qty": 5},
+            "source": "auto",
+            "recommendation": {"checkpoint": "pre_open"},
+        },
+    )
+    append_json(
+        day_dir(rb.TRADES_DIR, day) / "auto_apply_attempts_pre_open.json",
+        {"ticker": "TSLA", "status": "submitted", "qty": 5, "checkpoint": "pre_open"},
+    )
+    append_json(
+        day_dir(rb.TRADES_DIR, day) / "auto_apply_attempts_pre_open.json",
+        {"ticker": "GOOG", "status": "refused", "reason": "over the 5.0% cap", "checkpoint": "pre_open"},
+    )
+
+    summary = rb.build_daily_summary(day)
+
+    assert summary["by_checkpoint"] == {"pre_open": {"total": 2, "buy": 1, "sell": 0, "hold": 1}}
+    assert summary["approvals"] == {"approved": 1, "rejected": 1, "auto": 1, "human": 1}
+    assert summary["trades"] == [
+        {"ticker": "TSLA", "side": "buy", "qty": 5, "source": "auto", "checkpoint": "pre_open"}
+    ]
+    statuses = {a["ticker"]: a["status"] for a in summary["auto_apply_attempts"]}
+    assert statuses == {"TSLA": "submitted", "GOOG": "refused"}

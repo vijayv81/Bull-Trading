@@ -26,12 +26,32 @@ from typing import Any
 from trading_agent.config import TRADES_DIR, load_risk_limits
 from trading_agent.execute.order_manager import OrderRefused, submit_approved_order
 from trading_agent.notify.approval_gateway import record_decision
-from trading_agent.utils import load_json_list, today
+from trading_agent.utils import append_json, day_dir, load_json_list, today
 
 
 def _todays_auto_trade_count(day: str | None = None) -> int:
     path = TRADES_DIR / (day or today()) / "orders_submitted.json"
     return sum(1 for t in load_json_list(path) if t.get("source") == "auto")
+
+
+def _persist_attempt(result: dict[str, Any], checkpoint: str) -> None:
+    """Every candidate auto_apply() considers — submitted, refused, skipped,
+    or errored — used to live only in this function's return value, read
+    once by notify_digest() for that single checkpoint's email and then
+    gone. That made "what did auto-apply actually try today" unanswerable
+    after the fact — data/trades/ only ever recorded successes
+    (orders_submitted.json), so a day of nothing-but-refusals looked
+    identical to a day nothing was attempted. Persisted here so
+    reporting.report_builder.build_daily_summary() can show the full
+    picture, refusals included, not just what went through. Best-effort:
+    a write failure is logged, never allowed to turn a real submission
+    result into an error.
+    """
+    try:
+        path = day_dir(TRADES_DIR) / f"auto_apply_attempts_{checkpoint}.json"
+        append_json(path, {**result, "checkpoint": checkpoint})
+    except Exception as exc:  # noqa: BLE001 - a broken audit write must not affect the real outcome
+        print(f"Could not persist auto-apply attempt for {result.get('ticker')}: {exc}")
 
 
 def _journal_auto_decision(rec: dict[str, Any], checkpoint: str) -> None:
@@ -146,16 +166,24 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
             price = float(quote.get("ask_price") or quote.get("bid_price") or 0.0)
             qty = qty_for_recommendation(rec, equity, price)
             if qty <= 0:
-                results.append({"ticker": rec["ticker"], "status": "skipped", "reason": "computed qty is 0"})
+                result = {"ticker": rec["ticker"], "status": "skipped", "reason": "computed qty is 0"}
+                results.append(result)
+                _persist_attempt(result, checkpoint)
                 continue
 
             record_decision(rec["ticker"], checkpoint, "approve", {"qty": qty, "source": "auto"})
             order = submit_approved_order(rec, qty, source="auto")
             _journal_auto_decision(rec, checkpoint)
-            results.append({"ticker": rec["ticker"], "status": "submitted", "qty": qty, "order": order})
+            result = {"ticker": rec["ticker"], "status": "submitted", "qty": qty, "order": order}
+            results.append(result)
+            _persist_attempt(result, checkpoint)
         except OrderRefused as exc:
-            results.append({"ticker": rec["ticker"], "status": "refused", "reason": str(exc)})
+            result = {"ticker": rec["ticker"], "status": "refused", "reason": str(exc)}
+            results.append(result)
+            _persist_attempt(result, checkpoint)
         except Exception as exc:  # noqa: BLE001 - one candidate's failure must not stop the rest
-            results.append({"ticker": rec["ticker"], "status": "error", "reason": str(exc)})
+            result = {"ticker": rec["ticker"], "status": "error", "reason": str(exc)}
+            results.append(result)
+            _persist_attempt(result, checkpoint)
 
     return results

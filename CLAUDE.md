@@ -115,6 +115,24 @@ over the same window. Either return being unavailable (Alpaca unreachable, or
 insufficient benchmark bars) is reported as unavailable, never guessed at or
 silently shown as 0%.
 
+**Detailed and richly styled**, per user instruction 2026-09-30 ("should be
+detailed and capture everything done during the day ... richer font n
+colors"): `build_daily_summary()` now also includes a per-checkpoint
+BUY/SELL/HOLD breakdown, approvals split human vs. auto, every trade
+executed, and — new — **every auto-apply attempt regardless of outcome**,
+not just the successes `data/trades/<date>/orders_submitted.json` already
+recorded. `execute/auto_pilot.py:_persist_attempt()` writes each candidate's
+submitted/refused/skipped/error result to
+`data/trades/<date>/auto_apply_attempts_<checkpoint>.json` as it happens —
+previously that information only ever lived in `auto_apply()`'s return
+value for that one checkpoint's `notify_digest()` call, then was gone, so a
+day of nothing-but-refusals was indistinguishable after the fact from a day
+nothing was attempted. The email itself gets a richly styled HTML rendering
+(`notify/html.py`'s `stat_card`/`chip`/`signed_pct` helpers — colored
+positive/negative figures, section headers, status pills) alongside the
+same (now longer) plain-text body; SMS is unchanged, a carrier gateway has
+no use for either the extra detail or the color.
+
 `trading-agent weekly-report` builds `reporting/report_builder.py`'s weekly
 markdown rollup (`reports/weekly/<year>-W<week>.md`) *and* emails/SMS it —
 `build_weekly_report()` itself only ever wrote the file; nothing sent it
@@ -151,6 +169,21 @@ confidence, so a mover-heavy checkpoint surfacing a dozen actionable calls
 doesn't read like a dozen equally-urgent texts (the subject line notes
 `(top N of total)`). This is a display cap only — every recommendation is
 still written to `data/recommendations/` regardless; unset/zero means no cap.
+
+**Crisp and actionable-only**, per user instruction 2026-09-30: `notify_digest()`
+now only ever shows actionable (BUY/SELL) items, drops any recommendation with
+a blank `rationale` (a research call that technically succeeded but produced
+no usable summary — "no analysis info" is skipped, not shown as an empty
+entry), and never mentions `failed_tickers` (research errors — not actionable,
+already visible in that checkpoint session's own console output) in the
+email/SMS body at all. A checkpoint with nothing actionable, nothing
+auto-applied, and no data-quality alert now sends **nothing**, on either
+channel — same "silence is fine on a quiet run" convention
+`notify_pending_reminder()` already used. The email also carries a
+mobile-friendly HTML rendering (`notify/html.py` — inline styles only, no
+external CSS/webfonts, so it renders consistently in Gmail/Apple Mail on a
+phone) alongside the plain-text body `senders.send_email()` already sent;
+plain text remains the fallback for clients that strip HTML.
 
 ## Approval + execution (hard requirement, plan §8)
 
