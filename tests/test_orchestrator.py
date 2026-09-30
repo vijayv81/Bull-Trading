@@ -95,6 +95,30 @@ def test_all_tickers_succeeding_reports_no_failures(monkeypatch):
     assert digest_calls[0]["failed_tickers"] == []
 
 
+def test_movers_losers_are_researched_alongside_gainers(monkeypatch):
+    """get_market_movers() has always fetched both gainers and losers, but
+    only gainers were ever added to the research universe — 100% biased
+    toward names already up, and the same narrow slice of tickers
+    dominating day after day. Both must now seed candidates."""
+    monkeypatch.setattr(
+        orch, "get_market_movers",
+        lambda: {
+            "gainers": [{"symbol": "GAINER"}],
+            "losers": [{"symbol": "LOSER"}],
+        },
+    )
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    digest_calls = _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    assert {r["ticker"] for r in results} == {"GOOD", "BAD", "GAINER", "LOSER"}
+    assert digest_calls[0]["failed_tickers"] == []
+
+
 def test_all_tickers_failing_still_completes_with_empty_results(monkeypatch):
     def research(ticker, checkpoint):
         raise TimeoutError("Perplexity timed out")

@@ -182,8 +182,17 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     # Movers only *seed* candidates (plan §4) — they go through the exact same
     # research, scoring, and (if enabled) auto_apply path as the core
     # watchlist. A mover isn't inherently more or less trusted than a
-    # watchlist ticker; nothing here treats it specially.
+    # watchlist ticker; nothing here treats it specially. Both gainers AND
+    # losers — get_market_movers() has always fetched both, but only
+    # gainers were ever used here, so the candidate universe was 100% biased
+    # toward names already up (compounding the momentum-chasing risk
+    # MOMENTUM_CAP exists to bound, not counteracting it) and the same
+    # narrow slice of tickers dominated day after day. Per user instruction
+    # 2026-09-30 ("ensure assessment is done broadly"). A loser goes through
+    # the exact same scoring as a gainer — nothing here assumes a falling
+    # price means a buy OR a sell, `technical_score()` still decides that.
     watchlist_tickers |= {m["symbol"] for m in movers.get("gainers", [])[:10] if "symbol" in m}
+    watchlist_tickers |= {m["symbol"] for m in movers.get("losers", [])[:10] if "symbol" in m}
     # Never research, score, or propose an options contract, whatever the source.
     watchlist_tickers = {t for t in watchlist_tickers if not is_option_symbol(t)}
 

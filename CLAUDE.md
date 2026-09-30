@@ -466,6 +466,21 @@ historical archive of research text to derive them from — only `technical`
 (and, on a held position, the P&L-driven sell-pressure bias) is exercised.
 `trading-agent backtest` prints both functions' results side by side.
 
+## Broader candidate sourcing: losers, not just gainers
+
+`data.alpaca_client.get_market_movers()` has always fetched both `gainers`
+and `losers` from Alpaca's screener, but `orchestrator.run_checkpoint()`
+only ever added the top-10 *gainers* to the research universe — the
+candidate set was 100% biased toward names already up, compounding the
+momentum-chasing risk `MOMENTUM_CAP` exists to bound rather than
+counteracting it, and (combined with the static 5-ticker `watchlist.yaml`
+and continuous position monitoring below) the same narrow slice of tickers
+dominated day after day. Per user instruction 2026-09-30 ("ensure
+assessment is done broadly"): the top-10 *losers* now seed candidates too,
+through the exact same research/scoring/auto-apply path as everything
+else — nothing here assumes a falling price means a buy or a sell,
+`technical_score()` still decides that per ticker, same as always.
+
 ## Continuous position monitoring (plan §6)
 
 Every checkpoint's research universe used to be exactly `watchlist.yaml` +
