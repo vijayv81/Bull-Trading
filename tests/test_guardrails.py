@@ -350,6 +350,41 @@ def test_sector_reason_fails_closed_when_account_unreadable(sector_cap, monkeypa
     assert "refusing to proceed blind" in reason
 
 
+# --- min_confidence_to_buy backstop -------------------------------------------
+
+
+def test_min_confidence_reason_none_for_sell(monkeypatch):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"position": {"min_confidence_to_buy": 85}})
+    # A SELL can legitimately fire at any confidence (a stop-loss exit is a
+    # risk-management call, not a fresh conviction one) — never gated here.
+    assert g.min_confidence_reason("TSLA", "SELL", confidence=10) is None
+
+
+def test_min_confidence_reason_passes_at_or_above_bar(monkeypatch):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"position": {"min_confidence_to_buy": 85}})
+    assert g.min_confidence_reason("TSLA", "BUY", confidence=85) is None
+    assert g.min_confidence_reason("TSLA", "BUY", confidence=99) is None
+
+
+def test_min_confidence_reason_refuses_below_bar(monkeypatch):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"position": {"min_confidence_to_buy": 85}})
+    reason = g.min_confidence_reason("TSLA", "BUY", confidence=84.9)
+    assert "84.9" in reason
+    assert "85" in reason
+
+
+def test_min_confidence_reason_defaults_to_85_when_unset(monkeypatch):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"position": {}})
+    assert g.min_confidence_reason("TSLA", "BUY", confidence=84) is not None
+    assert g.min_confidence_reason("TSLA", "BUY", confidence=85) is None
+
+
+def test_min_confidence_reason_fails_closed_when_confidence_missing(monkeypatch):
+    monkeypatch.setattr(g, "load_risk_limits", lambda: {"position": {"min_confidence_to_buy": 85}})
+    reason = g.min_confidence_reason("TSLA", "BUY", confidence=None)
+    assert "refusing to proceed blind" in reason
+
+
 # --- no short positions, ever ------------------------------------------------
 
 

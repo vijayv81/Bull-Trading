@@ -15,7 +15,8 @@ def isolated(monkeypatch):
     monkeypatch.setattr(orch, "load_watchlist", lambda: ["GOOD", "BAD"])
     monkeypatch.setattr(orch, "get_market_movers", lambda: {"gainers": []})
     monkeypatch.setattr(orch, "get_positions", lambda: [])
-    monkeypatch.setattr(orch, "get_recent_bars", lambda ticker: [])
+    monkeypatch.setattr(orch, "get_recent_bars", lambda ticker, **kwargs: [])
+    monkeypatch.setattr(orch, "get_market_return_pct", lambda symbol: None)
     monkeypatch.setattr(orch, "technical_score", lambda bars: 0.5)
     monkeypatch.setattr(orch, "save_recommendation", lambda rec: None)
     monkeypatch.setattr(orch, "auto_apply", lambda recs, checkpoint: [])
@@ -67,7 +68,7 @@ def test_failure_in_bars_or_scoring_is_also_isolated(monkeypatch):
         lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
     )
 
-    def flaky_bars(ticker):
+    def flaky_bars(ticker, **kwargs):
         if ticker == "BAD":
             raise RuntimeError("alpaca data unavailable")
         return []
@@ -91,6 +92,30 @@ def test_all_tickers_succeeding_reports_no_failures(monkeypatch):
     results = orch.run_checkpoint("pre_open")
 
     assert {r["ticker"] for r in results} == {"GOOD", "BAD"}
+    assert digest_calls[0]["failed_tickers"] == []
+
+
+def test_movers_losers_are_researched_alongside_gainers(monkeypatch):
+    """get_market_movers() has always fetched both gainers and losers, but
+    only gainers were ever added to the research universe — 100% biased
+    toward names already up, and the same narrow slice of tickers
+    dominating day after day. Both must now seed candidates."""
+    monkeypatch.setattr(
+        orch, "get_market_movers",
+        lambda: {
+            "gainers": [{"symbol": "GAINER"}],
+            "losers": [{"symbol": "LOSER"}],
+        },
+    )
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    digest_calls = _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    assert {r["ticker"] for r in results} == {"GOOD", "BAD", "GAINER", "LOSER"}
     assert digest_calls[0]["failed_tickers"] == []
 
 
@@ -121,7 +146,9 @@ def test_technical_is_none_when_bars_insufficient(monkeypatch):
         orch, "research_ticker",
         lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
     )
-    monkeypatch.setattr(orch, "get_recent_bars", lambda ticker: [{"close": 1.0}] * 10)  # < MIN_BARS_FOR_TECHNICAL
+    monkeypatch.setattr(
+        orch, "get_recent_bars", lambda ticker, **kwargs: [{"close": 1.0}] * 10
+    )  # < MIN_BARS_FOR_TECHNICAL
     monkeypatch.setattr(orch, "technical_score", lambda bars: pytest.fail("must not be called"))
     seen_technical = []
     monkeypatch.setattr(
@@ -341,3 +368,114 @@ def test_sentiment_and_catalyst_none_when_research_text_has_no_signal(monkeypatc
     sentiment, catalyst = seen["GOOD"]
     assert sentiment is None
     assert catalyst is None
+
+
+# --- held positions get their own, earlier pass (react faster on exits) --------
+
+
+def test_held_positions_are_researched_and_auto_applied_before_watchlist(monkeypatch):
+    """2026-09-29: every stop-loss-triggered SELL that day was refused,
+    almost certainly on staleness — held positions sat researched-but-
+    unexecuted for minutes while the rest of a long watchlist/movers batch
+    was still being researched. Held positions must now be scored, and have
+    auto_apply() called on them, in their own pass BEFORE the watchlist/
+    movers batch is even researched, so their price/technical re-check at
+    execution time is as fresh as possible.
+    """
+    monkeypatch.setattr(orch, "get_positions", lambda: [{"symbol": "HELD", "unrealized_plpc": "-0.1"}])
+    research_order = []
+
+    def research(ticker, checkpoint):
+        research_order.append(ticker)
+        return {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []}
+
+    monkeypatch.setattr(orch, "research_ticker", research)
+
+    auto_apply_batches = []
+    monkeypatch.setattr(
+        orch, "auto_apply",
+        lambda recs, checkpoint: auto_apply_batches.append([r["ticker"] for r in recs]) or [],
+    )
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    assert research_order[0] == "HELD"
+    assert set(research_order[1:]) == {"GOOD", "BAD"}
+    # auto_apply is called once for the held-position batch, then once more
+    # for the watchlist batch — not a single combined call at the end.
+    assert auto_apply_batches == [["HELD"], ["BAD", "GOOD"]]
+
+
+def test_auto_apply_not_called_for_an_empty_batch(monkeypatch):
+    # No held positions at all (the fixture default: get_positions -> []) —
+    # auto_apply must be called exactly once, for the watchlist batch, never
+    # a spurious extra call for an empty held-positions batch.
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    auto_apply_batches = []
+    monkeypatch.setattr(
+        orch, "auto_apply",
+        lambda recs, checkpoint: auto_apply_batches.append([r["ticker"] for r in recs]) or [],
+    )
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    assert len(auto_apply_batches) == 1
+    assert set(auto_apply_batches[0]) == {"GOOD", "BAD"}
+
+
+# --- market_return_pct: read once per checkpoint, forwarded to every ticker ----
+
+
+def test_market_return_pct_fetched_once_and_forwarded_to_every_ticker(monkeypatch):
+    calls = {"count": 0}
+
+    def fake_market_return(symbol):
+        calls["count"] += 1
+        assert symbol == "SPY"
+        return -1.5
+
+    monkeypatch.setattr(orch, "get_market_return_pct", fake_market_return)
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    seen = {}
+
+    def fake_score(**kwargs):
+        seen[kwargs["ticker"]] = kwargs["market_return_pct"]
+        return {"ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"], "action": "HOLD", "confidence": 50}
+
+    monkeypatch.setattr(orch, "score_candidate", fake_score)
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    assert calls["count"] == 1  # not once per ticker
+    assert seen == {"GOOD": -1.5, "BAD": -1.5}
+
+
+def test_long_term_trend_computed_and_forwarded_to_score_candidate(monkeypatch):
+    # Bars are short (the fixture default: []), so the real long_term_trend()
+    # correctly reports None — but it must actually be called and forwarded,
+    # not silently dropped from the score_candidate() call.
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    seen = {}
+
+    def fake_score(**kwargs):
+        seen[kwargs["ticker"]] = kwargs["long_term_trend_ctx"]
+        return {"ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"], "action": "HOLD", "confidence": 50}
+
+    monkeypatch.setattr(orch, "score_candidate", fake_score)
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    assert seen == {"GOOD": None, "BAD": None}

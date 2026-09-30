@@ -28,13 +28,43 @@ position:
   take_profit_pct: 8.0
   min_confidence_to_notify: 50 # below this, don't even surface a notification
 
+  # A materially higher bar than min_confidence_to_notify — per user
+  # instruction 2026-09-30, a purchase needs real conviction, not just
+  # "better than a coin flip". Enforced TWICE: recommendation_engine.
+  # score_candidate() reports HOLD instead of BUY below this at scoring
+  # time, and guardrails.min_confidence_reason() is the execution-time
+  # backstop (belt-and-suspenders, same as every other guardrail pair in
+  # this file). Applies to BUY only — a SELL (including a stop-loss/
+  # take-profit exit, which can legitimately fire at low confidence) is
+  # never gated by this; requiring conviction to buy more is not the same
+  # as requiring it to cut a loss.
+  min_confidence_to_buy: 85
+
   # When true (default), suggested_size_pct_of_portfolio scales linearly from
-  # min_position_pct_of_portfolio at the notify threshold up to
-  # max_position_pct_of_portfolio at confidence 100 — a just-over-threshold
-  # call gets the floor, not the cap. false reverts to the original flat
-  # behavior (always exactly the cap for any actionable rec), a one-line
-  # revert with no code change. recommendation_engine.py:_suggested_size_pct().
+  # a floor confidence up to max_position_pct_of_portfolio at confidence 100
+  # — a just-over-the-floor call gets the floor, not the cap. The floor is
+  # min_confidence_to_buy for a BUY, min_confidence_to_notify for a SELL —
+  # see recommendation_engine.py:_suggested_size_pct(). false reverts to the
+  # original flat behavior (always exactly the cap for any actionable rec),
+  # a one-line revert with no code change.
   confidence_scaled_sizing: true
+
+  # Dampens (never fully suppresses) a stop-loss-triggered SELL — never a
+  # take-profit one — when BOTH the broader market is genuinely down AND the
+  # position's own long-term (30-day/52-week, see recommendation_engine.
+  # long_term_trend()) trend is still bullish: per user instruction
+  # 2026-09-30, a stock with a real uptrend shouldn't be sold on an
+  # intermittent drop that's really the whole market having a bad day. false
+  # is a one-line revert to undampened stop-loss behavior, unconditionally,
+  # same convention as mandatory_stop_loss.
+  market_regime_stop_loss_dampening: true
+  # The benchmark's (SPY) own same-day return has to be at or below negative
+  # this for "the market is down" to apply.
+  market_regime_down_threshold_pct: 1.0
+  # sell_pressure is multiplied by this (not zeroed) when the conditions
+  # above are met — a broad-market day doesn't fully rule out real
+  # stock-specific weakness either.
+  market_regime_dampening_factor: 0.4
 
 portfolio:
   starting_paper_capital_usd: 100000 # plan §12 open decision — set to your actual paper account size

@@ -25,6 +25,7 @@ def guardrails_satisfied(monkeypatch):
     """
     monkeypatch.setattr(om, "daily_loss_reason", lambda: None)
     monkeypatch.setattr(om, "daily_trade_count_reason", lambda: None)
+    monkeypatch.setattr(om, "min_confidence_reason", lambda ticker, side, confidence: None)
     monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty: None)
     monkeypatch.setattr(om, "position_count_reason", lambda ticker, side: None)
     monkeypatch.setattr(om, "sector_concentration_reason", lambda ticker, side, qty: None)
@@ -141,6 +142,25 @@ def test_options_contract_refused_before_any_approval_lookup(monkeypatch):
     option = {"ticker": "AAPL240119C00150000", "checkpoint": "midday", "action": "BUY"}
     with pytest.raises(om.OrderRefused, match="never trades options"):
         om.submit_approved_order(option, qty=1)
+
+
+def test_min_confidence_breach_refuses_before_any_approval_lookup(monkeypatch):
+    """Backstop for the min_confidence_to_buy bar score_candidate() already
+    enforces at scoring time — must refuse a low-confidence BUY without even
+    reaching the approval lookup, same as the options ban above."""
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+
+    def fail(*args, **kwargs):
+        raise AssertionError("should have been refused before the approval lookup")
+
+    monkeypatch.setattr(om, "get_decision", fail)
+    monkeypatch.setattr(
+        om, "min_confidence_reason",
+        lambda ticker, side, confidence: f"{ticker} confidence {confidence} is below the 85% bar required to buy.",
+    )
+    low_confidence_rec = {"ticker": "TSLA", "checkpoint": "midday", "action": "BUY", "confidence": 60}
+    with pytest.raises(om.OrderRefused, match="below the 85% bar"):
+        om.submit_approved_order(low_confidence_rec, qty=1)
 
 
 def test_daily_loss_breach_refuses(monkeypatch):

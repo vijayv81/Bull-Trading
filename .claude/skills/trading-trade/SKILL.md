@@ -114,6 +114,15 @@ erroring. Read the reason back to the user in plain language and stop there:
   makes the error go away.
 - **Over the 5% per-position cap** — includes what they already hold in that
   symbol. Offer the qty that fits, and let them choose it.
+- **Below the minimum confidence to buy** (`position.min_confidence_to_buy`,
+  85 by default) — this should be rare to see here at all, since
+  `score_candidate()` reports a bullish call below this bar as `HOLD`, never
+  `BUY`, so it normally never reaches approval in the first place. If it
+  does (an older record, or one from an ad hoc `chat` session), it's not
+  fixable by re-approving the same recommendation — tell them the checkpoint
+  needs a fresh run, or that this specific idea doesn't clear the bar they've
+  set for buying. Never applies to a SELL, including a stop-loss/take-profit
+  exit — those can legitimately fire at any confidence.
 - **Over the concurrent-positions cap** — opening this symbol would exceed
   `position.max_concurrent_positions` distinct positions at once. Adding to a
   symbol already held is never blocked by this one — only a brand-new

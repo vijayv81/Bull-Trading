@@ -21,13 +21,20 @@ from typing import Any
 import pandas as pd
 
 from trading_agent.config import load_watchlist
-from trading_agent.data.alpaca_client import get_market_movers, get_positions, get_recent_bars
+from trading_agent.data.alpaca_client import (
+    get_market_movers,
+    get_market_return_pct,
+    get_positions,
+    get_recent_bars,
+)
 from trading_agent.execute.auto_pilot import auto_apply
 from trading_agent.guardrails import RoutineHalted, daily_loss_reason, is_option_symbol
 from trading_agent.notify.approval_gateway import notify_digest, save_recommendation
 from trading_agent.research.perplexity_client import research_ticker
 from trading_agent.scoring.recommendation_engine import (
     MIN_BARS_FOR_TECHNICAL,
+    TREND_FETCH_CALENDAR_DAYS,
+    long_term_trend,
     score_candidate,
     technical_score,
 )
@@ -88,41 +95,27 @@ def _held_position_pnl_pct() -> dict[str, float]:
         return {}
 
 
-def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> list[dict[str, Any]]:
-    if checkpoint not in VALID_CHECKPOINTS:
-        raise ValueError(f"Unknown checkpoint {checkpoint!r} — expected one of {VALID_CHECKPOINTS}")
-
-    # Halt before spending any research budget: past the daily loss cap there is
-    # nothing this checkpoint should be proposing.
-    halt = daily_loss_reason()
-    if halt:
-        raise RoutineHalted(halt)
-
-    held_pnl = _held_position_pnl_pct()
-
-    tickers = set(load_watchlist()) | set(extra_tickers or [])
-    movers = get_market_movers()
-    # Movers only *seed* candidates (plan §4) — they go through the exact same
-    # research, scoring, and (if enabled) auto_apply path as the core
-    # watchlist. A mover isn't inherently more or less trusted than a
-    # watchlist ticker; nothing here treats it specially.
-    tickers |= {m["symbol"] for m in movers.get("gainers", [])[:10] if "symbol" in m}
-    # Continuous monitoring: anything currently held stays in the research
-    # universe every checkpoint regardless of watchlist/movers, so a position
-    # bought today (possibly not on the watchlist at all) never silently
-    # drops out of scoring the moment it stops being a "mover" — without
-    # this, no future checkpoint would ever propose a SELL for it again.
-    tickers |= set(held_pnl)
-    # Never research, score, or propose an options contract, whatever the source.
-    tickers = {t for t in tickers if not is_option_symbol(t)}
-
-    results = []
-    failed_tickers = []
-    for ticker in sorted(tickers):
+def _score_tickers(
+    tickers: list[str],
+    checkpoint: str,
+    held_pnl: dict[str, float],
+    market_return_pct: float | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """The research -> bars -> score body for one batch of tickers — shared
+    by run_checkpoint()'s two passes (held positions, then watchlist/movers;
+    see run_checkpoint() for why the split exists) so it isn't duplicated.
+    """
+    results: list[dict[str, Any]] = []
+    failed_tickers: list[dict[str, Any]] = []
+    for ticker in tickers:
         try:
             research = research_ticker(ticker, checkpoint)
 
-            bars = pd.DataFrame(get_recent_bars(ticker))
+            # TREND_FETCH_CALENDAR_DAYS (~52 weeks) instead of just enough for
+            # MIN_BARS_FOR_TECHNICAL's SMA window, so technical_score() and
+            # long_term_trend() share one Alpaca bars fetch per ticker rather
+            # than needing two.
+            bars = pd.DataFrame(get_recent_bars(ticker, lookback_days=TREND_FETCH_CALENDAR_DAYS))
             # Fewer bars than the SMA window means technical_score() would only
             # ever return its neutral 0.5 fallback — that's not a real reading,
             # so score_candidate() must exclude it (None) rather than treat a
@@ -133,6 +126,9 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             # order submission can catch the market having moved since
             # (guardrails.stale_recommendation_reason()).
             reference_price = float(bars["close"].iloc[-1]) if have_bars else None
+            # None below MIN_BARS_FOR_TREND (its own, stricter bar count) —
+            # long_term_trend() handles that itself, no extra guard needed here.
+            trend = long_term_trend(bars)
 
             headline_text = research.get("headline_summary") or ""
             rec = score_candidate(
@@ -148,6 +144,8 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
                 catalyst=catalyst_score(headline_text),
                 position_pnl_pct=held_pnl.get(ticker),
                 reference_price=reference_price,
+                long_term_trend_ctx=trend,
+                market_return_pct=market_return_pct,
             )
             rec["rationale"] = (research.get("headline_summary") or "")[:280]
             rec["sources"] = research.get("sources", [])
@@ -158,18 +156,90 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
         except Exception as exc:  # noqa: BLE001 - one ticker's failure must not kill the checkpoint
             failed_tickers.append({"ticker": ticker, "error": str(exc)})
             print(f"SKIPPED {ticker}: research/scoring failed — {exc}")
+    return results, failed_tickers
 
-    data_quality_alert = _flat_confidence_alert(results)
-    if data_quality_alert:
-        print(f"DATA QUALITY ALERT: {data_quality_alert}")
-        auto_results: list[dict[str, Any]] = []
-    else:
-        auto_results = auto_apply(results, checkpoint)
+
+def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> list[dict[str, Any]]:
+    if checkpoint not in VALID_CHECKPOINTS:
+        raise ValueError(f"Unknown checkpoint {checkpoint!r} — expected one of {VALID_CHECKPOINTS}")
+
+    # Halt before spending any research budget: past the daily loss cap there is
+    # nothing this checkpoint should be proposing.
+    halt = daily_loss_reason()
+    if halt:
+        raise RoutineHalted(halt)
+
+    held_pnl = _held_position_pnl_pct()
+    # Read once per checkpoint (not once per ticker) and handed to every held
+    # position's scoring call for score_candidate()'s market-regime stop-loss
+    # dampening. Best-effort, same tolerance as every other Alpaca read here:
+    # an unreadable benchmark degrades to "no regime context" (None), never
+    # blocks the checkpoint.
+    market_return_pct = get_market_return_pct("SPY")
+
+    watchlist_tickers = set(load_watchlist()) | set(extra_tickers or [])
+    movers = get_market_movers()
+    # Movers only *seed* candidates (plan §4) — they go through the exact same
+    # research, scoring, and (if enabled) auto_apply path as the core
+    # watchlist. A mover isn't inherently more or less trusted than a
+    # watchlist ticker; nothing here treats it specially. Both gainers AND
+    # losers — get_market_movers() has always fetched both, but only
+    # gainers were ever used here, so the candidate universe was 100% biased
+    # toward names already up (compounding the momentum-chasing risk
+    # MOMENTUM_CAP exists to bound, not counteracting it) and the same
+    # narrow slice of tickers dominated day after day. Per user instruction
+    # 2026-09-30 ("ensure assessment is done broadly"). A loser goes through
+    # the exact same scoring as a gainer — nothing here assumes a falling
+    # price means a buy OR a sell, `technical_score()` still decides that.
+    watchlist_tickers |= {m["symbol"] for m in movers.get("gainers", [])[:10] if "symbol" in m}
+    watchlist_tickers |= {m["symbol"] for m in movers.get("losers", [])[:10] if "symbol" in m}
+    # Never research, score, or propose an options contract, whatever the source.
+    watchlist_tickers = {t for t in watchlist_tickers if not is_option_symbol(t)}
+
+    # Continuous monitoring: anything currently held is scored every
+    # checkpoint regardless of watchlist/movers status, so a position bought
+    # today (possibly not on the watchlist at all) never silently drops out
+    # of scoring the moment it stops being a "mover" — without this, no
+    # future checkpoint would ever propose a SELL for it again.
+    #
+    # Scored in its OWN, earlier pass — and auto_apply() called on it
+    # immediately, before the (usually larger) watchlist/movers batch is
+    # even researched — so a stop-loss/take-profit exit gets the freshest
+    # possible price/technical re-check by the time execute.order_manager's
+    # stale_recommendation_reason() looks at it. Under the old single-pass,
+    # single-auto_apply-call design, a held position researched early in a
+    # long ticker loop could sit for several minutes before auto_apply ever
+    # got to it, and by then the market had often already moved past
+    # execution.max_price_drift_pct — confirmed live 2026-09-29, where every
+    # stop-loss-triggered SELL that checkpoint was refused. Held positions
+    # are removed from the watchlist/movers batch so nothing is scored twice.
+    held_tickers = {t for t in held_pnl if not is_option_symbol(t)}
+    watchlist_tickers -= held_tickers
+
+    results: list[dict[str, Any]] = []
+    failed_tickers: list[dict[str, Any]] = []
+    auto_results: list[dict[str, Any]] = []
+    data_quality_alerts: list[str] = []
+
+    for batch in (held_tickers, watchlist_tickers):
+        if not batch:
+            continue
+        batch_results, batch_failed = _score_tickers(sorted(batch), checkpoint, held_pnl, market_return_pct)
+        results.extend(batch_results)
+        failed_tickers.extend(batch_failed)
+
+        alert = _flat_confidence_alert(batch_results)
+        if alert:
+            print(f"DATA QUALITY ALERT: {alert}")
+            data_quality_alerts.append(alert)
+            continue  # a flat score never reaches auto_apply for this batch
+        auto_results.extend(auto_apply(batch_results, checkpoint))
+
     notify_digest(
         results,
         checkpoint,
         auto_results=auto_results,
         failed_tickers=failed_tickers,
-        data_quality_alert=data_quality_alert,
+        data_quality_alert=" | ".join(data_quality_alerts) or None,
     )
     return results
