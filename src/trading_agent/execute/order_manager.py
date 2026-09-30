@@ -16,6 +16,7 @@ from trading_agent.data.alpaca_client import submit_market_order
 from trading_agent.guardrails import (
     daily_loss_reason,
     daily_trade_count_reason,
+    min_confidence_reason,
     options_reason,
     position_count_reason,
     position_size_reason,
@@ -46,6 +47,13 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
 
     # Absolute and free to check, so it comes before anything that touches the network.
     breach = options_reason(rec["ticker"])
+    if breach:
+        raise OrderRefused(breach)
+
+    # Also free — a pure config/rec-field comparison, no network. Backstop for
+    # the min_confidence_to_buy bar score_candidate() already enforces at
+    # scoring time; see guardrails.min_confidence_reason()'s docstring.
+    breach = min_confidence_reason(rec["ticker"], rec["action"], rec.get("confidence"))
     if breach:
         raise OrderRefused(breach)
 

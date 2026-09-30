@@ -256,24 +256,15 @@ def _portfolio_return_pct() -> float | None:
 
 
 def _benchmark_return_pct(symbol: str = BENCHMARK_SYMBOL) -> float | None:
-    """Latest available daily % change for `symbol` — the most recent daily
-    bar against the one before it. If run after today's session closes, that's
-    today's move; if run intraday, it's the last fully-formed bar (typically
-    yesterday's), same lag technical_score() already has for any ticker.
-    None when bars aren't available, never a guess.
+    """Thin wrapper over data.alpaca_client.get_market_return_pct() — kept as
+    its own name here since this module's callers/tests already refer to it,
+    but the actual "latest daily bar vs the one before it" logic is shared
+    with orchestrator.run_checkpoint()'s market-regime stop-loss dampening
+    (both want the same SPY-style benchmark read, not two copies of it).
     """
-    try:
-        from trading_agent.data.alpaca_client import get_recent_bars
+    from trading_agent.data.alpaca_client import get_market_return_pct
 
-        bars = get_recent_bars(symbol, lookback_days=5)
-    except Exception:  # noqa: BLE001
-        return None
-    if len(bars) < 2:
-        return None
-    prior_close = float(bars[-2]["close"])
-    if prior_close <= 0:
-        return None
-    return round((float(bars[-1]["close"]) - prior_close) / prior_close * 100, 2)
+    return get_market_return_pct(symbol, lookback_days=5)
 
 
 def build_daily_summary(day: str | None = None) -> dict:

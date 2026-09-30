@@ -225,16 +225,21 @@ needs to change, and no auto-approved history is rewritten or hidden by it.
 
 **Confidence-scaled position sizing** (`recommendation_engine._suggested_size_pct()`,
 gated by `position.confidence_scaled_sizing`, default `true`): a
-just-over-the-notify-threshold call sizes at `min_position_pct_of_portfolio`
-(the floor), scaling linearly up to `max_position_pct_of_portfolio` (the cap)
-at confidence 100 — this feeds both auto-apply's qty and the
+just-over-the-floor call sizes at `min_position_pct_of_portfolio` (the
+floor), scaling linearly up to `max_position_pct_of_portfolio` (the cap) at
+confidence 100 — this feeds both auto-apply's qty and the
 `suggested_size_pct_of_portfolio` a human sees when deciding their own qty.
-`false` reverts to the original flat behavior: always exactly the cap for any
-actionable recommendation, confidence-blind.
+The floor is `min_confidence_to_buy` for a BUY, `min_confidence_to_notify`
+for a SELL (see "Minimum confidence to buy" below) — a BUY can never score
+below its bar, so sizing it from that bar (not the lower notify threshold)
+is what actually spans floor-to-cap instead of compressing every real BUY
+into the top sliver of the range. `false` reverts to the original flat
+behavior: always exactly the cap for any actionable recommendation,
+confidence-blind.
 
 ## Portfolio guardrails (hard requirement)
 
-`guardrails.py` holds eight checks. Each returns a refusal reason or `None`;
+`guardrails.py` holds nine checks. Each returns a refusal reason or `None`;
 callers turn that into `RoutineHalted` (orchestrator) or `OrderRefused`
 (order_manager). They are enforced at *both* boundaries — a rule that only
 applies at execution time would let the routine spend a day proposing trades
@@ -314,6 +319,16 @@ it can never place.
    guardrail). Cap: `risk_limits.yaml -> portfolio.max_sector_concentration_pct`
    (30%, raised from 25% per user instruction 2026-09-29); unset/zero means
    no cap.
+9. **Minimum confidence to buy** — `min_confidence_reason()`, checked before
+   any BUY (never a SELL — see "Minimum confidence to buy" below). Backstop
+   for the same bar `recommendation_engine.score_candidate()` already
+   enforces at scoring time (a BUY below the bar is scored `HOLD`, never
+   `BUY`), so this should be unreachable via the normal checkpoint ->
+   approval -> execute path — it only catches a BUY assembled outside that
+   path (an ad hoc one from `agents/tools.py`, or an older record predating
+   this bar). Cap: `risk_limits.yaml -> position.min_confidence_to_buy`
+   (85, per user instruction 2026-09-30); fails closed if the recommendation
+   has no `confidence` field at all.
 
 These **fail closed**: if Alpaca account state can't be read, the
 account-dependent checks report a breach rather than assume the portfolio is
@@ -388,6 +403,52 @@ factors into the score, so a stock that's already moved far keeps
 contributing at the cap rather than an ever-larger, cumulative momentum
 number swamping the SMA-crossover trend term.
 
+## Long-term trend signal: 30-day vs. 52-week average (recommendation_engine.py)
+
+Per user instruction 2026-09-30 ("history of last 30 days vs 52 wk avg and
+latest price ... should be included in the assessment"): `long_term_trend(bars)`
+reports where the latest close sits versus its own 30-day and ~52-week
+(`TREND_LOOKBACK_TRADING_DAYS`, 252 trading days) averages —
+`{latest_price, avg_30d, avg_52wk, pct_vs_30d, pct_vs_52wk, bullish}`, where
+`bullish` is `latest_price > avg_52wk`. `None` below `MIN_BARS_FOR_TREND`
+(200, ~40 weeks) rather than computing a "52-week average" from a few
+months of data — same "exclude, don't fake" convention as every other
+component here, which also means most of the thinly-traded micro-cap/warrant
+tickers this project has struggled with (recently listed, so no real
+52-week track record) simply report no long-term trend at all, by design.
+
+Folded directly into `technical_score()` (not a new weighted confidence
+component — it shares that function's `bars` parameter, so it costs no
+extra Alpaca call): averaged with `pct_vs_30d`, capped at `TREND_CAP` (0.15,
+same saturating-cap pattern as `MOMENTUM_CAP`) so an extreme move doesn't
+swamp the SMA-crossover/momentum terms it's blended with.
+`orchestrator.run_checkpoint()` now fetches `TREND_FETCH_CALENDAR_DAYS`
+(370) days of bars per ticker instead of just enough for the 50-day SMA, so
+`technical_score()` and `long_term_trend()` share one fetch. The `bullish`
+flag also feeds "Market-regime stop-loss dampening" below — recorded on
+every recommendation as `long_term_trend` (`None` for a ticker without
+enough history) for audit visibility.
+
+## Minimum confidence to buy (recommendation_engine.py, guardrails.py)
+
+Per user instruction 2026-09-30 ("consider any stock purchase only if
+confidence level is at least 85%"): a bullish call only becomes `action:
+"BUY"` at `risk_limits.yaml -> position.min_confidence_to_buy` (85, a
+materially higher bar than `min_confidence_to_notify`'s 50). Below it,
+`score_candidate()` reports `HOLD` — not "BUY at low confidence" — so a
+human reviewing recommendations never sees a purchase idea this project
+itself wouldn't act on; `guardrails.min_confidence_reason()` is the
+execution-time backstop (guardrail #9 above). `_suggested_size_pct()`'s
+confidence-scaled sizing floor for a BUY is this same bar (not
+`min_confidence_to_notify`), so a real BUY's suggested size actually spans
+floor-to-cap instead of being compressed into the top sliver of the range.
+
+This bar applies to BUY only. A fresh bearish call, and a stop-loss/
+take-profit-forced SELL, are both still gated by the existing (lower)
+`min_confidence_to_notify` / `sell_pressure` logic exactly as before —
+raising the bar on buying more is not raising the bar on cutting a loss;
+those would be exactly backwards.
+
 ## Backtest parity (backtest/engine.py)
 
 `backtest_moving_average()` (kept, from the original scaffold) only ever
@@ -456,6 +517,44 @@ stop-loss breach but low blended confidence reported `HOLD` instead of
 is bearish, independent of the notify threshold; the threshold still gates
 whether a *fresh* (non-position) signal counts as actionable enough to
 surface.
+
+**Market-regime stop-loss dampening**, per user instruction 2026-09-30
+("stock with promising increase should not be sold on losses ... due to
+entire market having a downward trend"): a stop-loss breach — never a
+take-profit one, locking in gains isn't something a market dip should block
+— has its `sell_pressure` *dampened* (multiplied by
+`position.market_regime_dampening_factor`, default 0.4 — not zeroed) when
+BOTH the broader market is genuinely down (`orchestrator.run_checkpoint()`
+reads `data.alpaca_client.get_market_return_pct("SPY")` once per checkpoint,
+at or below `-position.market_regime_down_threshold_pct`, default 1.0) AND
+the position's own long-term trend is still bullish (`long_term_trend()`
+above, `bullish: true`). Deliberately narrow: it never fires without both a
+down market and an *established* (200+ bar) uptrend, so a speculative name
+with no real price history — most of the micro-cap/warrant tickers this
+project has struggled with — gets no protection, same as it gets none from
+`long_term_trend()` itself. Dampened rather than suppressed outright, since
+a broad-market day doesn't fully rule out real stock-specific weakness
+either. Recorded on every recommendation as `regime_dampened` (bool) and
+`market_return_pct` for audit visibility. Gated by
+`position.market_regime_stop_loss_dampening` (default `true`) — `false` is
+the one-line revert, same convention as `mandatory_stop_loss`.
+
+**Reacting faster on exits**, per user instruction 2026-09-30 ("make this
+work more dynamically and react quicker"): `run_checkpoint()` now scores
+held positions in their own, earlier pass — and calls `execute.auto_pilot.
+auto_apply()` on that batch immediately — *before* the (usually larger)
+watchlist/movers batch is even researched, instead of one combined pass
+with a single `auto_apply()` call at the very end. Confirmed live
+2026-09-29: every stop-loss-triggered SELL that day was refused, almost
+certainly by `stale_recommendation_reason()`'s price-drift/technical-
+reversal check — a held position researched early in a long, sequential
+per-ticker research loop could sit for several minutes before `auto_apply()`
+ever got to it, and by then a volatile micro-cap/warrant's price had often
+already moved past `execution.max_price_drift_pct`. Scoring and executing
+on held positions first minimizes that gap for exactly the case where
+staleness matters most. `auto_apply()`'s daily cap (`operational.auto_apply.
+max_trades_per_day`) is shared correctly across the two calls — it always
+re-reads `data/trades/` fresh, so nothing double-counts.
 
 ## What's not built yet
 

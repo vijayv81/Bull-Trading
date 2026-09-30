@@ -78,6 +78,29 @@ def get_recent_bars(ticker: str, lookback_days: int = 120) -> list[dict[str, Any
     return [bar.model_dump(mode="json") for bar in symbol_bars]
 
 
+def get_market_return_pct(symbol: str, lookback_days: int = 5) -> float | None:
+    """Latest available daily % change for `symbol` — the most recent daily
+    bar against the one before it. If called after today's session closes,
+    that's today's move; if called intraday, it's the last fully-formed bar
+    (typically yesterday's), same lag technical_score() already has for any
+    ticker. None when bars aren't available, never a guess — used both by
+    reporting/report_builder.py's benchmark comparison and by
+    scoring.recommendation_engine's market-regime stop-loss dampening
+    (orchestrator.run_checkpoint() calls this once per checkpoint for SPY,
+    not once per ticker).
+    """
+    try:
+        bars = get_recent_bars(symbol, lookback_days=lookback_days)
+    except Exception:  # noqa: BLE001 - a benchmark read must degrade to None, never raise
+        return None
+    if len(bars) < 2:
+        return None
+    prior_close = float(bars[-2]["close"])
+    if prior_close <= 0:
+        return None
+    return round((float(bars[-1]["close"]) - prior_close) / prior_close * 100, 2)
+
+
 def get_market_movers(top_n: int = 20) -> dict[str, Any]:
     """Top gainers/losers by % move, if your Alpaca plan exposes the screener
     endpoint. Never raises — falls back to an empty result so a checkpoint run

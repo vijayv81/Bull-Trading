@@ -51,6 +51,40 @@ def options_reason(symbol: str) -> str | None:
     return None
 
 
+def min_confidence_reason(symbol: str, action: str, confidence: float | None) -> str | None:
+    """Execution-time backstop for the min_confidence_to_buy bar
+    recommendation_engine.score_candidate() already enforces at scoring
+    time (a BUY below the bar is scored HOLD, never BUY, so this should be
+    unreachable via the normal checkpoint -> approval -> execute path) —
+    same belt-and-suspenders reasoning as MIN_BARS_FOR_TECHNICAL's
+    technical=None forcing HOLD. It only catches a BUY assembled outside
+    that path (an ad hoc one from agents/tools.py, or an older record from
+    before this bar existed).
+
+    Only ever applies to BUY: a SELL — including a stop-loss/take-profit
+    exit, which can legitimately fire at low confidence, see
+    score_candidate()'s "below the notify threshold" branch — is never
+    gated by this. Requiring high conviction to buy more is not the same
+    as requiring it to cut a loss; those would be exactly backwards.
+
+    A BUY with no `confidence` field at all (should never happen from
+    score_candidate(), which always sets one) fails closed — nothing to
+    compare against, same as any other guardrail here facing data it can't
+    read, rather than silently letting an un-scored BUY through.
+    """
+    if action.upper() != "BUY":
+        return None
+    if confidence is None:
+        return f"Cannot verify {symbol}'s confidence before buying — refusing to proceed blind."
+    min_confidence = load_risk_limits().get("position", {}).get("min_confidence_to_buy", 85)
+    if confidence < min_confidence:
+        return (
+            f"{symbol} confidence {confidence} is below the {min_confidence}% bar required "
+            "to buy (risk_limits.yaml -> position.min_confidence_to_buy)."
+        )
+    return None
+
+
 def _account() -> dict[str, Any]:
     from trading_agent.data.alpaca_client import get_account
 
