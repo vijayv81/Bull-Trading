@@ -103,8 +103,8 @@ def test_movers_losers_are_researched_alongside_gainers(monkeypatch):
     monkeypatch.setattr(
         orch, "get_market_movers",
         lambda: {
-            "gainers": [{"symbol": "GAINER"}],
-            "losers": [{"symbol": "LOSER"}],
+            "gainers": [{"symbol": "GAINER", "price": 50.0}],
+            "losers": [{"symbol": "LOSER", "price": 50.0}],
         },
     )
     monkeypatch.setattr(
@@ -117,6 +117,86 @@ def test_movers_losers_are_researched_alongside_gainers(monkeypatch):
 
     assert {r["ticker"] for r in results} == {"GOOD", "BAD", "GAINER", "LOSER"}
     assert digest_calls[0]["failed_tickers"] == []
+
+
+# --- candidate_min_price: a liquidity floor on NEW candidate sourcing ---------
+
+
+def test_candidate_min_price_excludes_penny_movers(monkeypatch):
+    """Per user instruction 2026-10-01: a mover priced below the floor never
+    enters research/scoring — these are simultaneously the biggest losers
+    and the ones most likely to trip stale_recommendation_reason()."""
+    monkeypatch.setattr(orch, "load_risk_limits", lambda: {"position": {"candidate_min_price": 1.0}})
+    monkeypatch.setattr(
+        orch, "get_market_movers",
+        lambda: {
+            "gainers": [{"symbol": "PENNY", "price": 0.5}, {"symbol": "REAL", "price": 50.0}],
+            "losers": [{"symbol": "WARRANT", "price": 0.02}],
+        },
+    )
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    digest_calls = _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    tickers = {r["ticker"] for r in results}
+    assert "REAL" in tickers
+    assert "PENNY" not in tickers
+    assert "WARRANT" not in tickers
+
+
+def test_candidate_min_price_unset_includes_everything(monkeypatch):
+    monkeypatch.setattr(orch, "load_risk_limits", lambda: {"position": {}})
+    monkeypatch.setattr(
+        orch, "get_market_movers",
+        lambda: {"gainers": [{"symbol": "PENNY", "price": 0.001}], "losers": []},
+    )
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    assert "PENNY" in {r["ticker"] for r in results}
+
+
+def test_candidate_min_price_excludes_a_mover_with_no_price_field(monkeypatch):
+    monkeypatch.setattr(orch, "load_risk_limits", lambda: {"position": {"candidate_min_price": 1.0}})
+    monkeypatch.setattr(
+        orch, "get_market_movers",
+        lambda: {"gainers": [{"symbol": "NOPRICE"}], "losers": []},
+    )
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    assert "NOPRICE" not in {r["ticker"] for r in results}
+
+
+def test_candidate_min_price_does_not_apply_to_held_positions(monkeypatch):
+    """Continuous position monitoring must keep scoring a held position
+    regardless of its price — otherwise a stop-loss SELL could never even
+    be proposed for a penny stock already held."""
+    monkeypatch.setattr(orch, "load_risk_limits", lambda: {"position": {"candidate_min_price": 1.0}})
+    monkeypatch.setattr(orch, "get_positions", lambda: [{"symbol": "HELDPENNY", "unrealized_plpc": "-0.3"}])
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    assert "HELDPENNY" in {r["ticker"] for r in results}
 
 
 def test_all_tickers_failing_still_completes_with_empty_results(monkeypatch):
