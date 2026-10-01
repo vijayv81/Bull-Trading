@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "MGLD",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2404.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T19:50:24.807182+00:00"
+  },
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 12512.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T19:50:28.524146+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T19:50:30.334904+00:00"
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 1533.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T19:50:32.074218+00:00"
+  },
+  {
+    "ticker": "NXL",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 299.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T19:58:53.905837+00:00"
+  }
+]
