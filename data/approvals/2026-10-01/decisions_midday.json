@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "MGLD",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2413.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T16:41:16.695738+00:00"
+  },
+  {
+    "ticker": "SOAR",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 12512.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T16:41:20.298982+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T16:41:21.898182+00:00"
+  },
+  {
+    "ticker": "GOOG",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 7.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T16:41:23.749233+00:00"
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 1533.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T16:41:27.497420+00:00"
+  },
+  {
+    "ticker": "XRPNW",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 566.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T16:49:10.085063+00:00"
+  }
+]
