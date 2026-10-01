@@ -133,6 +133,30 @@ positive/negative figures, section headers, status pills) alongside the
 same (now longer) plain-text body; SMS is unchanged, a carrier gateway has
 no use for either the extra detail or the color.
 
+**Learning & optimization**, per user instruction 2026-10-01 ("I want email
+to include what optimization or learning occurred during the day and if
+they were incorporated and also possible outcomes with this learning"):
+`build_daily_summary()` (`reporting/report_builder.py`) now also surfaces
+`recommendation_engine.propose_weight_adjustments()`'s current output
+(`optimization_proposals`), the per-signal hit rates it's computed from
+(`_signal_type_hit_rates()`, reading `data/performance/strategy_metrics.json
+-> by_signal_type`), the scoring weights actually in effect right now
+(`load_agent_config()['scoring_weights']`), and a new qualitative
+`learning_outcome` note (`_learning_outcome_note()`) describing what
+incorporating the proposal would plausibly change — deliberately framed as a
+directional, non-numeric description ("would lean more on X and less on
+Y"), never a projected return, consistent with this project's "not
+investment advice" line at the top of this file. Because
+`propose_weight_adjustments()` **never writes config itself** (see "What's
+not built yet" / the plan §6.3 rule it's named after), "incorporated" can
+only ever mean a human read the proposal and deliberately edited
+`config/agent_config.yaml -> scoring_weights` — so rather than claim a
+proposal was or wasn't incorporated, the email instead shows the weights
+*currently in effect* side by side with the proposal, plus an explicit line
+every time: proposals are never applied automatically. No proposal yet
+(too little journaled history for `propose_weight_adjustments()` to say
+anything) reports exactly that, not a fabricated finding.
+
 `trading-agent weekly-report` builds `reporting/report_builder.py`'s weekly
 markdown rollup (`reports/weekly/<year>-W<week>.md`) *and* emails/SMS it —
 `build_weekly_report()` itself only ever wrote the file; nothing sent it

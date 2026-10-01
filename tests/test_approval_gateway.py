@@ -343,6 +343,45 @@ def test_daily_summary_handles_missing_returns_gracefully(monkeypatch):
     assert "unavailable" in body
 
 
+def test_daily_summary_includes_learning_and_optimization_section(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(
+        _summary(
+            optimization_proposals=["Reduce sentiment weight from 0.2 to 0.1 (hit rate 32% vs technical's 61%)"],
+            signal_hit_rates={"technical": {"hit_rate": 0.61, "n": 20}, "sentiment": {"hit_rate": 0.32, "n": 18}},
+            learning_outcome="If incorporated, future scoring would lean more on technical and less on sentiment.",
+            scoring_weights={"technical": 0.4, "sentiment": 0.1},
+        )
+    )
+
+    plain_body, html_body = calls[0][1], calls[0][2]
+    assert "Learning & optimization:" in plain_body
+    assert "Reduce sentiment weight" in plain_body
+    assert "technical 61%" in plain_body and "sentiment 32%" in plain_body
+    assert "If incorporated" in plain_body
+    assert "Weights currently in effect: technical 0.4, sentiment 0.1" in plain_body
+    assert "never applied automatically" in plain_body
+
+    assert "Learning" in html_body and "Optimization" in html_body
+    assert "Reduce sentiment weight" in html_body
+    assert "If incorporated" in html_body
+    assert "never applied automatically" in html_body
+
+
+def test_daily_summary_learning_section_empty_when_no_history(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary())
+
+    plain_body, html_body = calls[0][1], calls[0][2]
+    assert "Learning & optimization:" in plain_body
+    assert "never applied automatically" in plain_body
+    assert "No weight-adjustment proposal yet" in html_body
+
+
 def test_daily_summary_send_failure_does_not_raise(monkeypatch):
     monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
 

@@ -333,6 +333,26 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
     else:
         lines.append("No journaled decisions today.")
 
+    lines.append("")
+    lines.append("Learning & optimization:")
+    for p in summary.get("optimization_proposals") or []:
+        lines.append(f"- {p}")
+    signal_hit_rates = summary.get("signal_hit_rates") or {}
+    if signal_hit_rates:
+        rates = ", ".join(f"{sig} {stats.get('hit_rate', 0):.0%}" for sig, stats in sorted(signal_hit_rates.items()))
+        lines.append(f"  Per-signal hit rates so far: {rates}")
+    learning_outcome = summary.get("learning_outcome")
+    if learning_outcome:
+        lines.append(f"  Possible outcome: {learning_outcome}")
+    weights = summary.get("scoring_weights") or {}
+    if weights:
+        weight_str = ", ".join(f"{k} {v:g}" for k, v in weights.items())
+        lines.append(f"  Weights currently in effect: {weight_str}")
+    lines.append(
+        "  Proposals are never applied automatically — incorporating one means a human "
+        "edits config/agent_config.yaml and commits the change deliberately."
+    )
+
     subject = f"[Bull-Trading] Daily summary — {summary['day']}"
     body = "\n".join(lines)
     html_body = _daily_summary_html(summary)
@@ -458,6 +478,36 @@ def _daily_summary_html(summary: dict[str, Any]) -> str:
             )
     else:
         inner += h.muted("No journaled decisions today.")
+
+    inner += h.section_heading("Learning &amp; Optimization")
+    proposals = summary.get("optimization_proposals") or []
+    if proposals:
+        for p in proposals:
+            inner += f'<div style="padding:6px 0;font-size:14px;">{h.chip("PROPOSAL", "neutral")} {p}</div>'
+    else:
+        inner += h.muted("No weight-adjustment proposal yet — not enough journaled history.")
+
+    signal_hit_rates = summary.get("signal_hit_rates") or {}
+    if signal_hit_rates:
+        rate_chips = " ".join(
+            h.chip(f"{sig} {stats.get('hit_rate', 0):.0%}", "neutral")
+            for sig, stats in sorted(signal_hit_rates.items())
+        )
+        inner += f'<div style="padding:6px 0;font-size:14px;">{rate_chips}</div>'
+
+    learning_outcome = summary.get("learning_outcome")
+    if learning_outcome:
+        inner += f'<div style="padding:6px 0;font-size:14px;"><b>Possible outcome:</b> {learning_outcome}</div>'
+
+    weights = summary.get("scoring_weights") or {}
+    if weights:
+        weight_str = ", ".join(f"{k} {v:g}" for k, v in weights.items())
+        inner += h.muted(f"Weights currently in effect: {weight_str}")
+
+    inner += h.muted(
+        "Proposals are never applied automatically — incorporating one means a human edits "
+        "config/agent_config.yaml and commits the change deliberately."
+    )
 
     return h.wrap("Daily Summary", summary["day"], inner)
 

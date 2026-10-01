@@ -10,7 +10,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from trading_agent.config import APPROVALS_DIR, RECOMMENDATIONS_DIR, REPORTS_DIR, TRADES_DIR
+from trading_agent.config import (
+    APPROVALS_DIR,
+    PERFORMANCE_DIR,
+    RECOMMENDATIONS_DIR,
+    REPORTS_DIR,
+    TRADES_DIR,
+    load_agent_config,
+)
 from trading_agent.utils import load_json_list, today
 
 BENCHMARK_SYMBOL = "SPY"
@@ -85,6 +92,49 @@ def _approvals_summary(decisions: list[dict]) -> dict[str, int]:
         "auto": sum(1 for d in decisions if (d.get("terms") or {}).get("source") == "auto"),
         "human": sum(1 for d in decisions if (d.get("terms") or {}).get("source") != "auto"),
     }
+
+
+def _signal_type_hit_rates() -> dict[str, dict]:
+    """Rolling per-signal-type accuracy from data/performance/strategy_metrics.json
+    — journal.aggregate_performance()'s `by_signal_type`, the same data
+    recommendation_engine.propose_weight_adjustments() reads. {} until enough
+    outcome history exists (same "nothing to report yet" convention as that
+    function).
+    """
+    import json
+
+    path = PERFORMANCE_DIR / "strategy_metrics.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text()).get("by_signal_type", {})
+
+
+def _learning_outcome_note(by_signal: dict[str, dict]) -> str | None:
+    """A plain-language read of what adopting propose_weight_adjustments()'s
+    current proposal would likely change — deliberately modest and
+    qualitative (which component would carry more/less weight), never a
+    projected return number: the per-signal hit-rate gap says which signal
+    has been more directionally reliable, not what doing something about it
+    would be worth. None when there's no gap large enough to say anything
+    (mirrors propose_weight_adjustments()'s own >15pt threshold, read from
+    the same data, so the two never disagree about whether there's a
+    finding this run).
+    """
+    if len(by_signal) < 2:
+        return None
+    ranked = sorted(by_signal.items(), key=lambda kv: kv[1].get("hit_rate", 0.5))
+    worst_signal, worst_stats = ranked[0]
+    best_signal, best_stats = ranked[-1]
+    if worst_stats.get("hit_rate", 0.5) >= best_stats.get("hit_rate", 0.5) - 0.15:
+        return None
+    return (
+        f"If incorporated, {worst_signal}'s influence on blended confidence would shrink and "
+        f"{best_signal}'s would grow — recommendations would lean more on whichever research/technical "
+        f"read {best_signal} represents, which has agreed with actual price direction more often "
+        f"({best_stats.get('hit_rate'):.0%} vs. {worst_signal}'s {worst_stats.get('hit_rate'):.0%}) "
+        f"over the outcome history recorded so far. Not a projected return — a hit-rate gap says which "
+        f"signal has been more directionally reliable, not how much that would be worth."
+    )
 
 
 def _unrealized_pnl() -> dict:
@@ -333,8 +383,24 @@ def build_daily_summary(day: str | None = None) -> dict:
     (`auto_apply_attempts` — see auto_pilot._persist_attempt()), so a day
     that was all refusals is visibly different from a quiet one instead of
     the two looking identical.
+
+    Per user instruction 2026-10-01 ("what optimization or learning
+    occurred during the day and if they were incorporated and also
+    possible outcomes with this learning"): `optimization_proposals` is
+    `recommendation_engine.propose_weight_adjustments()`'s current output —
+    the same read a human gets from `trading-agent propose-weights`, so the
+    email never says anything that command wouldn't also say.
+    `scoring_weights` is what's *actually* in effect right now
+    (`agent_config.yaml`) — proposals are never auto-applied (plan §6.3,
+    hard requirement), so this is how "were they incorporated" gets
+    answered honestly: by showing the real weights, not a claim either
+    way. `learning_outcome` is a qualitative, non-numeric read of what
+    adopting the current proposal would likely change (see
+    _learning_outcome_note()) — `None` when there's no gap large enough to
+    say anything, same threshold propose_weight_adjustments() itself uses.
     """
     from trading_agent.journal import load_entries
+    from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
 
     day = day or today()
     recs = _day_recs(day)
@@ -342,6 +408,7 @@ def build_daily_summary(day: str | None = None) -> dict:
     trades = _day_trades(day)
     entries = load_entries(day)
     marked_entries = [e for e in entries if e.get("outcome") is not None]
+    signal_hit_rates = _signal_type_hit_rates()
 
     portfolio_pct = _portfolio_return_pct()
     benchmark_pct = _benchmark_return_pct()
@@ -371,4 +438,8 @@ def build_daily_summary(day: str | None = None) -> dict:
             for t in trades
         ],
         "auto_apply_attempts": _day_auto_apply_attempts(day),
+        "optimization_proposals": propose_weight_adjustments(),
+        "scoring_weights": load_agent_config().get("scoring_weights", {}),
+        "signal_hit_rates": signal_hit_rates,
+        "learning_outcome": _learning_outcome_note(signal_hit_rates),
     }
