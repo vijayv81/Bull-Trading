@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "AIFF",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1533.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T13:45:30.114218+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T13:45:32.642351+00:00"
+  },
+  {
+    "ticker": "ABLVW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 46626.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T13:45:34.576280+00:00"
+  },
+  {
+    "ticker": "APUS",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 166.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T13:45:36.137053+00:00"
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 93244.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T13:45:37.856002+00:00"
+  },
+  {
+    "ticker": "BRLSW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 20593.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-01T13:53:11.070909+00:00"
+  }
+]
