@@ -1,0 +1,44 @@
+[
+  {
+    "ticker": "MGLD",
+    "status": "refused",
+    "reason": "MGLD would reach 9.70% of the 96,639.03 portfolio (9,375.37 incl. 4,543.33 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "SOAR",
+    "status": "refused",
+    "reason": "SOAR's price has moved 11.78% since this recommendation was scored (0.30 -> 0.33), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "GRMLW",
+    "status": "refused",
+    "reason": "GRMLW's price has moved 18.99% since this recommendation was scored (0.80 -> 0.95), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "AIFF",
+    "status": "refused",
+    "reason": "AIFF's technical signal has flipped since this recommendation was scored (SELL then, BUY now) \u2014 re-run the checkpoint for a fresh read before approving/executing.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "NXL",
+    "status": "refused",
+    "reason": "NXL's price has moved 15.26% since this recommendation was scored (7.34 -> 8.46), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "HIMS",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "GFAIW",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_close"
+  }
+]

@@ -8,6 +8,12 @@
     "reasoning": "Auto-applied: confidence 69.4 (technical=0.45769863604263455, sentiment=1.0, catalyst=0.6666666666666666, fundamental=None)",
     "reference_price": 334.95500000000004,
     "recorded_at": "2026-10-01T16:41:26.144116+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 334.95500000000004,
+      "price_at_measurement": 316.58,
+      "pct_change": -5.49,
+      "directionally_correct": true,
+      "measured_at": "2026-10-01T20:06:25.103249+00:00"
+    }
   }
 ]
