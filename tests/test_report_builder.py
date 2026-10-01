@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from trading_agent.reporting import report_builder as rb
@@ -189,6 +191,9 @@ def test_build_daily_summary_combines_portfolio_benchmark_and_journal(monkeypatc
     monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
     monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
     monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
+    monkeypatch.setattr(rb, "PERFORMANCE_DIR", tmp_path / "performance")
+    monkeypatch.setattr("trading_agent.scoring.recommendation_engine.PERFORMANCE_DIR", tmp_path / "performance")
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}})
     monkeypatch.setattr(
         "trading_agent.data.alpaca_client.get_account",
         lambda: {"equity": "101000", "last_equity": "100000"},
@@ -221,6 +226,9 @@ def test_build_daily_summary_reports_everything_done_during_the_day(monkeypatch,
     monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
     monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
     monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
+    monkeypatch.setattr(rb, "PERFORMANCE_DIR", tmp_path / "performance")
+    monkeypatch.setattr("trading_agent.scoring.recommendation_engine.PERFORMANCE_DIR", tmp_path / "performance")
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}})
     monkeypatch.setattr(
         "trading_agent.data.alpaca_client.get_account",
         lambda: {"equity": "100000", "last_equity": "100000"},
@@ -274,3 +282,88 @@ def test_build_daily_summary_reports_everything_done_during_the_day(monkeypatch,
     ]
     statuses = {a["ticker"]: a["status"] for a in summary["auto_apply_attempts"]}
     assert statuses == {"TSLA": "submitted", "GOOG": "refused"}
+
+
+# --- optimization_proposals / scoring_weights / learning_outcome -------------
+
+
+def _isolate_daily_summary_dirs(monkeypatch, tmp_path):
+    monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
+    monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
+    monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
+    monkeypatch.setattr(rb, "PERFORMANCE_DIR", tmp_path / "performance")
+    monkeypatch.setattr("trading_agent.scoring.recommendation_engine.PERFORMANCE_DIR", tmp_path / "performance")
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account",
+        lambda: {"equity": "100000", "last_equity": "100000"},
+    )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_recent_bars",
+        lambda symbol, lookback_days=5: [{"close": 500.0}, {"close": 500.0}],
+    )
+    monkeypatch.setattr("trading_agent.journal.load_entries", lambda day: [])
+
+
+def test_build_daily_summary_reports_current_scoring_weights(monkeypatch, tmp_path):
+    """Per user instruction 2026-10-01 ("if they were incorporated"):
+    scoring_weights is what's actually in effect right now, not a claim —
+    proposals are never auto-applied, so this is the honest way to show
+    whether one was adopted."""
+    _isolate_daily_summary_dirs(monkeypatch, tmp_path)
+    weights = {"sentiment": 0.25, "technical": 0.30, "fundamental": 0.15, "catalyst": 0.20, "historical_hitrate": 0.10}
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": weights})
+
+    summary = rb.build_daily_summary("2026-09-24")
+
+    assert summary["scoring_weights"] == weights
+
+
+def test_build_daily_summary_no_proposal_without_enough_history(monkeypatch, tmp_path):
+    _isolate_daily_summary_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}})
+
+    summary = rb.build_daily_summary("2026-09-24")
+
+    assert summary["optimization_proposals"] == ["No performance history yet — nothing to propose."]
+    assert summary["signal_hit_rates"] == {}
+    assert summary["learning_outcome"] is None
+
+
+def test_build_daily_summary_surfaces_a_real_proposal_and_outcome_note(monkeypatch, tmp_path):
+    _isolate_daily_summary_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}})
+    (tmp_path / "performance").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "performance" / "strategy_metrics.json").write_text(
+        json.dumps(
+            {
+                "by_signal_type": {
+                    "sentiment": {"hit_rate": 0.35, "n": 10},
+                    "catalyst": {"hit_rate": 0.72, "n": 10},
+                }
+            }
+        )
+    )
+
+    summary = rb.build_daily_summary("2026-09-24")
+
+    assert len(summary["optimization_proposals"]) == 1
+    assert "sentiment" in summary["optimization_proposals"][0]
+    assert "catalyst" in summary["optimization_proposals"][0]
+    assert summary["signal_hit_rates"]["sentiment"]["hit_rate"] == 0.35
+    assert summary["learning_outcome"] is not None
+    assert "sentiment" in summary["learning_outcome"] and "catalyst" in summary["learning_outcome"]
+    assert "not a projected return" in summary["learning_outcome"].lower()
+
+
+def test_build_daily_summary_no_outcome_note_when_gap_too_small(monkeypatch, tmp_path):
+    _isolate_daily_summary_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}})
+    (tmp_path / "performance").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "performance" / "strategy_metrics.json").write_text(
+        json.dumps({"by_signal_type": {"sentiment": {"hit_rate": 0.60, "n": 10}, "catalyst": {"hit_rate": 0.65, "n": 10}}})
+    )
+
+    summary = rb.build_daily_summary("2026-09-24")
+
+    assert summary["learning_outcome"] is None
+    assert "No signal-type gap large enough" in summary["optimization_proposals"][0]

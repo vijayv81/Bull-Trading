@@ -66,6 +66,21 @@ position:
   # stock-specific weakness either.
   market_regime_dampening_factor: 0.4
 
+  # Liquidity floor on NEW candidate sourcing, per user instruction
+  # 2026-10-01. orchestrator.run_checkpoint() drops any mover (gainer or
+  # loser) priced below this before it ever enters research/scoring —
+  # these sub-$1 names were simultaneously this project's biggest week-1
+  # losers (APUS/ABLVW/GRMLW/DAICW/INLF/SOAR, all held positions) and the
+  # ones most likely to trip stale_recommendation_reason()'s 3% drift check
+  # before an order could even submit (confirmed live: 24 of 49 logged
+  # auto-apply attempts that week were refused for exactly that). Deliberately
+  # does NOT touch watchlist.yaml (your own curated list — if you add a
+  # penny stock there yourself, that's a deliberate choice, not something
+  # to filter) or anything already held (continuous position monitoring
+  # must keep scoring a held position regardless of price, or a stop-loss
+  # SELL could never even be proposed for it). Unset/zero means no floor.
+  candidate_min_price: 1.0
+
 portfolio:
   starting_paper_capital_usd: 100000 # plan §12 open decision — set to your actual paper account size
   # Measured as Alpaca equity vs. prior close, so it resets each trading day.

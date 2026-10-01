@@ -20,7 +20,7 @@ from typing import Any
 
 import pandas as pd
 
-from trading_agent.config import load_watchlist
+from trading_agent.config import load_risk_limits, load_watchlist
 from trading_agent.data.alpaca_client import (
     get_market_movers,
     get_market_return_pct,
@@ -71,6 +71,23 @@ def _flat_confidence_alert(results: list[dict[str, Any]]) -> str | None:
         f"for every ticker. Auto-apply was skipped for this checkpoint; treat every "
         f"recommendation below as unverified until the cause is found."
     )
+
+
+def _above_min_price(movers: list[dict[str, Any]], min_price: float | None) -> list[dict[str, Any]]:
+    """Mover entries at or above `min_price`, preserving order (Alpaca
+    already returns gainers/losers ranked by % move, and run_checkpoint()
+    takes the top 10 of whatever this returns). `min_price` unset/zero
+    means no floor — same unset-means-uncapped convention as every
+    guardrail cap in this project. A mover with no price at all (shouldn't
+    happen from Alpaca's screener, but data is data) is excluded rather
+    than assumed to pass, the same conservative default as every other
+    "can't verify" case here — this is candidate *sourcing*, not an order
+    guardrail, so there's no fail-closed/fail-open distinction to get
+    wrong either way: skipping one just means fewer candidates researched.
+    """
+    if not min_price:
+        return movers
+    return [m for m in movers if (m.get("price") or 0) >= min_price]
 
 
 def _held_position_pnl_pct() -> dict[str, float]:
@@ -191,8 +208,17 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     # 2026-09-30 ("ensure assessment is done broadly"). A loser goes through
     # the exact same scoring as a gainer — nothing here assumes a falling
     # price means a buy OR a sell, `technical_score()` still decides that.
-    watchlist_tickers |= {m["symbol"] for m in movers.get("gainers", [])[:10] if "symbol" in m}
-    watchlist_tickers |= {m["symbol"] for m in movers.get("losers", [])[:10] if "symbol" in m}
+    #
+    # Filtered by position.candidate_min_price BEFORE taking the top 10 of
+    # each (not after — filtering post-slice would just shrink the list on
+    # a penny-stock-heavy day instead of reaching past them for real
+    # candidates). This is a liquidity floor on *new* candidate sourcing
+    # only — see below for why held positions are deliberately exempt.
+    min_price = load_risk_limits().get("position", {}).get("candidate_min_price")
+    gainers = _above_min_price(movers.get("gainers", []), min_price)
+    losers = _above_min_price(movers.get("losers", []), min_price)
+    watchlist_tickers |= {m["symbol"] for m in gainers[:10] if "symbol" in m}
+    watchlist_tickers |= {m["symbol"] for m in losers[:10] if "symbol" in m}
     # Never research, score, or propose an options contract, whatever the source.
     watchlist_tickers = {t for t in watchlist_tickers if not is_option_symbol(t)}
 

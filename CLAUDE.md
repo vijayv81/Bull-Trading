@@ -133,6 +133,30 @@ positive/negative figures, section headers, status pills) alongside the
 same (now longer) plain-text body; SMS is unchanged, a carrier gateway has
 no use for either the extra detail or the color.
 
+**Learning & optimization**, per user instruction 2026-10-01 ("I want email
+to include what optimization or learning occurred during the day and if
+they were incorporated and also possible outcomes with this learning"):
+`build_daily_summary()` (`reporting/report_builder.py`) now also surfaces
+`recommendation_engine.propose_weight_adjustments()`'s current output
+(`optimization_proposals`), the per-signal hit rates it's computed from
+(`_signal_type_hit_rates()`, reading `data/performance/strategy_metrics.json
+-> by_signal_type`), the scoring weights actually in effect right now
+(`load_agent_config()['scoring_weights']`), and a new qualitative
+`learning_outcome` note (`_learning_outcome_note()`) describing what
+incorporating the proposal would plausibly change — deliberately framed as a
+directional, non-numeric description ("would lean more on X and less on
+Y"), never a projected return, consistent with this project's "not
+investment advice" line at the top of this file. Because
+`propose_weight_adjustments()` **never writes config itself** (see "What's
+not built yet" / the plan §6.3 rule it's named after), "incorporated" can
+only ever mean a human read the proposal and deliberately edited
+`config/agent_config.yaml -> scoring_weights` — so rather than claim a
+proposal was or wasn't incorporated, the email instead shows the weights
+*currently in effect* side by side with the proposal, plus an explicit line
+every time: proposals are never applied automatically. No proposal yet
+(too little journaled history for `propose_weight_adjustments()` to say
+anything) reports exactly that, not a fabricated finding.
+
 `trading-agent weekly-report` builds `reporting/report_builder.py`'s weekly
 markdown rollup (`reports/weekly/<year>-W<week>.md`) *and* emails/SMS it —
 `build_weekly_report()` itself only ever wrote the file; nothing sent it
@@ -513,6 +537,33 @@ assessment is done broadly"): the top-10 *losers* now seed candidates too,
 through the exact same research/scoring/auto-apply path as everything
 else — nothing here assumes a falling price means a buy or a sell,
 `technical_score()` still decides that per ticker, same as always.
+
+**Liquidity floor on new candidates**, per user instruction 2026-10-01: a
+week's worth of live data showed APUS/ABLVW/GRMLW/DAICW/INLF/SOAR —
+sub-$1 (several sub-$0.05) movers-turned-held-positions — were
+simultaneously the account's biggest losers and the names most likely to
+trip `stale_recommendation_reason()`'s 3% drift check (confirmed live: 24
+of 49 logged auto-apply attempts that week were refused for exactly that,
+because these specific tickers routinely move double digits in the
+minutes between scoring and submission). `orchestrator._above_min_price()`
+filters gainers/losers to `risk_limits.yaml -> position.candidate_min_price`
+(1.0 by default) *before* taking the top 10 of each — filtering after the
+slice would just shrink an already-penny-heavy list instead of reaching
+past it for real candidates. A mover with no price at all is excluded
+rather than assumed to pass (candidate sourcing, not an order guardrail,
+so there's no fail-closed/fail-open question to get wrong either way — only
+fewer candidates researched). Unset/zero means no floor.
+
+Deliberately narrow in scope: this never touches `watchlist.yaml` (your
+own curated list — a penny stock you add there yourself is a deliberate
+choice, not something to filter) or anything already held (continuous
+position monitoring below must keep scoring a held position regardless of
+price, or a stop-loss SELL could never even be proposed for it). This fix
+stops *new* junk candidates from entering the pipeline; it does nothing by
+itself to help exit a penny stock already held — that's a separate,
+not-yet-built problem (see the 2026-09-30/10-01 performance review:
+severity-based auto-apply SELL prioritization and/or a wider drift
+tolerance for exits specifically).
 
 ## Continuous position monitoring (plan §6)
 
