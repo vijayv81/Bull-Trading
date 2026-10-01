@@ -1,0 +1,56 @@
+[
+  {
+    "ticker": "SOAR",
+    "status": "refused",
+    "reason": "SOAR's price has moved 13.70% since this recommendation was scored (0.33 -> 0.29), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "GRMLW",
+    "status": "refused",
+    "reason": "GRMLW's price has moved 15.54% since this recommendation was scored (0.74 -> 0.85), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "AIFF",
+    "status": "refused",
+    "reason": "AIFF's price has moved 13.73% since this recommendation was scored (1.53 -> 1.74), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "DAICW",
+    "status": "refused",
+    "reason": "DAICW's price has moved 83.33% since this recommendation was scored (0.00 -> 0.00), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "INLF",
+    "status": "refused",
+    "reason": "INLF's price has moved 21.57% since this recommendation was scored (4.08 -> 4.96), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "TGE",
+    "status": "refused",
+    "reason": "TGE's price has moved 3.23% since this recommendation was scored (1.55 -> 1.60), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "HIMS",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "GOW",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "ACONW",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_open"
+  }
+]
