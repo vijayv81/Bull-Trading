@@ -1,0 +1,50 @@
+[
+  {
+    "ticker": "AIFF",
+    "status": "refused",
+    "reason": "AIFF's technical signal has flipped since this recommendation was scored (SELL then, BUY now) \u2014 re-run the checkpoint for a fresh read before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "GRMLW",
+    "status": "refused",
+    "reason": "GRMLW's price has moved 13.51% since this recommendation was scored (0.93 -> 1.05), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABLVW",
+    "status": "refused",
+    "reason": "ABLVW's price has moved 34.64% since this recommendation was scored (0.02 -> 0.02), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "APUS",
+    "status": "refused",
+    "reason": "APUS's price has moved 15.63% since this recommendation was scored (4.99 -> 5.77), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "DAICW",
+    "status": "refused",
+    "reason": "DAICW's price has moved 114.58% since this recommendation was scored (0.00 -> 0.01), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "BRLSW",
+    "status": "refused",
+    "reason": "BRLSW's price has moved 115.76% since this recommendation was scored (0.03 -> 0.07), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "HIMS",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "CTVA",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  }
+]
