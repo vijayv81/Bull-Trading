@@ -555,20 +555,22 @@ def notify_weekly_report(report_path: Path) -> None:
 
 def optimization_link(option: dict[str, Any], intent: str) -> str | None:
     """Link to the Optimization Ticket page for one option, or None when
-    notifications.optimization_ticket_artifact_url isn't configured. The
-    option's display fields ride in the URL fragment so the page needs no
-    pre-seeded data; only the id and the click are stored, and applying
-    re-reads the option from data/optimizations/ — never from this link."""
-    import base64
-    import json
+    notifications.optimization_ticket_artifact_url isn't configured.
 
+    The fragment is short and plain — `#<option_id>.<intent>`, plus
+    `.loosens` for an option that loosens a guardrail — because the viewer
+    only passes a plain anchor through to the page: a first version that
+    packed the whole option into the fragment (~900 chars) arrived empty.
+    The page looks the option's details up in its own database (seeded by
+    the Saturday routine) and asks for the acknowledgment whenever the
+    fragment or those details say the option loosens a guardrail. Applying
+    re-reads the option from data/optimizations/ regardless, so the fragment
+    can't change what gets applied."""
     base = load_agent_config().get("notifications", {}).get("optimization_ticket_artifact_url")
     if not base:
         return None
-    fields = ("id", "title", "why", "effect", "risk", "loosens_guardrail", "changes")
-    payload = {k: option[k] for k in fields if k in option}
-    token = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
-    return f"{base}#{token}.{intent}"
+    suffix = ".loosens" if option.get("loosens_guardrail") else ""
+    return f"{base}#{option['id']}.{intent}{suffix}"
 
 
 def _apply_command(option: dict[str, Any]) -> str:

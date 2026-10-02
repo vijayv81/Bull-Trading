@@ -1,5 +1,5 @@
-import base64
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -238,26 +238,35 @@ def test_dismiss_records_and_removes_from_pending(sandbox):
 # --- email links -----------------------------------------------------------------
 
 
-def _decode(link):
-    token = link.split("#", 1)[1].rsplit(".", 1)[0]
-    return json.loads(base64.urlsafe_b64decode(token + "=" * (-len(token) % 4)))
-
-
 def test_optimization_link_is_none_without_a_ticket_url(monkeypatch):
     monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {}})
     assert gw.optimization_link(_drift_option(), "apply") is None
 
 
-def test_optimization_link_carries_the_option_and_intent(monkeypatch):
+def test_optimization_link_is_a_short_plain_anchor(monkeypatch):
+    """The viewer only passes a plain #anchor (letters, digits, . _ ~ -)
+    through to the page; a first version that packed the whole option into
+    a ~900-character fragment arrived empty."""
     monkeypatch.setattr(
         gw, "load_agent_config", lambda: {"notifications": {"optimization_ticket_artifact_url": "https://claude.ai/artifact/X"}}
     )
-    link = gw.optimization_link(_drift_option(), "apply")
-    assert link.startswith("https://claude.ai/artifact/X#")
-    assert link.endswith(".apply")
-    payload = _decode(link)
-    assert payload["id"] == "2026-10-02-max-price-drift-4"
-    assert payload["changes"][0]["to"] == 4.0
+    loosening = gw.optimization_link(_drift_option(), "apply")
+    assert loosening == "https://claude.ai/artifact/X#2026-10-02-max-price-drift-4.apply.loosens"
+    safe = gw.optimization_link(_drift_option(id="2026-10-02-weights-a-to-b", loosens_guardrail=False), "dismiss")
+    assert safe == "https://claude.ai/artifact/X#2026-10-02-weights-a-to-b.dismiss"
+    anchor = loosening.split("#", 1)[1]
+    assert re.fullmatch(r"[A-Za-z0-9._~-]+", anchor)
+    assert len(anchor) < 100
+
+
+def test_option_ids_only_use_anchor_safe_characters(sandbox):
+    review = _review(
+        signal_hit_rates={"sentiment": {"hit_rate": 0.35, "n": 12}, "historical_hitrate": {"hit_rate": 0.8, "n": 12}},
+        refusal_breakdown={"stale: price drift": 24},
+        never_decided=[{}] * 20,
+    )
+    for option in opt.build_options(review):
+        assert re.fullmatch(r"[A-Za-z0-9._~-]+", option["id"]), option["id"]
 
 
 def _email_review(options):
