@@ -264,6 +264,37 @@ def week_dates(week_start: str | None = None) -> list[str]:
     return [(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
 
 
+def _open_option_lines() -> list[str]:
+    """The weekly report's improvements section: each optimization option
+    still open (optimizations.open_options()) as a markdown line with
+    clickable Apply/Dismiss links to the Optimization Ticket page — or the
+    apply command when no ticket URL is configured. Per user instruction
+    2026-10-02, replacing a static "see `trading-agent propose-weights`"
+    pointer the reader couldn't act on from the email."""
+    from trading_agent.notify.approval_gateway import optimization_link
+    from trading_agent.optimizations import open_options
+
+    options = open_options()
+    if not options:
+        return [
+            "_No open options right now. The Saturday weekly learning review proposes new ones, "
+            "each with Apply/Dismiss links._"
+        ]
+    lines = []
+    for option in options:
+        flag = " (loosens a guardrail)" if option.get("loosens_guardrail") else ""
+        diff = ", ".join(f"`{c['path']}` {c['from']} → {c['to']}" for c in option["changes"])
+        apply_href, dismiss_href = optimization_link(option, "apply"), optimization_link(option, "dismiss")
+        if apply_href and dismiss_href:
+            label = "Review & apply" if option.get("loosens_guardrail") else "Apply this change"
+            actions = f"[{label}]({apply_href}) · [Dismiss]({dismiss_href})"
+        else:
+            ack = " --acknowledge-loosening" if option.get("loosens_guardrail") else ""
+            actions = f"`trading-agent optimizations apply {option['id']}{ack}`"
+        lines.append(f"- **{option['title']}**{flag}: {diff}. {actions}")
+    return lines
+
+
 def build_weekly_report(week_start: str | None = None) -> Path:
     """Aggregate the 7 days starting week_start (YYYY-MM-DD, default: most
     recent Monday) into a weekly rollup, including realized P&L for the week
@@ -331,7 +362,7 @@ def build_weekly_report(week_start: str | None = None) -> Path:
         *(per_day_lines or ["_No activity this week._"]),
         "",
         "## Proposed model/config improvements",
-        "_Pending your review — see `trading-agent propose-weights`._",
+        *_open_option_lines(),
         "",
         "## Notes",
         "Realized P&L only counts orders with a confirmed fill "

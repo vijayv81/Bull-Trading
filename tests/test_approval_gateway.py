@@ -701,10 +701,36 @@ def test_notify_weekly_report_sends_full_markdown_by_email(monkeypatch, tmp_path
     gw.notify_weekly_report(report_path)
 
     assert len(email_calls) == 1
-    subject, body = email_calls[0]
+    subject, body, html_body = email_calls[0]
     assert "2026-W39" in subject
     assert body == _WEEKLY_REPORT_TEXT
     assert "Realized this week: $123.45" in body
+    assert "Realized this week: $123.45" in html_body
+
+
+def test_notify_weekly_report_html_makes_markdown_links_clickable(monkeypatch, tmp_path):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    report_path = tmp_path / "2026-W40.md"
+    report_path.write_text(
+        "# Weekly Report — week of 2026-09-28\n\n"
+        "## Proposed model/config improvements\n"
+        "- **Raise the stale-price limit** (loosens a guardrail): `execution.max_price_drift_pct` 3.0 → 4.0. "
+        "[Review & apply](https://claude.ai/artifact/X#opt-1.apply.loosens) · "
+        "[Dismiss](https://claude.ai/artifact/X#opt-1.dismiss.loosens)\n"
+        "_No other options <b>today</b>._\n"
+    )
+    email_calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: email_calls.append(a))
+
+    gw.notify_weekly_report(report_path)
+
+    _, body, html_body = email_calls[0]
+    assert "[Review & apply](https://claude.ai/artifact/X#opt-1.apply.loosens)" in body
+    assert '<a href="https://claude.ai/artifact/X#opt-1.apply.loosens"' in html_body
+    assert ">Review &amp; apply</a>" in html_body
+    assert '<a href="https://claude.ai/artifact/X#opt-1.dismiss.loosens"' in html_body
+    assert "<b>Raise the stale-price limit</b>" in html_body
+    assert "&lt;b&gt;today&lt;/b&gt;" in html_body  # report text is escaped, never trusted as markup
 
 
 def test_notify_weekly_report_sms_gets_just_the_summary_section(monkeypatch, tmp_path):
