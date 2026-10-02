@@ -16,6 +16,7 @@ def isolated(monkeypatch):
     monkeypatch.setattr(orch, "get_market_movers", lambda: {"gainers": []})
     monkeypatch.setattr(orch, "get_positions", lambda: [])
     monkeypatch.setattr(orch, "get_recent_bars", lambda ticker, **kwargs: [])
+    monkeypatch.setattr(orch, "get_mid_price", lambda ticker: None)
     monkeypatch.setattr(orch, "get_market_return_pct", lambda symbol: None)
     monkeypatch.setattr(orch, "technical_score", lambda bars: 0.5)
     monkeypatch.setattr(orch, "save_recommendation", lambda rec: None)
@@ -559,3 +560,84 @@ def test_long_term_trend_computed_and_forwarded_to_score_candidate(monkeypatch):
     orch.run_checkpoint("pre_open")
 
     assert seen == {"GOOD": None, "BAD": None}
+
+
+# --- held flag and live-mid reference price (2026-10-02 review) ---------------
+
+
+def _ok_research(monkeypatch):
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+
+
+def _capture_score_kwargs(monkeypatch):
+    seen = {}
+
+    def fake_score(**kwargs):
+        seen[kwargs["ticker"]] = kwargs
+        return {"ticker": kwargs["ticker"], "checkpoint": kwargs["checkpoint"], "action": "HOLD", "confidence": 50}
+
+    monkeypatch.setattr(orch, "score_candidate", fake_score)
+    return seen
+
+
+def test_held_flag_passed_to_score_candidate(monkeypatch):
+    monkeypatch.setattr(orch, "get_positions", lambda: [{"symbol": "HELD", "unrealized_plpc": "0.01"}])
+    _ok_research(monkeypatch)
+    seen = _capture_score_kwargs(monkeypatch)
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    assert seen["HELD"]["held"] is True
+    assert seen["GOOD"]["held"] is False
+
+
+def test_held_flag_unknown_when_positions_unreadable(monkeypatch):
+    def boom():
+        raise RuntimeError("alpaca unreachable")
+
+    monkeypatch.setattr(orch, "get_positions", boom)
+    _ok_research(monkeypatch)
+    seen = _capture_score_kwargs(monkeypatch)
+    _capture_digest(monkeypatch)
+
+    orch.run_checkpoint("pre_open")
+
+    # Unknown, not "not held": a SELL must not be turned into HOLD on the
+    # strength of a failed read.
+    assert seen["GOOD"]["held"] is None
+
+
+def test_reference_price_is_the_live_mid_when_a_quote_exists(monkeypatch):
+    _ok_research(monkeypatch)
+    bars = [{"close": 10.0}] * 60
+    monkeypatch.setattr(orch, "get_recent_bars", lambda ticker, **kwargs: bars)
+    monkeypatch.setattr(orch, "get_mid_price", lambda ticker: 12.5)
+    seen = _capture_score_kwargs(monkeypatch)
+    _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    assert seen["GOOD"]["reference_price"] == 12.5
+    assert {r["reference_price_source"] for r in results} == {"live_mid"}
+
+
+def test_reference_price_falls_back_to_daily_close_without_a_quote(monkeypatch):
+    _ok_research(monkeypatch)
+    bars = [{"close": 10.0}] * 60
+    monkeypatch.setattr(orch, "get_recent_bars", lambda ticker, **kwargs: bars)
+
+    def no_quote(ticker):
+        raise RuntimeError("no quote")
+
+    monkeypatch.setattr(orch, "get_mid_price", no_quote)
+    seen = _capture_score_kwargs(monkeypatch)
+    _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("pre_open")
+
+    assert seen["GOOD"]["reference_price"] == 10.0
+    assert {r["reference_price_source"] for r in results} == {"daily_close"}

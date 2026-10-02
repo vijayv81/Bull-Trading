@@ -399,7 +399,15 @@ one-line revert with no code change.
 - When on, it picks the highest-confidence actionable (BUY/SELL) recommendations
   from *this* checkpoint, up to `max_trades_per_day` **shared across all 4
   checkpoints for the day** (re-read from `data/trades/` fresh each call, not
-  reset per checkpoint) — 5 by default.
+  reset per checkpoint) — 5 by default. It walks the whole confidence-ranked
+  list until that many orders are actually *submitted*: a refused or skipped
+  candidate no longer uses up a slot a lower-ranked one could have filled
+  (previously only the top N were ever tried). A BUY on a symbol whose held
+  market value is already at `max_position_pct_of_portfolio`
+  (`_symbols_at_position_cap()`) is dropped before any attempt — it can't
+  place even one share, and was refused every checkpoint (MGLD/AIFF, week
+  to 2026-10-02). Best-effort: an unreadable account means no pre-filter,
+  and `position_size_reason()` still refuses at submission.
 - It writes its own `data/approvals/` decision — tagged `terms.source: "auto"`
   — then calls the exact same `submit_approved_order()` a human's approval
   would. Every guardrail still runs: `trading_enabled`, the options ban, the
@@ -520,6 +528,21 @@ it can never place.
    `reference_price` (an older record, or an ad hoc one from
    `agents/tools.py`) skips the price check rather than failing — nothing
    to compare against, not a breach.
+   **Mid to mid, and exits exempt** (2026-10-02 performance review): the
+   check used to compare the live *ask* against the last *daily close*,
+   which is usually yesterday's, so the "drift" was the overnight gap plus
+   the spread (10–50%+ on thin names), not the minutes since scoring.
+   `orchestrator._scoring_reference_price()` now records the live bid/ask
+   midpoint at scoring time (`data/alpaca_client.get_mid_price()`, tagged
+   `reference_price_source: "live_mid"`), falling back to the daily close
+   (`"daily_close"`) only when no quote is available, and the check compares
+   the current midpoint against it. Position sizing still prices at the ask.
+   SELLs skip both sub-checks entirely when `execution.
+   exempt_exits_from_stale_check` is `true` (default): a SELL here can only
+   reduce an existing long, so selling late still lowers risk, and refusing
+   it only kept the loss open (34 refused SELLs of the account's worst
+   losers that week). BUYs are still fully checked; `false` is the one-line
+   revert.
 8. **Max sector concentration** — `sector_concentration_reason()`, checked
    before any BUY. Closes a gap the per-position and position-count caps
    both miss: several different positions can each individually pass those
@@ -721,8 +744,9 @@ price, or a stop-loss SELL could never even be proposed for it). This fix
 stops *new* junk candidates from entering the pipeline; it does nothing by
 itself to help exit a penny stock already held — that's a separate,
 not-yet-built problem (see the 2026-09-30/10-01 performance review:
-severity-based auto-apply SELL prioritization and/or a wider drift
-tolerance for exits specifically).
+severity-based auto-apply SELL prioritization; the exit-side staleness
+exemption is now built — see guardrail #7's "Mid to mid, and exits
+exempt").
 
 ## Continuous position monitoring (plan §6)
 
@@ -761,6 +785,15 @@ both label the recommendation *and* actually drive `sell_pressure`.
 (`None`/`0.0` for a ticker that isn't currently held) for audit visibility
 into *why* a SELL fired — a fresh bearish technical read and a stop-loss-
 triggered one look identical in `action` alone otherwise.
+
+**No SELL on a ticker not held** (2026-10-02 performance review):
+`run_checkpoint()` passes `held` to `score_candidate()` — `True`/`False`
+from the positions read, `None` when that read failed. A bearish call on a
+ticker that isn't held is reported `HOLD` with `bearish_not_held: true`,
+since a SELL here only ever reduces an existing long and could never
+execute (16 auto-apply attempts that week, HIMS 7 times, skipped at qty 0
+while still showing up in the email as actionable). `None` keeps the SELL
+rather than guess from a failed read; `short_sale_reason()` still bounds it.
 
 Auto-apply treats a stop-loss/take-profit-biased SELL exactly like any other
 recommendation — no special human-only gate — since every guardrail

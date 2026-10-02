@@ -94,6 +94,27 @@ def _journal_auto_decision(rec: dict[str, Any], checkpoint: str) -> None:
         print(f"Could not journal auto-applied {rec['ticker']}: {exc}")
 
 
+def _symbols_at_position_cap() -> set[str]:
+    """Symbols whose held market value is already at or over
+    position.max_position_pct_of_portfolio. Best-effort: an unreadable
+    account returns an empty set, and position_size_reason() still refuses
+    any over-cap BUY at submission, so nothing gets through either way."""
+    try:
+        from trading_agent.data.alpaca_client import get_account, get_positions
+
+        cap = load_risk_limits()["position"]["max_position_pct_of_portfolio"]
+        equity = float(get_account()["equity"])
+        if equity <= 0:
+            return set()
+        return {
+            str(p.get("symbol", "")).upper()
+            for p in get_positions()
+            if abs(float(p.get("market_value") or 0.0)) / equity * 100 >= cap
+        }
+    except Exception:  # noqa: BLE001 - a pre-filter, not a guardrail
+        return set()
+
+
 def _held_qty(ticker: str) -> float:
     from trading_agent.data.alpaca_client import get_positions
 
@@ -150,14 +171,30 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
     if remaining <= 0:
         return []
 
+    # A BUY on a symbol already at the per-position cap can't place even one
+    # share; it was refused every checkpoint (MGLD/AIFF, 7 times in the week
+    # to 2026-10-02). Dropped before any attempt rather than retried.
+    at_cap = _symbols_at_position_cap()
     candidates = sorted(
-        (r for r in recs if r.get("action") in ("BUY", "SELL")),
+        (
+            r
+            for r in recs
+            if r.get("action") in ("BUY", "SELL")
+            and not (r["action"] == "BUY" and str(r["ticker"]).upper() in at_cap)
+        ),
         key=lambda r: r["confidence"],
         reverse=True,
-    )[:remaining]
+    )
 
+    # Walk the whole confidence-ranked list until `remaining` orders are
+    # placed. Only submissions count against the cap, so a refused or
+    # skipped candidate no longer uses up a slot a lower-ranked one could
+    # have filled — previously only the top `remaining` were ever tried.
     results = []
+    submitted = 0
     for rec in candidates:
+        if submitted >= remaining:
+            break
         try:
             from trading_agent.data.alpaca_client import get_account, get_latest_quote
 
@@ -177,6 +214,7 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
             result = {"ticker": rec["ticker"], "status": "submitted", "qty": qty, "order": order}
             results.append(result)
             _persist_attempt(result, checkpoint)
+            submitted += 1
         except OrderRefused as exc:
             result = {"ticker": rec["ticker"], "status": "refused", "reason": str(exc)}
             results.append(result)

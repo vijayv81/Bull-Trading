@@ -444,14 +444,14 @@ def test_stale_reason_none_for_hold(execution_cfg):
 
 
 def test_stale_reason_price_within_drift_passes(execution_cfg, monkeypatch):
-    monkeypatch.setattr(g, "_reference_price", lambda symbol: 101.0)  # 1% drift
+    monkeypatch.setattr(g, "_mid_price", lambda symbol: 101.0)  # 1% drift
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", lambda symbol: _bars(60, close=101.0))
     monkeypatch.setattr("trading_agent.scoring.recommendation_engine.technical_score", lambda bars: 0.8)
     assert g.stale_recommendation_reason(_rec(action="BUY")) is None
 
 
 def test_stale_reason_price_beyond_drift_refuses(execution_cfg, monkeypatch):
-    monkeypatch.setattr(g, "_reference_price", lambda symbol: 110.0)  # 10% drift
+    monkeypatch.setattr(g, "_mid_price", lambda symbol: 110.0)  # 10% drift
     reason = g.stale_recommendation_reason(_rec(action="BUY"))
     assert "price has moved" in reason
     assert "10.00%" in reason
@@ -461,7 +461,7 @@ def test_stale_reason_skips_price_check_without_reference_price(execution_cfg, m
     def fail(symbol):
         raise AssertionError("must not check price without a reference_price to compare against")
 
-    monkeypatch.setattr(g, "_reference_price", fail)
+    monkeypatch.setattr(g, "_mid_price", fail)
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", lambda symbol: _bars(60))
     monkeypatch.setattr("trading_agent.scoring.recommendation_engine.technical_score", lambda bars: 0.8)
     assert g.stale_recommendation_reason(_rec(action="BUY", reference_price=None)) is None
@@ -473,12 +473,12 @@ def test_stale_reason_skips_price_check_when_drift_cap_unset(monkeypatch):
     def fail(symbol):
         raise AssertionError("must not check price when max_price_drift_pct is unset")
 
-    monkeypatch.setattr(g, "_reference_price", fail)
+    monkeypatch.setattr(g, "_mid_price", fail)
     assert g.stale_recommendation_reason(_rec(action="BUY")) is None
 
 
 def test_stale_reason_technical_flip_refuses(execution_cfg, monkeypatch):
-    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)  # no drift
+    monkeypatch.setattr(g, "_mid_price", lambda symbol: 100.0)  # no drift
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", lambda symbol: _bars(60))
     monkeypatch.setattr("trading_agent.scoring.recommendation_engine.technical_score", lambda bars: 0.3)  # -> SELL
     reason = g.stale_recommendation_reason(_rec(action="BUY"))
@@ -487,14 +487,14 @@ def test_stale_reason_technical_flip_refuses(execution_cfg, monkeypatch):
 
 
 def test_stale_reason_technical_agrees_passes(execution_cfg, monkeypatch):
-    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_mid_price", lambda symbol: 100.0)
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", lambda symbol: _bars(60))
     monkeypatch.setattr("trading_agent.scoring.recommendation_engine.technical_score", lambda bars: 0.9)
     assert g.stale_recommendation_reason(_rec(action="BUY")) is None
 
 
 def test_stale_reason_insufficient_bars_skips_technical_recheck(execution_cfg, monkeypatch):
-    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_mid_price", lambda symbol: 100.0)
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", lambda symbol: _bars(10))  # too few
     monkeypatch.setattr(
         "trading_agent.scoring.recommendation_engine.technical_score",
@@ -505,7 +505,7 @@ def test_stale_reason_insufficient_bars_skips_technical_recheck(execution_cfg, m
 
 def test_stale_reason_reverify_technical_false_skips_direction_check(monkeypatch):
     monkeypatch.setattr(g, "load_risk_limits", lambda: {"execution": {"reverify_technical": False}})
-    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_mid_price", lambda symbol: 100.0)
     assert g.stale_recommendation_reason(_rec(action="BUY")) is None
 
 
@@ -513,13 +513,13 @@ def test_stale_reason_fails_closed_on_unreadable_quote(execution_cfg, monkeypatc
     def boom(symbol):
         raise RuntimeError("alpaca unreachable")
 
-    monkeypatch.setattr(g, "_reference_price", boom)
+    monkeypatch.setattr(g, "_mid_price", boom)
     reason = g.stale_recommendation_reason(_rec(action="BUY"))
     assert "refusing to proceed blind" in reason
 
 
 def test_stale_reason_fails_closed_on_unreadable_bars(execution_cfg, monkeypatch):
-    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+    monkeypatch.setattr(g, "_mid_price", lambda symbol: 100.0)
 
     def boom(symbol):
         raise RuntimeError("alpaca unreachable")
@@ -529,14 +529,43 @@ def test_stale_reason_fails_closed_on_unreadable_bars(execution_cfg, monkeypatch
     assert "refusing to proceed blind" in reason
 
 
-def test_stale_reason_take_profit_direction_biased_sell_still_reverified(execution_cfg, monkeypatch):
-    """A stop-loss/take-profit-biased SELL (see recommendation_engine's
-    sell_pressure) is re-verified the same as a pure-technical one — the
-    action recorded on the rec is what's compared, regardless of why it
-    became SELL."""
-    monkeypatch.setattr(g, "_reference_price", lambda symbol: 100.0)
+def test_stale_reason_exempts_exits_by_default(execution_cfg, monkeypatch):
+    """A SELL here only ever reduces a long, so a late exit still lowers
+    risk: neither the price nor the technical re-check may block it. In the
+    week to 2026-10-02 these checks refused 34 SELLs of the worst losers."""
+
+    def fail(*args):
+        raise AssertionError("an exit must not be re-checked")
+
+    monkeypatch.setattr(g, "_mid_price", fail)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", fail)
+    assert g.stale_recommendation_reason(_rec(action="SELL", reference_price=0.5)) is None
+
+
+def test_stale_reason_rechecks_exits_when_exemption_is_off(monkeypatch):
+    monkeypatch.setattr(
+        g,
+        "load_risk_limits",
+        lambda: {
+            "execution": {
+                "max_price_drift_pct": 3.0,
+                "reverify_technical": True,
+                "exempt_exits_from_stale_check": False,
+            }
+        },
+    )
+    monkeypatch.setattr(g, "_mid_price", lambda symbol: 100.0)
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", lambda symbol: _bars(60))
     monkeypatch.setattr("trading_agent.scoring.recommendation_engine.technical_score", lambda bars: 0.9)  # -> BUY now
     reason = g.stale_recommendation_reason(_rec(action="SELL"))
-    assert "technical signal has flipped" in reason
     assert "SELL then, BUY now" in reason
+
+
+def test_stale_reason_compares_the_midpoint_not_the_ask(execution_cfg, monkeypatch):
+    """A thin name quoted 0.50 bid / 0.60 ask hasn't moved from a 0.55
+    reference; the ask alone would read as a 9% move."""
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote", lambda symbol: {"bid_price": 0.50, "ask_price": 0.60}
+    )
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", lambda symbol: _bars(10))
+    assert g.stale_recommendation_reason(_rec(action="BUY", reference_price=0.55)) is None

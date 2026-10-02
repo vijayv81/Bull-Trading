@@ -720,3 +720,36 @@ def test_regime_dampening_fields_default_when_not_passed(fixed_config):
     assert rec["regime_dampened"] is False
     assert rec["long_term_trend"] is None
     assert rec["market_return_pct"] is None
+
+
+# --- a bearish call on a ticker not held is HOLD, not SELL (2026-10-02) -------
+
+
+def test_bearish_call_on_a_ticker_not_held_reports_hold(buy_gate_config):
+    # A SELL can only reduce an existing long, so a SELL on a ticker with no
+    # position could never execute — 16 such auto-apply attempts in the week
+    # to 2026-10-02 skipped at qty 0. Reported as HOLD instead.
+    rec = engine.score_candidate(
+        "HIMS", "midday", sentiment=0.9, technical=0.3, fundamental=None, catalyst=0.9, held=False
+    )
+    assert rec["action"] == "HOLD"
+    assert rec["bearish_not_held"] is True
+    assert rec["suggested_size_pct_of_portfolio"] == 0.0
+
+
+def test_bearish_call_on_a_held_ticker_still_sells(buy_gate_config):
+    rec = engine.score_candidate(
+        "HIMS", "midday", sentiment=0.9, technical=0.3, fundamental=None, catalyst=0.9, held=True
+    )
+    assert rec["action"] == "SELL"
+    assert rec["bearish_not_held"] is False
+
+
+def test_bearish_call_with_unknown_holdings_still_sells(buy_gate_config):
+    # held=None means positions couldn't be read: keep the SELL rather than
+    # guess the ticker isn't held. short_sale_reason() still bounds it.
+    rec = engine.score_candidate(
+        "HIMS", "midday", sentiment=0.9, technical=0.3, fundamental=None, catalyst=0.9
+    )
+    assert rec["action"] == "SELL"
+    assert rec["bearish_not_held"] is False
