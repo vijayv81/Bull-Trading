@@ -8,6 +8,29 @@
     "reasoning": "Auto-applied: confidence 74.6 (technical=0.48977035233960725, sentiment=0.75, catalyst=1.0, fundamental=None)",
     "reference_price": 340.995,
     "recorded_at": "2026-10-02T13:46:33.328249+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 340.995,
+      "price_at_measurement": 340.385,
+      "pct_change": -0.18,
+      "directionally_correct": true,
+      "measured_at": "2026-10-02T19:57:13.438956+00:00"
+    }
+  },
+  {
+    "ticker": "AIXI",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 86.7,
+    "reasoning": "Auto-applied: confidence 86.7 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None)",
+    "reference_price": 1.775,
+    "recorded_at": "2026-10-02T19:57:02.970279+00:00",
+    "outcome": {
+      "price_at_decision": 1.775,
+      "price_at_measurement": 1.775,
+      "pct_change": 0.0,
+      "directionally_correct": false,
+      "measured_at": "2026-10-02T19:57:13.865764+00:00"
+    }
   }
 ]
