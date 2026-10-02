@@ -582,17 +582,20 @@ def _weekly_learning_review_html(review: dict[str, Any]) -> str:
 
     inner += h.section_heading("Orders not placed")
     never_chip = h.chip(f"{len(review['never_decided'])} never decided", "negative")
-    approved_chip = h.chip(f"{len(review['approved_not_executed'])} approved, not executed", "negative")
+    approved_chip = h.chip(f"{len(review['approved_not_executed'])} human-approved, not executed", "negative")
+    unlogged_chip = h.chip(f"{len(review.get('auto_outcome_unlogged') or [])} auto-apply, outcome not logged", "neutral")
     rejected_chip = h.chip(f"{len(review['rejected'])} human-rejected", "neutral")
-    inner += f'<div style="padding:6px 0;">{never_chip} {approved_chip} {rejected_chip}</div>'
+    inner += f'<div style="padding:6px 0;">{never_chip} {approved_chip} {unlogged_chip} {rejected_chip}</div>'
 
     attempts_summary = review["auto_apply_attempts_by_status"]
+    span = review.get("attempt_log_span") or ""
+    span_note = f' <span style="color:{muted};">({span})</span>' if span else ""
     submitted_chip = h.chip(f"{attempts_summary.get('submitted', 0)} submitted", "positive")
     refused_chip = h.chip(f"{attempts_summary.get('refused', 0)} refused", "negative")
     skipped_chip = h.chip(f"{attempts_summary.get('skipped', 0)} skipped", "neutral")
     error_chip = h.chip(f"{attempts_summary.get('error', 0)} errored", "negative")
     inner += (
-        f'<div style="padding:6px 0;">Auto-apply attempts: '
+        f'<div style="padding:6px 0;">Auto-apply attempts{span_note}: '
         f"{submitted_chip} {refused_chip} {skipped_chip} {error_chip}</div>"
     )
     if review["refusal_breakdown"]:
@@ -718,17 +721,20 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
     lines.append("")
     lines.append(
         f"Orders not placed: {len(review['never_decided'])} never decided, "
-        f"{len(review['approved_not_executed'])} approved but never submitted, "
+        f"{len(review['approved_not_executed'])} human-approved but never submitted, "
+        f"{len(review.get('auto_outcome_unlogged') or [])} auto-apply with no logged outcome, "
         f"{len(review['rejected'])} human-rejected"
     )
     attempts_summary = review["auto_apply_attempts_by_status"]
+    span = review.get("attempt_log_span")
+    span_suffix = f" ({span})" if span else ""
     lines.append(
-        f"Auto-apply attempts: {attempts_summary.get('submitted', 0)} submitted, "
+        f"Auto-apply attempts{span_suffix}: {attempts_summary.get('submitted', 0)} submitted, "
         f"{attempts_summary.get('refused', 0)} refused, {attempts_summary.get('skipped', 0)} skipped, "
         f"{attempts_summary.get('error', 0)} errored"
     )
     if review["refusal_breakdown"]:
-        lines.append("Refusal breakdown:")
+        lines.append(f"Refusal breakdown{span_suffix}:")
         for label, count in sorted(review["refusal_breakdown"].items(), key=lambda kv: -kv[1]):
             lines.append(f"  - {label}: {count}")
 
