@@ -319,6 +319,44 @@ plain-text body, same convention as the daily summary. Gated independently
 by `notifications.weekly_learning_review_enabled` (default `true`) —
 `false` keeps every other notification unaffected, no code change needed.
 
+**One-click optimization options**, per user instruction 2026-10-02 ("the
+email to have a clickable optimization options for incorporating into the
+agent ... right now it seems passive"). This is a deliberate exception to
+"proposals are never applied automatically" above. A config change still
+only happens on a human's explicit click, but a scheduled routine, not the
+human, then carries it out. How it stays bounded:
+
+- `optimizations.py:build_options()` turns the review's findings into exact
+  config changes, each gated by a minimum-evidence bar: shift 0.05 of
+  scoring weight from a weak signal to a strong one (10+ outcomes per
+  signal, >15pt hit-rate gap); raise `execution.max_price_drift_pct` by 1
+  (10+ logged refusals, 50%+ stale); lengthen
+  `operational.approval_expiry_hours` by 1 (10+ recommendations expired
+  undecided). Each is saved to `data/optimizations/<date>/options.json`
+  and flagged `loosens_guardrail` when it does.
+- The email leads with them. Each gets Apply/Dismiss buttons linking to the
+  Optimization Ticket page (`notifications.optimization_ticket_artifact_url`).
+  A non-loosening option is one click. A loosening one is labeled "Review &
+  apply (loosens a guardrail)", and the page keeps Apply disabled until the
+  viewer ticks an explicit acknowledgment. The click lands in the page's own
+  database; null URL turns buttons off and the email shows the apply
+  command instead.
+- `trading-research`'s "Apply clicked optimizations first" step pulls clicks
+  in at the start of every checkpoint and runs `trading-agent optimizations
+  apply|dismiss`, then commits `config/` + `data/optimizations/` like any
+  other snapshot.
+- `apply_option()` is where the limits live, in code, not config: only
+  settings in `CLICKABLE_SETTINGS`, each within fixed bounds; the option is
+  re-read from `data/optimizations/`, never from the click payload; refused
+  if the config moved since it was proposed; weights must still sum to 1.0;
+  a loosening option is refused without `--acknowledge-loosening`, which the
+  routine passes only when the click recorded the acknowledgment. YAML is
+  edited in place, comments intact, and every apply/dismiss is logged to
+  `data/optimizations/`. The kill switch, `allow_live_trading`,
+  `auto_apply.enabled`, the options/short bans, and the position and loss
+  caps are not in `CLICKABLE_SETTINGS` and can never change this way.
+- `trading-agent optimizations list|apply|dismiss` does the same by hand.
+
 ## Approval + execution (hard requirement, plan §8)
 
 `execute/order_manager.py:submit_approved_order()` is the only sanctioned

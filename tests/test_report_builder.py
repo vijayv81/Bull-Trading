@@ -411,6 +411,14 @@ def _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path):
     monkeypatch.setattr("trading_agent.scoring.recommendation_engine.PERFORMANCE_DIR", tmp_path / "performance")
     monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}})
     monkeypatch.setattr(rb, "load_risk_limits", lambda: {"execution": {"max_price_drift_pct": 3.0}})
+    # build_weekly_learning_review() also builds and saves optimization
+    # options — keep those reads/writes off the real config and data/.
+    monkeypatch.setattr("trading_agent.optimizations.OPTIMIZATIONS_DIR", tmp_path / "optimizations")
+    monkeypatch.setattr("trading_agent.optimizations.load_agent_config", lambda: {"scoring_weights": {}})
+    monkeypatch.setattr(
+        "trading_agent.optimizations.load_risk_limits",
+        lambda: {"execution": {"max_price_drift_pct": 3.0}, "operational": {"approval_expiry_hours": 2}},
+    )
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_positions", lambda: [])
     monkeypatch.setattr(
         "trading_agent.data.alpaca_client.get_account",

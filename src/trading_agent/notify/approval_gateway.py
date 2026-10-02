@@ -553,6 +553,70 @@ def notify_weekly_report(report_path: Path) -> None:
             print(f"NOTIFY (weekly report sms) failed: {exc}")
 
 
+def optimization_link(option: dict[str, Any], intent: str) -> str | None:
+    """Link to the Optimization Ticket page for one option, or None when
+    notifications.optimization_ticket_artifact_url isn't configured. The
+    option's display fields ride in the URL fragment so the page needs no
+    pre-seeded data; only the id and the click are stored, and applying
+    re-reads the option from data/optimizations/ — never from this link."""
+    import base64
+    import json
+
+    base = load_agent_config().get("notifications", {}).get("optimization_ticket_artifact_url")
+    if not base:
+        return None
+    fields = ("id", "title", "why", "effect", "risk", "loosens_guardrail", "changes")
+    payload = {k: option[k] for k in fields if k in option}
+    token = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode().rstrip("=")
+    return f"{base}#{token}.{intent}"
+
+
+def _apply_command(option: dict[str, Any]) -> str:
+    flag = " --acknowledge-loosening" if option.get("loosens_guardrail") else ""
+    return f"trading-agent optimizations apply {option['id']}{flag}"
+
+
+def _optimization_options_html(review: dict[str, Any]) -> str:
+    from trading_agent.notify import html as h
+
+    options = review.get("optimization_options") or []
+    out = h.section_heading("Optimizations you can apply")
+    if not options:
+        return out + h.muted("No change cleared its minimum-evidence bar this time.")
+    for option in options:
+        diff = "<br>".join(
+            f'<span style="font-family:monospace;">{c["path"]}: {c["from"]} &rarr; <b>{c["to"]}</b></span>'
+            for c in option["changes"]
+        )
+        flag = h.chip("LOOSENS A GUARDRAIL", "negative") + " " if option.get("loosens_guardrail") else ""
+        risk = (
+            f'<div style="font-size:13px;color:{h.COLORS["alert"]};margin-top:4px;">{option["risk"]}</div>'
+            if option.get("risk")
+            else ""
+        )
+        apply_href, dismiss_href = optimization_link(option, "apply"), optimization_link(option, "dismiss")
+        if apply_href and dismiss_href:
+            apply_label = (
+                "Review & apply (loosens a guardrail)" if option.get("loosens_guardrail") else "Apply this change"
+            )
+            actions = h.button(apply_label, apply_href) + h.button("Dismiss", dismiss_href, "negative")
+        else:
+            actions = h.muted(f"Apply with: {_apply_command(option)}")
+        out += (
+            f'<div style="border:1px solid {h.COLORS["border"]};border-radius:10px;padding:12px 14px;margin:8px 0;">'
+            f'<div style="font-size:15px;font-weight:700;">{flag}{option["title"]}</div>'
+            f'<div style="font-size:13px;margin-top:6px;">{diff}</div>'
+            f'<div style="font-size:14px;margin-top:6px;">{option["why"]}</div>'
+            f'<div style="font-size:13px;color:{h.COLORS["muted"]};margin-top:4px;">{option["effect"]}</div>'
+            f"{risk}{actions}</div>"
+        )
+    return out + h.muted(
+        "A click records your decision only. Options that loosen a guardrail ask you to confirm that "
+        "on the next page. The next checkpoint run applies it within fixed limits and commits it to "
+        "git, so it can be reverted."
+    )
+
+
 def _weekly_learning_review_html(review: dict[str, Any]) -> str:
     from trading_agent.notify import html as h
 
@@ -566,6 +630,8 @@ def _weekly_learning_review_html(review: dict[str, Any]) -> str:
         inner += h.muted(f"Unrealized (live positions): unavailable — {review['unrealized_pnl']['error']}")
     else:
         inner += h.stat_card("Unrealized P&L (live, now)", h.signed_dollar(review["unrealized_pnl"]["total"]))
+
+    inner += _optimization_options_html(review)
 
     inner += h.section_heading("Portfolio status")
     status = review["portfolio_status"]
@@ -650,8 +716,8 @@ def _weekly_learning_review_html(review: dict[str, Any]) -> str:
             inner += f'<div style="padding:6px 0;font-size:14px;">{n}</div>'
 
     inner += h.muted(
-        "Nothing above is applied automatically — incorporating any of it means a human edits "
-        "config/agent_config.yaml or config/risk_limits.yaml and commits the change deliberately."
+        "Nothing changes until you click Apply on an option above; the rest of this email is "
+        "information only."
     )
 
     subtitle = f"last {review['lookback_days']} days ({review['window_start']} to {review['window_end']})"
@@ -678,7 +744,15 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
     approved but never submitted, or were refused by a guardrail/auto-apply,
     plus a hindsight price check on each, and the same
     propose_weight_adjustments() proposals `trading-agent propose-weights`
-    already surfaces — never applied automatically here either.
+    already surfaces.
+
+    Per user instruction 2026-10-02 ("clickable optimization options for
+    incorporating into the agent"), the review's `optimization_options`
+    (optimizations.build_options()) lead the email, each with Apply/Dismiss
+    links to the Optimization Ticket page (optimization_link()). A click
+    only records the decision; the next checkpoint routine applies it via
+    `trading-agent optimizations apply`, within optimizations.py's
+    hard-coded bounds.
 
     Config-gated independently, same convention as daily_summary_enabled:
     notifications.weekly_learning_review_enabled (default true). A send
@@ -696,6 +770,33 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
         f"({review['window_start']} to {review['window_end']})",
         "",
     ]
+
+    options = review.get("optimization_options") or []
+    lines.append("Optimizations you can apply:")
+    if not options:
+        lines.append("  None cleared their minimum-evidence bar this time.")
+    for option in options:
+        flag = " [LOOSENS A GUARDRAIL]" if option.get("loosens_guardrail") else ""
+        lines.append(f"- {option['title']}{flag}")
+        for c in option["changes"]:
+            lines.append(f"    {c['path']}: {c['from']} -> {c['to']}")
+        lines.append(f"    Why: {option['why']}")
+        lines.append(f"    Effect: {option['effect']}")
+        if option.get("risk"):
+            lines.append(f"    Risk: {option['risk']}")
+        apply_href = optimization_link(option, "apply")
+        if apply_href:
+            apply_label = "Review & apply (asks you to confirm)" if option.get("loosens_guardrail") else "Apply"
+            lines.append(f"    {apply_label}: {apply_href}")
+            lines.append(f"    Dismiss: {optimization_link(option, 'dismiss')}")
+        else:
+            lines.append(f"    Apply with: {_apply_command(option)}")
+    if options:
+        lines.append(
+            "  A click records your decision only; the next checkpoint run applies it within fixed "
+            "limits and commits it to git."
+        )
+    lines.append("")
 
     lines.append(
         f"Trades executed: {review['trades_count']} | Realized P&L: ${review['realized_pnl']['total']:,.2f}"
@@ -778,14 +879,16 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
 
     lines.append("")
     lines.append(
-        "Nothing above is applied automatically — incorporating any of it means a human edits "
-        "config/agent_config.yaml or config/risk_limits.yaml and commits the change deliberately."
+        "Nothing changes until you click Apply on an option above; the rest of this email is "
+        "information only."
     )
 
     subject = (
         f"[Bull-Trading] Weekly learning review — last {review['lookback_days']} days "
         f"({review['window_start']} to {review['window_end']})"
     )
+    if options:
+        subject += f" — {len(options)} optimization(s) to review"
     body = "\n".join(lines)
     html_body = _weekly_learning_review_html(review)
 

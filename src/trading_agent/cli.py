@@ -12,6 +12,7 @@ Command groups map onto the plan's modules:
     weekly-report /
     weekly-learning-review   -> reporting/report_builder.py, notify/approval_gateway.py
   propose-weights           -> scoring/recommendation_engine.py (never auto-applies)
+  optimizations             -> optimizations.py (applies a clicked option, within fixed bounds)
   notify-test / cron-status -> notify/senders.py, scheduling.py
   chat                      -> agents/orchestrator.py (interactive Claude Agent SDK research)
 """
@@ -261,6 +262,41 @@ def cmd_weekly_learning_review(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_optimizations_list(args: argparse.Namespace) -> None:
+    from trading_agent.optimizations import pending_options
+
+    pending = pending_options()
+    if not pending:
+        print("No pending optimization options.")
+        return
+    for option in pending:
+        flag = " [loosens a guardrail]" if option.get("loosens_guardrail") else ""
+        print(f"{option['id']}  (proposed {option['proposed_on']}){flag}")
+        print(f"  {option['title']}")
+        for c in option["changes"]:
+            print(f"    {c['file']}: {c['path']} {c['from']} -> {c['to']}")
+
+
+def cmd_optimizations_decide(args: argparse.Namespace) -> None:
+    from trading_agent.optimizations import OptimizationRefused, apply_option, dismiss_option
+
+    try:
+        if args.decision == "apply":
+            record = apply_option(
+                args.option_id,
+                decided_by=args.decided_by,
+                acknowledged_loosening=args.acknowledge_loosening,
+            )
+            for c in record["changes"]:
+                print(f"Applied {c['file']}: {c['path']} {c['from']} -> {c['to']}")
+        else:
+            dismiss_option(args.option_id, decided_by=args.decided_by)
+            print(f"Dismissed {args.option_id}")
+    except OptimizationRefused as exc:
+        print(f"Refused: {exc}")
+        raise SystemExit(1) from exc
+
+
 def cmd_propose_weights(args: argparse.Namespace) -> None:
     from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
 
@@ -435,6 +471,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="Rolling window size, defaults to reporting.weekly_learning_review_lookback_days (30).",
     )
     weekly_learning_review.set_defaults(func=cmd_weekly_learning_review)
+
+    optimizations = sub.add_parser(
+        "optimizations", help="List, apply, or dismiss the weekly review's one-click config options."
+    )
+    optimizations_sub = optimizations.add_subparsers(dest="optimizations_command", required=True)
+    optimizations_sub.add_parser("list", help="Options not yet applied or dismissed.").set_defaults(
+        func=cmd_optimizations_list
+    )
+    for decision in ("apply", "dismiss"):
+        decide = optimizations_sub.add_parser(decision)
+        decide.add_argument("option_id")
+        decide.add_argument(
+            "--decided-by", default="cli", help="Recorded in the audit log, e.g. email-link for a clicked option."
+        )
+        if decision == "apply":
+            decide.add_argument(
+                "--acknowledge-loosening",
+                action="store_true",
+                help="Required for an option that loosens a guardrail (the ticket page's checkbox).",
+            )
+        decide.set_defaults(func=cmd_optimizations_decide, decision=decision, acknowledge_loosening=False)
 
     propose = sub.add_parser("propose-weights", help="Print (never apply) proposed scoring-weight changes.")
     propose.set_defaults(func=cmd_propose_weights)
