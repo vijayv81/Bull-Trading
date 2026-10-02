@@ -79,11 +79,21 @@ digests, the daily summary, the Friday weekly report) unaffected.
 2. Run `trading-agent weekly-learning-review` with no flags — it defaults
    to the last 30 rolling days ending today, which is what this routine
    should use on a normal run.
-3. Report the findings in your completion message: the window analyzed,
+3. **Load this week's options into the Optimization Ticket page**, so a
+   click on an email button opens a page that shows the full change. If
+   `data/optimizations/<date>/options.json` exists and
+   `notifications.optimization_ticket_artifact_url` is set, write each
+   option to that page's database with one `ArtifactData` `batch`: per
+   option, `{op: "set", collection: "options", doc_id: <option id>, data:
+   <the option object>}`. This is display data only; applying always
+   re-reads the option from the repo. If the write fails, say so and carry
+   on. The page still works from the link alone, showing the option id and
+   pointing back to the email for details.
+4. Report the findings in your completion message: the window analyzed,
    trades, portfolio status, how many orders weren't placed and the top
    refusal reasons, the headline from the opportunities-lost hindsight
    check, and whether a weight-adjustment proposal was surfaced.
-4. **Commit the report** — same convention as `trading-report`'s "Commit
+5. **Commit the report** — same convention as `trading-report`'s "Commit
    the snapshot" step:
    ```bash
    git add reports/learning/ data/optimizations/

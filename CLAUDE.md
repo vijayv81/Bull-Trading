@@ -340,7 +340,13 @@ human, then carries it out. How it stays bounded:
   apply (loosens a guardrail)", and the page keeps Apply disabled until the
   viewer ticks an explicit acknowledgment. The click lands in the page's own
   database; null URL turns buttons off and the email shows the apply
-  command instead.
+  command instead. Links carry only a short anchor,
+  `#<option_id>.<apply|dismiss>[.loosens]`: the viewer only forwards a
+  plain anchor to the page, and a first version that packed the whole
+  option into a ~900-character fragment arrived empty. The Saturday routine
+  loads each week's options into the page's `options/` collection so it can
+  show the full change. Without that the page still works from the anchor,
+  showing the option id and pointing back to the email.
 - `trading-research`'s "Apply clicked optimizations first" step pulls clicks
   in at the start of every checkpoint and runs `trading-agent optimizations
   apply|dismiss`, then commits `config/` + `data/optimizations/` like any

@@ -185,6 +185,10 @@ def build_options(review: dict[str, Any]) -> list[dict[str, Any]]:
                 }
             )
 
+    # Ids travel as the email link's #anchor and the ticket page's database
+    # doc id; both only accept letters, digits and . _ ~ -
+    for option in options:
+        option["id"] = re.sub(r"[^A-Za-z0-9._~-]", "-", option["id"])
     return options
 
 
