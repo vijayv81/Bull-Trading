@@ -13,6 +13,8 @@ strip HTML, this is purely the richer rendering for ones that don't.
 
 from __future__ import annotations
 
+from html import escape
+
 FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
 COLORS = {
@@ -145,6 +147,21 @@ def chip(text: str, kind: str = "neutral") -> str:
     return (
         f'<span style="display:inline-block;background-color:{bg};color:{fg};'
         f'font-weight:600;font-size:12px;padding:2px 9px;border-radius:10px;">{text}</span>'
+    )
+
+
+def button(label: str, href: str, kind: str = "positive") -> str:
+    """A tappable link styled as a button — an <a>, not a <button>/<form>,
+    since email clients strip forms and scripts but keep links."""
+    palette = {
+        "positive": (COLORS["buy"], "#ffffff"),
+        "negative": (COLORS["chip_bg"], COLORS["text"]),
+    }
+    bg, fg = palette.get(kind, palette["positive"])
+    return (
+        f'<a href="{escape(href, quote=True)}" style="display:inline-block;background-color:{bg};color:{fg};'
+        f'font-weight:700;font-size:14px;padding:9px 16px;border-radius:8px;text-decoration:none;'
+        f'margin:6px 8px 0 0;">{escape(label)}</a>'
     )
 
 

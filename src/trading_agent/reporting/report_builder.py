@@ -766,6 +766,21 @@ def _write_learning_review_markdown(review: dict[str, Any]) -> Path:
     weight_str = ", ".join(f"{k} {v:g}" for k, v in review["scoring_weights"].items())
     lines.append(f"- Weights currently in effect: {weight_str or 'n/a'}")
 
+    lines += ["", "## Optimization options (apply with one click from the email)"]
+    if review.get("optimization_options"):
+        for option in review["optimization_options"]:
+            diff = ", ".join(f"{c['path']}: {c['from']} -> {c['to']}" for c in option["changes"])
+            flag = " **[loosens a guardrail]**" if option.get("loosens_guardrail") else ""
+            lines.append(f"- **{option['title']}**{flag} (`{option['id']}`)")
+            lines.append(f"  - Change: {diff}")
+            lines.append(f"  - Why: {option['why']}")
+            lines.append(f"  - Effect: {option['effect']}")
+            if option.get("risk"):
+                lines.append(f"  - Risk: {option['risk']}")
+            lines.append(f"  - Apply by hand: `trading-agent optimizations apply {option['id']}`")
+    else:
+        lines.append("_No option cleared its minimum-evidence bar over this window._")
+
     if review["config_tuning_notes"]:
         lines += ["", "## Other observations for next week"]
         for n in review["config_tuning_notes"]:
@@ -779,9 +794,9 @@ def _write_learning_review_markdown(review: dict[str, Any]) -> Path:
         "window deliberately wider than the weekly cadence this report fires on, so a single quiet week "
         "doesn't starve the refusal-category and missed-opportunity patterns of data. Distinct from "
         "`trading-agent weekly-report`'s strict calendar-week P&L, which this doesn't replace. Every "
-        "proposal and observation above is for human review only — nothing in this report edits "
-        "config/agent_config.yaml or config/risk_limits.yaml. Incorporating any of it means a human "
-        "reviews it and commits the change deliberately (plan §6.3).",
+        "option above changes config only after a human clicks Apply (or runs the command); the next "
+        "checkpoint routine then applies it within hard-coded bounds and commits it to git, so it can "
+        "be reverted. Building this report changes nothing by itself.",
     ]
 
     out_dir = REPORTS_DIR / "learning"
@@ -955,6 +970,12 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
     }
     review["attempt_log_coverage_days"] = _attempt_log_coverage(attempt_log_days, days)
     review["attempt_log_span"] = _attempt_log_span(attempt_log_days, days)
+
+    from trading_agent.optimizations import build_options, save_options
+
+    review["optimization_options"] = build_options(review)
+    if review["optimization_options"]:
+        save_options(review["optimization_options"], review["window_end"])
     review["config_tuning_notes"] = _config_tuning_notes(
         window_attempts,
         refusal_breakdown,
