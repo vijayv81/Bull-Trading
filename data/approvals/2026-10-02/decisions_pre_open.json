@@ -1,0 +1,92 @@
+[
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:50:42.932713+00:00"
+  },
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 12512.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:50:44.641166+00:00"
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1533.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:50:46.188561+00:00"
+  },
+  {
+    "ticker": "GOOG",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:50:47.901879+00:00"
+  },
+  {
+    "ticker": "INLF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 320.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:50:49.742138+00:00"
+  },
+  {
+    "ticker": "XRPN",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 215.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:57:03.542508+00:00"
+  },
+  {
+    "ticker": "XRPNW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1854.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:57:04.718084+00:00"
+  },
+  {
+    "ticker": "SDEV",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 382.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:57:06.018922+00:00"
+  },
+  {
+    "ticker": "WCT",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 963.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T12:57:07.303229+00:00"
+  }
+]
