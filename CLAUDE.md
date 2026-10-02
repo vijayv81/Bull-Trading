@@ -166,7 +166,12 @@ anywhere before `notify_weekly_report()`. No separate scheduled trigger for
 this: the `trading-report` skill runs it from `pre_close` on Fridays only
 (the last checkpoint of the trading week), reusing the existing Mon-Fri
 `pre_close` schedule rather than adding a new automation object for a
-once-a-week job.
+once-a-week job. Its "Proposed model/config improvements" section lists
+each still-open optimization option (`optimizations.open_options()`: not yet
+applied or dismissed, and still valid against today's config) with
+clickable Apply/Dismiss links to the Optimization Ticket page, per user
+instruction 2026-10-02. The email carries an HTML rendering of the markdown
+(`_markdown_to_html()`) so those links are clickable, not raw `[text](url)`.
 
 ## Human-approval notifications (plan §8/§12)
 

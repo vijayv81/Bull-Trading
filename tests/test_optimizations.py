@@ -364,3 +364,47 @@ def test_email_one_click_label_for_options_that_do_not_loosen(monkeypatch):
     assert "    Apply: https://claude.ai/artifact/X#" in plain
     assert "Apply this change" in html_body
     assert "loosens a guardrail)" not in html_body
+
+
+# --- weekly report's improvements section ------------------------------------------
+
+
+def _ticket(monkeypatch, url="https://claude.ai/artifact/X"):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"optimization_ticket_artifact_url": url}})
+
+
+def test_weekly_report_section_lists_open_options_with_clickable_links(sandbox, monkeypatch):
+    from trading_agent.reporting import report_builder as rb
+
+    _ticket(monkeypatch)
+    _save([_drift_option()])
+    [line] = rb._open_option_lines()
+    assert "**Raise the stale-price limit from 3% to 4%** (loosens a guardrail)" in line
+    assert "`execution.max_price_drift_pct` 3.0 → 4.0" in line
+    assert "[Review & apply](https://claude.ai/artifact/X#2026-10-02-max-price-drift-4.apply.loosens)" in line
+    assert "[Dismiss](https://claude.ai/artifact/X#2026-10-02-max-price-drift-4.dismiss.loosens)" in line
+
+
+def test_weekly_report_section_skips_decided_and_outdated_options(sandbox, monkeypatch):
+    from trading_agent.reporting import report_builder as rb
+
+    _ticket(monkeypatch)
+    outdated = _drift_option(
+        id="old", changes=[{"file": "risk_limits.yaml", "path": "execution.max_price_drift_pct", "from": 2.0, "to": 3.0}]
+    )
+    dismissed = _drift_option(id="dismissed")
+    _save([outdated, dismissed])
+    opt.dismiss_option("dismissed")
+    assert rb._open_option_lines() == [
+        "_No open options right now. The Saturday weekly learning review proposes new ones, "
+        "each with Apply/Dismiss links._"
+    ]
+
+
+def test_weekly_report_section_falls_back_to_the_command(sandbox, monkeypatch):
+    from trading_agent.reporting import report_builder as rb
+
+    _ticket(monkeypatch, url=None)
+    _save([_drift_option()])
+    [line] = rb._open_option_lines()
+    assert "`trading-agent optimizations apply 2026-10-02-max-price-drift-4 --acknowledge-loosening`" in line

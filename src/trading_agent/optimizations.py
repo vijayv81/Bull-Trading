@@ -232,6 +232,19 @@ def pending_options() -> list[dict[str, Any]]:
     ]
 
 
+def open_options() -> list[dict[str, Any]]:
+    """pending_options() narrowed to the ones that can still apply: every
+    change's `from` still matches today's config. An older option whose
+    setting has since moved would only be refused by apply_option(), so
+    offering it again is just noise."""
+    current = _current_values()
+    return [
+        option
+        for option in pending_options()
+        if all(current.get(c["path"]) == c["from"] for c in option["changes"])
+    ]
+
+
 _KEY_LINE = re.compile(r"^(?P<indent>\s*)(?P<key>[A-Za-z0-9_]+):(?P<rest>.*)$")
 
 

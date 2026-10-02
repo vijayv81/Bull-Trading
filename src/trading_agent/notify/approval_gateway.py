@@ -512,6 +512,46 @@ def _daily_summary_html(summary: dict[str, Any]) -> str:
     return h.wrap("Daily Summary", summary["day"], inner)
 
 
+def _markdown_to_html(text: str) -> str:
+    """Just enough markdown for the weekly report's own fixed format —
+    headings, bullets, **bold**, `code`, _italic_ lines and [links](url) —
+    so its Apply/Dismiss links are clickable in the email. Text is escaped
+    before any markup is added."""
+    import re
+    from html import escape
+
+    from trading_agent.notify import html as h
+
+    def inline(s: str) -> str:
+        s = escape(s, quote=False)
+        s = re.sub(
+            r"\[([^\]]+)\]\((https?://[^)\s]+)\)",
+            lambda m: f'<a href="{escape(m.group(2), quote=True)}" style="color:{h.COLORS["buy"]};font-weight:700;">{m.group(1)}</a>',
+            s,
+        )
+        s = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", s)
+        s = re.sub(r"`([^`]+)`", r'<code style="font-family:monospace;">\1</code>', s)
+        return s
+
+    out = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("# "):
+            continue  # the title already heads the email
+        if stripped.startswith("## "):
+            out.append(h.section_heading(escape(stripped[3:])))
+        elif stripped.startswith("- "):
+            indent = (len(line) - len(line.lstrip())) // 2
+            out.append(
+                f'<div style="font-size:14px;padding:3px 0 3px {12 + 16 * indent}px;">&bull; {inline(stripped[2:])}</div>'
+            )
+        elif stripped.startswith("_") and stripped.endswith("_"):
+            out.append(h.muted(inline(stripped[1:-1])))
+        else:
+            out.append(f'<div style="font-size:14px;padding:4px 0;">{inline(stripped)}</div>')
+    return "".join(out)
+
+
 def notify_weekly_report(report_path: Path) -> None:
     """Emails/texts the weekly report once it's built
     (reporting.report_builder.build_weekly_report()'s return path) — that
@@ -537,9 +577,10 @@ def notify_weekly_report(report_path: Path) -> None:
 
     if "email" in channels:
         try:
+            from trading_agent.notify import html as h
             from trading_agent.notify.senders import send_email
 
-            send_email(subject, full_text)
+            send_email(subject, full_text, h.wrap("Weekly Report", report_path.stem, _markdown_to_html(full_text)))
         except Exception as exc:  # noqa: BLE001 - a broken channel must not halt the routine
             print(f"NOTIFY (weekly report email) failed: {exc}")
 

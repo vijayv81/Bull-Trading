@@ -117,6 +117,7 @@ def test_weekly_report_includes_realized_and_unrealized_pnl(monkeypatch, tmp_pat
     monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
     monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
     monkeypatch.setattr(rb, "REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr("trading_agent.optimizations.OPTIMIZATIONS_DIR", tmp_path / "optimizations")
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_positions", lambda: [])
 
     day = "2026-09-21"  # a Monday
