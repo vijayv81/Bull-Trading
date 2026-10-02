@@ -13,29 +13,42 @@ closed and nothing else is competing for the account.
 
 Everything here is read-only against the trading account — this routine
 never submits an order and never writes `config/agent_config.yaml` or
-`config/risk_limits.yaml`. It only reads the week's `data/` files and
-Alpaca's current account state, and reports what it finds.
+`config/risk_limits.yaml`. It only reads `data/` files and Alpaca's current
+account state over a rolling lookback window, and reports what it finds.
 
 ```bash
-trading-agent weekly-learning-review                    # the week just finished
-trading-agent weekly-learning-review --week-start YYYY-MM-DD
+trading-agent weekly-learning-review                          # last 30 rolling days ending today
+trading-agent weekly-learning-review --as-of YYYY-MM-DD        # last 30 rolling days ending there
+trading-agent weekly-learning-review --lookback-days 14        # override the window size for one run
 ```
 
-This builds `reports/learning/<year>-W<week>.md` and emails/SMS's it in one
+**Rolling 30-day window, not a calendar week**: per the same user's
+follow-up instruction ("look broader into last 30 rolling days to ensure
+analysis and predictions are more accurate"), this analyzes
+`lookback_days` rolling calendar days ending at `as_of` (both default: 30
+and today) — not the Monday-start 7-day week `trading-agent weekly-report`
+uses. The routine still *fires* weekly; only the analysis window is wider,
+so a single light week doesn't starve the refusal-category and
+missed-opportunity patterns below of data. `lookback_days` defaults to
+`agent_config.yaml -> reporting.weekly_learning_review_lookback_days` (30)
+when the CLI flag isn't passed.
+
+This builds `reports/learning/<window_end>.md` and emails/SMS's it in one
 step (`src/trading_agent/reporting/report_builder.py:build_weekly_learning_review()`,
 `src/trading_agent/notify/approval_gateway.py:notify_weekly_learning_review()`),
-covering:
+covering, over that window:
 
-- **Trades evaluated** — the week's realized P&L (confirmed fills) and a
-  live unrealized P&L snapshot, same accounting `build_weekly_report()`
-  already uses.
+- **Trades evaluated** — realized P&L (confirmed fills) and a live
+  unrealized P&L snapshot, same accounting `build_weekly_report()` already
+  uses.
 - **Portfolio status** — a live equity/cash/buying-power snapshot plus open
   position count, as of when the routine runs.
 - **Trade orders not placed, and why** — every actionable (BUY/SELL)
-  recommendation that did NOT result in a trade this week, split into: never
-  decided (expired with no human response), approved but never submitted
-  (a human approved it but never ran `trading-agent execute`), human-rejected,
-  and auto-apply-refused (with a breakdown by which guardrail refused it).
+  recommendation that did NOT result in a trade over the window, split
+  into: never decided (expired with no human response), approved but never
+  submitted (a human approved it but never ran `trading-agent execute`),
+  human-rejected, and auto-apply-refused (with a breakdown by which
+  guardrail refused it).
 - **Opportunities lost or avoided** — a hindsight price check on a sample of
   those unexecuted calls: what the ticker's price has actually done since
   vs. the recommendation's own `reference_price`. Deliberately two-sided —
@@ -49,8 +62,9 @@ covering:
   §6.3): surfaced for a human to read and decide on, never applied by this
   routine.
 - **Other observations** — qualitative, data-grounded notes (e.g. "N of M
-  refusals this week were stale-recommendation blocks") for human review,
-  same "never applied automatically" rule as the proposals above.
+  refusals over the last 30 days were stale-recommendation blocks") for
+  human review, same "never applied automatically" rule as the proposals
+  above.
 
 Gated independently by `notifications.weekly_learning_review_enabled`
 (default `true`) — `false` keeps every other notification (per-checkpoint
@@ -62,19 +76,19 @@ digests, the daily summary, the Friday weekly report) unaffected.
    checkpoint routines — call `add_repo` for `vijayv81/bull-trading` with
    `access: "push"` and follow its instructions, then `register_repo_root`,
    before anything else.
-2. Run `trading-agent weekly-learning-review` for the week just finished
-   (no `--week-start` needed — it defaults to the most recent Monday, which
-   on a Saturday is the week that just ended).
-3. Report the findings in your completion message: trades, portfolio
-   status, how many orders weren't placed and the top refusal reasons, the
-   headline from the opportunities-lost hindsight check, and whether a
-   weight-adjustment proposal was surfaced this week.
-4. **Commit the week's report** — same convention as `trading-report`'s
-   "Commit the snapshot" step:
+2. Run `trading-agent weekly-learning-review` with no flags — it defaults
+   to the last 30 rolling days ending today, which is what this routine
+   should use on a normal run.
+3. Report the findings in your completion message: the window analyzed,
+   trades, portfolio status, how many orders weren't placed and the top
+   refusal reasons, the headline from the opportunities-lost hindsight
+   check, and whether a weight-adjustment proposal was surfaced.
+4. **Commit the report** — same convention as `trading-report`'s "Commit
+   the snapshot" step:
    ```bash
    git add reports/learning/
    git status
-   git commit -m "Weekly learning review <year>-W<week>: <n> trades, <n> never decided, <n> refused"
+   git commit -m "Weekly learning review <window_end>: <n> trades, <n> never decided, <n> refused"
    ```
    **No human is present** (this is a scheduled routine) — push, open a PR
    against `main`, and merge it yourself, same as `trading-report`'s Friday
@@ -87,7 +101,7 @@ reporting and weight-proposal review, and this routine is a superset of
 both, not a new capability. `trading-report/SKILL.md`'s "Send the weekly
 report (Fridays only)" section has the sibling pattern for the Friday
 report; this Saturday routine is the same shape, one day later, reading a
-wider slice of the week's data.
+rolling 30-day window rather than that report's strict calendar week.
 
 ## Setting it up
 

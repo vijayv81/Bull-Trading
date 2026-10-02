@@ -651,7 +651,8 @@ def _weekly_learning_review_html(review: dict[str, Any]) -> str:
         "config/agent_config.yaml or config/risk_limits.yaml and commits the change deliberately."
     )
 
-    return h.wrap("Weekly Learning Review", f"week of {review['week_start']}", inner)
+    subtitle = f"last {review['lookback_days']} days ({review['window_start']} to {review['window_end']})"
+    return h.wrap("Weekly Learning Review", subtitle, inner)
 
 
 def notify_weekly_learning_review(review: dict[str, Any]) -> None:
@@ -663,11 +664,16 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
     reporting.report_builder.build_weekly_learning_review()'s return.
 
     Distinct from notify_weekly_report() (P&L + activity counts only, sent
-    from the Friday pre_close trading-report routine) — this is a separate
-    Saturday-morning routine (see routines/weekly_learning_review.md) that
-    looks specifically at what DIDN'T happen: recommendations that expired
-    undecided, were approved but never submitted, or were refused by a
-    guardrail/auto-apply, plus a hindsight price check on each, and the same
+    from the Friday pre_close trading-report routine, strict calendar week)
+    — this is a separate Saturday-morning routine (see
+    routines/weekly_learning_review.md) that looks specifically at what
+    DIDN'T happen over a rolling `review['lookback_days']`-day window
+    (30 by default, per user instruction 2026-10-02, "look broader ... to
+    ensure analysis and predictions are more accurate" — wider than the
+    weekly cadence this fires on so a single light week doesn't starve the
+    patterns below of data): recommendations that expired undecided, were
+    approved but never submitted, or were refused by a guardrail/auto-apply,
+    plus a hindsight price check on each, and the same
     propose_weight_adjustments() proposals `trading-agent propose-weights`
     already surfaces — never applied automatically here either.
 
@@ -682,7 +688,11 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
     if not channels & {"email", "sms"}:
         return
 
-    lines = [f"Bull-Trading weekly learning review — week of {review['week_start']}", ""]
+    lines = [
+        f"Bull-Trading weekly learning review — last {review['lookback_days']} days "
+        f"({review['window_start']} to {review['window_end']})",
+        "",
+    ]
 
     lines.append(
         f"Trades executed: {review['trades_count']} | Realized P&L: ${review['realized_pnl']['total']:,.2f}"
@@ -766,7 +776,10 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
         "config/agent_config.yaml or config/risk_limits.yaml and commits the change deliberately."
     )
 
-    subject = f"[Bull-Trading] Weekly learning review — week of {review['week_start']}"
+    subject = (
+        f"[Bull-Trading] Weekly learning review — last {review['lookback_days']} days "
+        f"({review['window_start']} to {review['window_end']})"
+    )
     body = "\n".join(lines)
     html_body = _weekly_learning_review_html(review)
 
@@ -783,7 +796,7 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
             from trading_agent.notify.senders import send_sms
 
             headline = (
-                f"Bull-Trading weekly learning review ({review['week_start']}): "
+                f"Bull-Trading weekly learning review ({review['window_start']} to {review['window_end']}): "
                 f"{review['trades_count']} trades, {len(review['never_decided'])} never decided, "
                 f"{len(review['approved_not_executed'])} approved-not-executed. Full report by email."
             )

@@ -91,6 +91,20 @@ notifications:
   # disables the sync step entirely.
   approval_ticket_artifact_url: "https://claude.ai/artifact/RopjHYW6Rtr9n3t8Ka7MNT"
 
+# Reporting parameters — distinct from scoring/risk config above, these only
+# shape what a report looks back over, never a trading decision itself.
+reporting:
+  # Per user instruction 2026-10-02 ("look broader into last 30 rolling days
+  # to ensure analysis and predictions are more accurate"): the weekly
+  # learning review (`trading-agent weekly-learning-review`,
+  # reporting/report_builder.py:build_weekly_learning_review()) analyzes
+  # this many rolling calendar days ending today, not the 7-day calendar
+  # week `weekly-report` uses — a single quiet week was otherwise too thin
+  # a sample for its refusal-category and missed-opportunity patterns to
+  # mean much. The routine still fires weekly (Saturdays); only the
+  # analysis window is wider.
+  weekly_learning_review_lookback_days: 30
+
 # Alpaca's own fundamentals/screener coverage is limited (plan §5) — no
 # secondary data vendor is wired up yet (plan §12 open decision). Fundamental
 # score currently defaults to neutral (0.5) in orchestrator.py until one is.

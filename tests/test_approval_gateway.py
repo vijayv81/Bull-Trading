@@ -397,7 +397,9 @@ def test_daily_summary_send_failure_does_not_raise(monkeypatch):
 
 def _review(**overrides):
     base = {
-        "week_start": "2026-09-21",
+        "window_start": "2026-09-03",
+        "window_end": "2026-10-02",
+        "lookback_days": 30,
         "trades_count": 2,
         "realized_pnl": {"total": 150.0, "by_symbol": {"TSLA": 150.0}, "pending_fills": 0},
         "unrealized_pnl": {"positions": [], "total": -25.0, "error": None},
@@ -445,12 +447,15 @@ def test_weekly_learning_review_includes_trades_and_portfolio_status(monkeypatch
     monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
     gw.notify_weekly_learning_review(_review())
 
-    plain_body, html_body = calls[0][1], calls[0][2]
+    subject, plain_body, html_body = calls[0][0], calls[0][1], calls[0][2]
+    assert "last 30 days (2026-09-03 to 2026-10-02)" in subject
+    assert "last 30 days (2026-09-03 to 2026-10-02)" in plain_body
     assert "Trades executed: 2" in plain_body
     assert "Realized P&L: $150.00" in plain_body
     assert "equity $100,000.00" in plain_body
     assert "Trades executed" in html_body
     assert "Portfolio status" in html_body
+    assert "last 30 days" in html_body
 
 
 def test_weekly_learning_review_includes_orders_not_placed_and_refusal_breakdown(monkeypatch):

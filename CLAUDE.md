@@ -223,13 +223,32 @@ how it's set up — distinct from the four weekday checkpoints and from the
 Friday `pre_close` weekly report, firing once a week on Saturday morning
 when the market's closed.
 
+**Rolling 30-day analysis window**, per (the same day's) follow-up user
+instruction ("look broader into last 30 rolling days to ensure analysis and
+predictions are more accurate"): the routine still *fires* weekly
+(Saturdays), but `build_weekly_learning_review(as_of, lookback_days)`
+analyzes `lookback_days` rolling calendar days ending at `as_of` (default:
+today) — not the 7-day Monday-start calendar week `build_weekly_report()`
+uses. `lookback_days` defaults to `agent_config.yaml -> reporting.
+weekly_learning_review_lookback_days` (30) when not passed explicitly, via
+the new `reporting:` top-level config section (distinct from `scoring_weights`/
+`notifications` — these are report-shape parameters, not scoring or risk
+ones). The point of widening it: a single light week was too thin a sample
+for the refusal-category and missed-opportunity patterns below to mean
+much — 30 rolling days gives them more to work with without changing how
+often the email actually goes out. `trading-agent weekly-learning-review
+--as-of YYYY-MM-DD --lookback-days N` overrides either for an ad hoc run;
+the review's own `window_start`/`window_end`/`lookback_days` fields (and
+the email subject/report header) always say exactly what window produced
+the numbers, so this is never silently inconsistent with a shorter/longer
+run.
+
 `reporting/report_builder.py:build_weekly_learning_review()` /
 `notify/approval_gateway.py:notify_weekly_learning_review()`
-(`trading-agent weekly-learning-review`) cover, for the week that just
-ended:
+(`trading-agent weekly-learning-review`) cover, over that window:
 
-- **Trades evaluated** — the week's realized P&L (confirmed fills) and a
-  live unrealized P&L snapshot, reusing `_realized_pnl()`/`_unrealized_pnl()`
+- **Trades evaluated** — realized P&L (confirmed fills) over the window and
+  a live unrealized P&L snapshot, reusing `_realized_pnl()`/`_unrealized_pnl()`
   from `build_weekly_report()`.
 - **Portfolio status** — a live equity/cash/buying-power snapshot plus open
   position count, as of when the routine runs.
@@ -266,17 +285,18 @@ ended:
   writes `config/agent_config.yaml` or `config/risk_limits.yaml`** — same
   hard rule as every other proposal mechanism here.
 - **Other observations** (`_config_tuning_notes()`) — qualitative,
-  data-grounded notes citing this week's actual counts (e.g. "N of M
-  auto-apply refusals this week were stale-recommendation blocks — current
-  `execution.max_price_drift_pct` is X%"), never a config change applied by
-  this function.
+  data-grounded notes citing the window's actual counts (e.g. "N of M
+  auto-apply refusals over the last 30 days were stale-recommendation
+  blocks — current `execution.max_price_drift_pct` is X%"), never a config
+  change applied by this function.
 
-Writes `reports/learning/<year>-W<week>.md` (tracked in git, same as
-`reports/weekly/` and `reports/daily/`) and emails/SMS's it in one step,
-with a styled HTML rendering alongside the plain-text body, same convention
-as the daily summary. Gated independently by `notifications.
-weekly_learning_review_enabled` (default `true`) — `false` keeps every
-other notification unaffected, no code change needed.
+Writes `reports/learning/<window_end>.md` (tracked in git, same as
+`reports/weekly/` and `reports/daily/` — dated by the window's end rather
+than an ISO week number, since the window is no longer Monday-aligned) and
+emails/SMS's it in one step, with a styled HTML rendering alongside the
+plain-text body, same convention as the daily summary. Gated independently
+by `notifications.weekly_learning_review_enabled` (default `true`) —
+`false` keeps every other notification unaffected, no code change needed.
 
 ## Approval + execution (hard requirement, plan §8)
 

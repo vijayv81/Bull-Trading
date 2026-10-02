@@ -249,10 +249,11 @@ def cmd_weekly_learning_review(args: argparse.Namespace) -> None:
     from trading_agent.notify.approval_gateway import notify_weekly_learning_review
     from trading_agent.reporting.report_builder import build_weekly_learning_review
 
-    review = build_weekly_learning_review(args.week_start)
+    review = build_weekly_learning_review(args.as_of, args.lookback_days)
     notify_weekly_learning_review(review)
     print(f"Wrote and sent {review['report_path']}")
     print(
+        f"Last {review['lookback_days']} days ({review['window_start']} to {review['window_end']}): "
         f"{review['trades_count']} trades, {review['executed_count']}/{review['actionable_count']} "
         f"actionable recs executed, {len(review['never_decided'])} never decided, "
         f"{len(review['approved_not_executed'])} approved-not-executed, "
@@ -423,11 +424,16 @@ def build_parser() -> argparse.ArgumentParser:
     weekly_learning_review = sub.add_parser(
         "weekly-learning-review",
         help=(
-            "Build + email/SMS the weekly trades/portfolio/missed-opportunity retrospective "
+            "Build + email/SMS the rolling trades/portfolio/missed-opportunity retrospective "
             "(notifications.weekly_learning_review_enabled)."
         ),
     )
-    weekly_learning_review.add_argument("--week-start", help="YYYY-MM-DD Monday, defaults to this week.")
+    weekly_learning_review.add_argument("--as-of", help="YYYY-MM-DD, end of the lookback window, defaults to today.")
+    weekly_learning_review.add_argument(
+        "--lookback-days",
+        type=int,
+        help="Rolling window size, defaults to reporting.weekly_learning_review_lookback_days (30).",
+    )
     weekly_learning_review.set_defaults(func=cmd_weekly_learning_review)
 
     propose = sub.add_parser("propose-weights", help="Print (never apply) proposed scoring-weight changes.")

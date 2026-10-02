@@ -561,7 +561,7 @@ def test_build_weekly_learning_review_writes_markdown_report(monkeypatch, tmp_pa
     assert path.parent.name == "learning"
     text = path.read_text()
     assert "# Weekly Learning Review" in text
-    assert "## Orders not placed this week" in text
+    assert "## Orders not placed over the lookback window" in text
     assert "## Opportunities lost or avoided" in text
     assert "never applied automatically" in text or "never applied" in text
 
@@ -600,3 +600,72 @@ def test_build_weekly_learning_review_no_proposal_without_history(monkeypatch, t
     assert review["optimization_proposals"] == ["No performance history yet — nothing to propose."]
     assert review["signal_hit_rates"] == {}
     assert review["learning_outcome"] is None
+
+
+# --- rolling lookback window (per user instruction 2026-10-02) ---------------
+
+
+def test_lookback_dates_returns_n_days_ending_inclusive():
+    dates = rb._lookback_dates("2026-10-02", 30)
+    assert len(dates) == 30
+    assert dates[0] == "2026-09-03"
+    assert dates[-1] == "2026-10-02"
+
+
+def test_lookback_dates_defaults_to_today(monkeypatch):
+    class _FixedDatetime(rb.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return rb.datetime(2026, 10, 2, tzinfo=tz)
+
+    monkeypatch.setattr(rb, "datetime", _FixedDatetime)
+    dates = rb._lookback_dates(None, 5)
+    assert dates == ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
+
+
+def test_build_weekly_learning_review_defaults_to_30_day_window(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    review = rb.build_weekly_learning_review("2026-10-02")
+
+    assert review["lookback_days"] == 30
+    assert review["window_start"] == "2026-09-03"
+    assert review["window_end"] == "2026-10-02"
+
+
+def test_build_weekly_learning_review_honors_config_lookback_override(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}, "reporting": {"weekly_learning_review_lookback_days": 14}})
+
+    review = rb.build_weekly_learning_review("2026-10-02")
+
+    assert review["lookback_days"] == 14
+    assert review["window_start"] == "2026-09-19"
+
+
+def test_build_weekly_learning_review_explicit_lookback_days_overrides_config(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}, "reporting": {"weekly_learning_review_lookback_days": 14}})
+
+    review = rb.build_weekly_learning_review("2026-10-02", lookback_days=5)
+
+    assert review["lookback_days"] == 5
+    assert review["window_start"] == "2026-09-28"
+
+
+def test_build_weekly_learning_review_picks_up_recs_from_anywhere_in_the_30_day_window(monkeypatch, tmp_path):
+    """A rec from 3 weeks before `as_of` must still be picked up — the whole
+    point of broadening from a 7-day week to a 30-day rolling window."""
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    old_day = "2026-09-10"  # 21 days before as_of, inside a 30-day window but outside any 7-day week containing it
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, old_day) / "recs_pre_open.json", _rec("OLD", "pre_open", "BUY"))
+
+    review = rb.build_weekly_learning_review("2026-10-01")
+
+    assert review["actionable_count"] == 1
+    assert [r["ticker"] for r in review["never_decided"]] == ["OLD"]
