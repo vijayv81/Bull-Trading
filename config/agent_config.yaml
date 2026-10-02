@@ -92,12 +92,12 @@ notifications:
   approval_ticket_artifact_url: "https://claude.ai/artifact/RopjHYW6Rtr9n3t8Ka7MNT"
 
   # URL of the "Optimization Ticket" page the weekly learning review's
-  # Apply/Dismiss buttons would open (published: claude.ai/artifact/
-  # 9iM613YyYPkSogmKuJ8aRj). Left null on purpose: nothing yet carries a
-  # click on that page into the repo, so buttons would record decisions that
-  # never take effect. With null, the email shows each option's
-  # `trading-agent optimizations apply` command instead.
-  optimization_ticket_artifact_url: null
+  # Apply/Dismiss buttons open. A click records the decision in that page's
+  # own database; the next checkpoint applies it via `trading-agent
+  # optimizations apply` (.claude/skills/trading-research, "Apply clicked
+  # optimizations first"). null turns the buttons off — the email then shows
+  # each option's apply command instead.
+  optimization_ticket_artifact_url: "https://claude.ai/artifact/9iM613YyYPkSogmKuJ8aRj"
 
 # Reporting parameters — distinct from scoring/risk config above, these only
 # shape what a report looks back over, never a trading decision itself.

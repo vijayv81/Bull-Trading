@@ -86,7 +86,7 @@ digests, the daily summary, the Friday weekly report) unaffected.
 4. **Commit the report** — same convention as `trading-report`'s "Commit
    the snapshot" step:
    ```bash
-   git add reports/learning/
+   git add reports/learning/ data/optimizations/
    git status
    git commit -m "Weekly learning review <window_end>: <n> trades, <n> never decided, <n> refused"
    ```
@@ -123,6 +123,11 @@ timezone-aware cron string.
 - This routine never calls `execute.order_manager.submit_approved_order()`
   or writes an approval decision — it has no execution path at all, by
   design; it only reads and reports.
-- Every proposal/observation it surfaces is for human review, same as
-  `trading-agent propose-weights` — nothing here edits
-  `config/agent_config.yaml` or `config/risk_limits.yaml`.
+- This routine never edits `config/agent_config.yaml` or
+  `config/risk_limits.yaml` itself. It writes the week's optimization
+  options to `data/optimizations/<date>/options.json` and puts them in the
+  email with Apply/Dismiss buttons. A change happens only after the user
+  clicks Apply, when the next checkpoint's `trading-research` step "Apply
+  clicked optimizations first" runs `trading-agent optimizations apply`
+  within the bounds in `src/trading_agent/optimizations.py`. See CLAUDE.md,
+  "One-click optimization options".

@@ -56,7 +56,10 @@ without editing their instructions by hand — see "Refining them" below.
    asked for approvals" leaves clicked decisions stuck in the artifact's
    database indefinitely; an unattended run is exactly when nobody's around to
    trigger it manually.
-3. **Invoke `trading-research`** and follow it. It runs the checkpoint, handles
+3. **Invoke `trading-research`** and follow it, starting with its "Apply
+   clicked optimizations first" step: the weekly learning review email's
+   Apply/Dismiss clicks only take effect when a checkpoint pulls them in.
+   It then runs the checkpoint, handles
    a guardrail halt, and reports the recommendations — that report is the
    routine's completion message. If `auto_apply` is enabled, `run_checkpoint()`
    will also have already submitted its top candidates; the completion message
