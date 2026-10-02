@@ -1,0 +1,50 @@
+[
+  {
+    "ticker": "SOAR",
+    "status": "refused",
+    "reason": "SOAR's technical signal has flipped since this recommendation was scored (SELL then, BUY now) \u2014 re-run the checkpoint for a fresh read before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "GRMLW",
+    "status": "refused",
+    "reason": "GRMLW's price has moved 24.18% since this recommendation was scored (0.54 -> 0.67), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "DAICW",
+    "status": "refused",
+    "reason": "DAICW's price has moved 14.00% since this recommendation was scored (0.01 -> 0.01), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "ABLVW",
+    "status": "refused",
+    "reason": "ABLVW's price has moved 34.64% since this recommendation was scored (0.02 -> 0.02), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "FVNNU",
+    "status": "refused",
+    "reason": "FVNNU's price has moved 35.70% since this recommendation was scored (25.10 -> 16.14), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "XRPN",
+    "status": "refused",
+    "reason": "XRPN's price has moved 17.37% since this recommendation was scored (49.53 -> 58.13), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "NXL",
+    "status": "refused",
+    "reason": "NXL's price has moved 14.14% since this recommendation was scored (5.80 -> 6.62), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "CYCU",
+    "status": "refused",
+    "reason": "CYCU's price has moved 8.31% since this recommendation was scored (3.97 -> 4.30), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "midday"
+  }
+]
