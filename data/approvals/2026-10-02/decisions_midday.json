@@ -1,0 +1,82 @@
+[
+  {
+    "ticker": "SOAR",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 12512.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T16:40:41.206996+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T16:40:43.585713+00:00"
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 204743.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T16:40:45.311374+00:00"
+  },
+  {
+    "ticker": "ABLVW",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 86836.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T16:40:47.110335+00:00"
+  },
+  {
+    "ticker": "FVNNU",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 296.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T16:47:20.556300+00:00"
+  },
+  {
+    "ticker": "XRPN",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 82.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T16:47:21.813243+00:00"
+  },
+  {
+    "ticker": "NXL",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 379.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T16:47:23.133378+00:00"
+  },
+  {
+    "ticker": "CYCU",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 453.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T16:47:24.366624+00:00"
+  }
+]
