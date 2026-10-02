@@ -157,7 +157,7 @@ def _drift_option(**overrides):
 
 def test_apply_edits_config_and_records_an_audit_entry(sandbox):
     _save([_drift_option()])
-    record = opt.apply_option("2026-10-02-max-price-drift-4", decided_by="email-link")
+    record = opt.apply_option("2026-10-02-max-price-drift-4", decided_by="email-link", acknowledged_loosening=True)
 
     assert _load(sandbox, "risk_limits.yaml")["execution"]["max_price_drift_pct"] == 4.0
     assert record["decided_by"] == "email-link"
@@ -168,29 +168,29 @@ def test_apply_edits_config_and_records_an_audit_entry(sandbox):
 
 def test_apply_twice_is_refused(sandbox):
     _save([_drift_option()])
-    opt.apply_option("2026-10-02-max-price-drift-4")
+    opt.apply_option("2026-10-02-max-price-drift-4", acknowledged_loosening=True)
     with pytest.raises(opt.OptimizationRefused, match="already applied"):
-        opt.apply_option("2026-10-02-max-price-drift-4")
+        opt.apply_option("2026-10-02-max-price-drift-4", acknowledged_loosening=True)
 
 
 def test_apply_refuses_when_config_moved_since_proposal(sandbox):
     _save([_drift_option(changes=[{"file": "risk_limits.yaml", "path": "execution.max_price_drift_pct", "from": 2.0, "to": 4.0}])])
     with pytest.raises(opt.OptimizationRefused, match="evidence no longer applies"):
-        opt.apply_option("2026-10-02-max-price-drift-4")
+        opt.apply_option("2026-10-02-max-price-drift-4", acknowledged_loosening=True)
     assert _load(sandbox, "risk_limits.yaml")["execution"]["max_price_drift_pct"] == 3.0
 
 
 def test_apply_refuses_out_of_bounds_values(sandbox):
     _save([_drift_option(changes=[{"file": "risk_limits.yaml", "path": "execution.max_price_drift_pct", "from": 3.0, "to": 25.0}])])
     with pytest.raises(opt.OptimizationRefused, match="outside the allowed"):
-        opt.apply_option("2026-10-02-max-price-drift-4")
+        opt.apply_option("2026-10-02-max-price-drift-4", acknowledged_loosening=True)
     assert _load(sandbox, "risk_limits.yaml")["execution"]["max_price_drift_pct"] == 3.0
 
 
 def test_apply_refuses_settings_that_are_not_clickable(sandbox):
     _save([_drift_option(changes=[{"file": "risk_limits.yaml", "path": "operational.trading_enabled", "from": True, "to": False}])])
     with pytest.raises(opt.OptimizationRefused, match="not a clickable setting"):
-        opt.apply_option("2026-10-02-max-price-drift-4")
+        opt.apply_option("2026-10-02-max-price-drift-4", acknowledged_loosening=True)
 
 
 def test_apply_refuses_weights_that_would_not_sum_to_one(sandbox):
@@ -299,9 +299,9 @@ def test_email_leads_with_clickable_apply_and_dismiss_buttons(monkeypatch):
     subject, plain, html_body = calls[0]
     assert subject.endswith("1 optimization(s) to review")
     assert "Optimizations you can apply:" in plain
-    assert "Apply: https://claude.ai/artifact/X#" in plain
+    assert "Review & apply (asks you to confirm): https://claude.ai/artifact/X#" in plain
     assert "LOOSENS A GUARDRAIL" in plain
-    assert "Apply this change" in html_body and "Dismiss" in html_body
+    assert "Review &amp; apply (loosens a guardrail)" in html_body and "Dismiss" in html_body
     assert html_body.index("Optimizations you can apply") < html_body.index("Portfolio status")
 
 
@@ -312,5 +312,46 @@ def test_email_falls_back_to_the_cli_command_without_a_ticket_url(monkeypatch):
     gw.notify_weekly_learning_review(_email_review([_drift_option()]))
 
     _, plain, html_body = calls[0]
-    assert "trading-agent optimizations apply 2026-10-02-max-price-drift-4" in plain
+    assert "trading-agent optimizations apply 2026-10-02-max-price-drift-4 --acknowledge-loosening" in plain
     assert "Apply this change" not in html_body
+
+
+def test_loosening_option_needs_an_explicit_acknowledgment(sandbox):
+    _save([_drift_option()])
+    with pytest.raises(opt.OptimizationRefused, match="needs an explicit acknowledgment"):
+        opt.apply_option("2026-10-02-max-price-drift-4")
+    assert _load(sandbox, "risk_limits.yaml")["execution"]["max_price_drift_pct"] == 3.0
+    record = opt.apply_option("2026-10-02-max-price-drift-4", acknowledged_loosening=True)
+    assert record["loosens_guardrail"] is True
+
+
+def test_non_loosening_option_applies_in_one_step(sandbox):
+    review = _review(
+        signal_hit_rates={"sentiment": {"hit_rate": 0.35, "n": 12}, "catalyst": {"hit_rate": 0.75, "n": 12}}
+    )
+    _save(opt.build_options(review))
+    opt.apply_option("2026-10-02-weights-sentiment-to-catalyst")  # no acknowledgment needed
+
+
+def test_dismiss_twice_or_after_apply_is_refused(sandbox):
+    _save([_drift_option()])
+    opt.dismiss_option("2026-10-02-max-price-drift-4")
+    with pytest.raises(opt.OptimizationRefused, match="already applied or dismissed"):
+        opt.dismiss_option("2026-10-02-max-price-drift-4")
+
+
+def test_email_one_click_label_for_options_that_do_not_loosen(monkeypatch):
+    monkeypatch.setattr(
+        gw,
+        "load_agent_config",
+        lambda: {"notifications": {"channel": ["email"], "optimization_ticket_artifact_url": "https://claude.ai/artifact/X"}},
+    )
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    safe = _drift_option(id="w", loosens_guardrail=False)
+    gw.notify_weekly_learning_review(_email_review([safe]))
+
+    _, plain, html_body = calls[0]
+    assert "    Apply: https://claude.ai/artifact/X#" in plain
+    assert "Apply this change" in html_body
+    assert "loosens a guardrail)" not in html_body

@@ -777,7 +777,8 @@ def _write_learning_review_markdown(review: dict[str, Any]) -> Path:
             lines.append(f"  - Effect: {option['effect']}")
             if option.get("risk"):
                 lines.append(f"  - Risk: {option['risk']}")
-            lines.append(f"  - Apply by hand: `trading-agent optimizations apply {option['id']}`")
+            ack = " --acknowledge-loosening" if option.get("loosens_guardrail") else ""
+            lines.append(f"  - Apply by hand: `trading-agent optimizations apply {option['id']}{ack}`")
     else:
         lines.append("_No option cleared its minimum-evidence bar over this window._")
 

@@ -571,6 +571,11 @@ def optimization_link(option: dict[str, Any], intent: str) -> str | None:
     return f"{base}#{token}.{intent}"
 
 
+def _apply_command(option: dict[str, Any]) -> str:
+    flag = " --acknowledge-loosening" if option.get("loosens_guardrail") else ""
+    return f"trading-agent optimizations apply {option['id']}{flag}"
+
+
 def _optimization_options_html(review: dict[str, Any]) -> str:
     from trading_agent.notify import html as h
 
@@ -590,11 +595,13 @@ def _optimization_options_html(review: dict[str, Any]) -> str:
             else ""
         )
         apply_href, dismiss_href = optimization_link(option, "apply"), optimization_link(option, "dismiss")
-        actions = (
-            h.button("Apply this change", apply_href) + h.button("Dismiss", dismiss_href, "negative")
-            if apply_href and dismiss_href
-            else h.muted(f"Apply with: trading-agent optimizations apply {option['id']}")
-        )
+        if apply_href and dismiss_href:
+            apply_label = (
+                "Review & apply (loosens a guardrail)" if option.get("loosens_guardrail") else "Apply this change"
+            )
+            actions = h.button(apply_label, apply_href) + h.button("Dismiss", dismiss_href, "negative")
+        else:
+            actions = h.muted(f"Apply with: {_apply_command(option)}")
         out += (
             f'<div style="border:1px solid {h.COLORS["border"]};border-radius:10px;padding:12px 14px;margin:8px 0;">'
             f'<div style="font-size:15px;font-weight:700;">{flag}{option["title"]}</div>'
@@ -604,8 +611,9 @@ def _optimization_options_html(review: dict[str, Any]) -> str:
             f"{risk}{actions}</div>"
         )
     return out + h.muted(
-        "A click records your decision only. The next checkpoint run applies it within fixed limits "
-        "and commits it to git, so it can be reverted."
+        "A click records your decision only. Options that loosen a guardrail ask you to confirm that "
+        "on the next page. The next checkpoint run applies it within fixed limits and commits it to "
+        "git, so it can be reverted."
     )
 
 
@@ -778,10 +786,11 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
             lines.append(f"    Risk: {option['risk']}")
         apply_href = optimization_link(option, "apply")
         if apply_href:
-            lines.append(f"    Apply: {apply_href}")
+            apply_label = "Review & apply (asks you to confirm)" if option.get("loosens_guardrail") else "Apply"
+            lines.append(f"    {apply_label}: {apply_href}")
             lines.append(f"    Dismiss: {optimization_link(option, 'dismiss')}")
         else:
-            lines.append(f"    Apply with: trading-agent optimizations apply {option['id']}")
+            lines.append(f"    Apply with: {_apply_command(option)}")
     if options:
         lines.append(
             "  A click records your decision only; the next checkpoint run applies it within fixed "

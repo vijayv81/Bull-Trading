@@ -261,15 +261,27 @@ def set_yaml_scalar(text: str, dotted: str, value: Any) -> str:
     raise OptimizationRefused(f"{dotted} not found in config.")
 
 
-def apply_option(option_id: str, decided_by: str = "email-link") -> dict[str, Any]:
+def apply_option(
+    option_id: str, decided_by: str = "email-link", acknowledged_loosening: bool = False
+) -> dict[str, Any]:
     """Apply a saved option's config changes. Refuses (OptimizationRefused)
-    rather than partially applying when anything about it no longer holds."""
+    rather than partially applying when anything about it no longer holds.
+
+    An option that loosens a guardrail also needs `acknowledged_loosening`:
+    the Optimization Ticket page only records an apply for one after the
+    viewer ticks an explicit acknowledgment, and the caller passes that
+    through. A plain apply of a loosening option is refused."""
     found = find_option(option_id)
     if found is None:
         raise OptimizationRefused(f"No saved option with id {option_id!r} in data/optimizations/.")
     day, option = found
     if option_id in _decided_ids("applied.json"):
         raise OptimizationRefused(f"{option_id} was already applied.")
+    if option.get("loosens_guardrail") and not acknowledged_loosening:
+        raise OptimizationRefused(
+            f"{option_id} loosens a guardrail; applying it needs an explicit acknowledgment "
+            "(the ticket's checkbox, or --acknowledge-loosening on the command line)."
+        )
 
     current = _current_values()
     new_text: dict[str, str] = {}
@@ -307,6 +319,7 @@ def apply_option(option_id: str, decided_by: str = "email-link") -> dict[str, An
         "option_id": option_id,
         "title": option["title"],
         "changes": option["changes"],
+        "loosens_guardrail": bool(option.get("loosens_guardrail")),
         "decided_by": decided_by,
         "applied_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -319,6 +332,8 @@ def dismiss_option(option_id: str, decided_by: str = "email-link") -> dict[str, 
     if found is None:
         raise OptimizationRefused(f"No saved option with id {option_id!r} in data/optimizations/.")
     day, option = found
+    if option_id in _decided_ids("applied.json") | _decided_ids("dismissed.json"):
+        raise OptimizationRefused(f"{option_id} was already applied or dismissed.")
     record = {
         "option_id": option_id,
         "title": option["title"],

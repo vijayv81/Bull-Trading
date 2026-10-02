@@ -282,7 +282,11 @@ def cmd_optimizations_decide(args: argparse.Namespace) -> None:
 
     try:
         if args.decision == "apply":
-            record = apply_option(args.option_id, decided_by=args.decided_by)
+            record = apply_option(
+                args.option_id,
+                decided_by=args.decided_by,
+                acknowledged_loosening=args.acknowledge_loosening,
+            )
             for c in record["changes"]:
                 print(f"Applied {c['file']}: {c['path']} {c['from']} -> {c['to']}")
         else:
@@ -481,7 +485,13 @@ def build_parser() -> argparse.ArgumentParser:
         decide.add_argument(
             "--decided-by", default="cli", help="Recorded in the audit log, e.g. email-link for a clicked option."
         )
-        decide.set_defaults(func=cmd_optimizations_decide, decision=decision)
+        if decision == "apply":
+            decide.add_argument(
+                "--acknowledge-loosening",
+                action="store_true",
+                help="Required for an option that loosens a guardrail (the ticket page's checkbox).",
+            )
+        decide.set_defaults(func=cmd_optimizations_decide, decision=decision, acknowledge_loosening=False)
 
     propose = sub.add_parser("propose-weights", help="Print (never apply) proposed scoring-weight changes.")
     propose.set_defaults(func=cmd_propose_weights)
