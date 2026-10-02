@@ -348,20 +348,44 @@ def _suggested_size_pct(action: Action, confidence: float, risk: dict[str, Any])
     return round(floor_pct + (cap_pct - floor_pct) * lean, 2)
 
 
+MIN_OUTCOMES_PER_SIGNAL_FOR_PROPOSAL = 10
+
+
+def signals_with_enough_outcomes(by_signal: dict[str, dict]) -> dict[str, dict]:
+    """The by_signal_type entries with at least
+    MIN_OUTCOMES_PER_SIGNAL_FOR_PROPOSAL measured outcomes. A hit rate over 3
+    calls is noise: one lucky call moves it 33 points, so comparing two such
+    rates says nothing about which signal is more reliable.
+    """
+    return {s: v for s, v in by_signal.items() if v.get("n", 0) >= MIN_OUTCOMES_PER_SIGNAL_FOR_PROPOSAL}
+
+
 def propose_weight_adjustments() -> list[str]:
     """Weekly review pass (plan §6.3): reads per-signal-type accuracy and prints
     proposed weight changes. Deliberately does NOT write config/agent_config.yaml
     — a human reviews the proposals and commits the change themselves, so
     strategy drift is never silent/unsupervised.
+
+    Only signals with at least MIN_OUTCOMES_PER_SIGNAL_FOR_PROPOSAL outcomes
+    are compared; with fewer than two such signals there is nothing to propose.
     """
     path = PERFORMANCE_DIR / "strategy_metrics.json"
     if not path.exists():
         return ["No performance history yet — nothing to propose."]
 
     metrics = json.loads(path.read_text())
-    by_signal = metrics.get("by_signal_type", {})
-    if not by_signal:
+    all_signals = metrics.get("by_signal_type", {})
+    if not all_signals:
         return ["No per-signal-type accuracy recorded yet — nothing to propose."]
+
+    by_signal = signals_with_enough_outcomes(all_signals)
+    if len(by_signal) < 2:
+        most = max((v.get("n", 0) for v in all_signals.values()), default=0)
+        return [
+            f"Not enough outcome history to compare signals yet (most-measured signal has {most} "
+            f"outcome(s); need at least {MIN_OUTCOMES_PER_SIGNAL_FOR_PROPOSAL} each for two signals) "
+            "— nothing to propose."
+        ]
 
     proposals = []
     ranked = sorted(by_signal.items(), key=lambda kv: kv[1].get("hit_rate", 0.5))

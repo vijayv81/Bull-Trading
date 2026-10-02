@@ -120,8 +120,11 @@ def _learning_outcome_note(by_signal: dict[str, dict]) -> str | None:
     would be worth. None when there's no gap large enough to say anything
     (mirrors propose_weight_adjustments()'s own >15pt threshold, read from
     the same data, so the two never disagree about whether there's a
-    finding this run).
+    finding this run). Applies the same minimum-outcomes floor too.
     """
+    from trading_agent.scoring.recommendation_engine import signals_with_enough_outcomes
+
+    by_signal = signals_with_enough_outcomes(by_signal)
     if len(by_signal) < 2:
         return None
     ranked = sorted(by_signal.items(), key=lambda kv: kv[1].get("hit_rate", 0.5))
@@ -603,14 +606,18 @@ def _config_tuning_notes(
     refusal_breakdown: dict[str, int],
     never_decided: list[dict[str, Any]],
     approved_not_executed: list[dict[str, Any]],
-    lookback_days: int,
+    auto_outcome_unlogged: list[dict[str, Any]],
+    attempt_log_days: list[str],
+    window_days: list[str],
 ) -> list[str]:
     """Qualitative, data-grounded observations for human review — never a
     config change applied by this function. Every note cites an actual count
-    from the review's own lookback window; nothing here is a generic tuning
-    tip untethered from what actually happened over that window.
+    from the review's own lookback window, and says so when a count only
+    covers the part of it that has attempt logs.
     """
     notes = []
+    lookback_days = len(window_days)
+    attempt_span = _attempt_log_span(attempt_log_days, window_days)
     total_refused = sum(1 for a in attempts if a.get("status") == "refused")
     stale_refused = refusal_breakdown.get("stale: price drift", 0) + refusal_breakdown.get(
         "stale: technical reversal", 0
@@ -618,8 +625,9 @@ def _config_tuning_notes(
     if total_refused and stale_refused / total_refused >= 0.3:
         drift_pct = load_risk_limits().get("execution", {}).get("max_price_drift_pct")
         notes.append(
-            f"{stale_refused} of {total_refused} auto-apply refusals over the last {lookback_days} days "
-            f"({stale_refused / total_refused:.0%}) were stale-recommendation blocks (price drift or "
+            f"{stale_refused} of {total_refused} logged auto-apply refusals "
+            f"({stale_refused / total_refused:.0%}; logs cover {attempt_span}) were "
+            "stale-recommendation blocks (price drift or "
             f"technical reversal) — current execution.max_price_drift_pct is {drift_pct}%. Consider "
             "whether that's too tight for these tickers' volatility, or whether they need a liquidity "
             "floor (position.candidate_min_price) like the one already applied to movers. Not applied "
@@ -629,8 +637,8 @@ def _config_tuning_notes(
     skipped = sum(1 for a in attempts if a.get("status") == "skipped")
     if skipped:
         notes.append(
-            f"{skipped} auto-apply candidate(s) were skipped with qty rounding to 0 over the last "
-            f"{lookback_days} days — usually a low-priced ticker whose suggested_size_pct_of_portfolio "
+            f"{skipped} logged auto-apply candidate(s) ({attempt_span}) were skipped with qty "
+            "rounding to 0 — usually a low-priced ticker whose suggested_size_pct_of_portfolio "
             "is too small to buy even one share at current equity. No action needed unless this keeps "
             "recurring on the same tickers."
         )
@@ -656,7 +664,36 @@ def _config_tuning_notes(
             "approval nobody follows up on is a lost opportunity either way, not a guardrail worth tuning."
         )
 
+    if auto_outcome_unlogged:
+        notes.append(
+            f"{len(auto_outcome_unlogged)} auto-apply approval(s) over the last {lookback_days} days have "
+            "no trade and no recorded outcome — they predate the per-attempt log, so why each one "
+            "didn't go through (a guardrail refusal or an error) wasn't captured. This gap closes on "
+            "its own as those days age out of the window."
+        )
+
     return notes
+
+
+def _attempt_log_coverage(attempt_log_days: list[str], window_days: list[str]) -> int:
+    """How many days of the window the auto-apply attempt log covers. Logging
+    started partway through history, so coverage runs from the first logged
+    day to the window's end — after that point a day with no log file simply
+    had no attempts."""
+    if not attempt_log_days:
+        return 0
+    return sum(1 for day in window_days if day >= attempt_log_days[0])
+
+
+def _attempt_log_span(attempt_log_days: list[str], window_days: list[str]) -> str:
+    """Plain-language form of _attempt_log_coverage(), e.g. "3 of the last
+    30 days, since 2026-09-30"."""
+    covered = _attempt_log_coverage(attempt_log_days, window_days)
+    if covered == 0:
+        return f"no attempt logs in the last {len(window_days)} days"
+    if covered == len(window_days):
+        return f"all {len(window_days)} days"
+    return f"{covered} of the last {len(window_days)} days, since {attempt_log_days[0]}"
 
 
 def _write_learning_review_markdown(review: dict[str, Any]) -> Path:
@@ -691,12 +728,15 @@ def _write_learning_review_markdown(review: dict[str, Any]) -> Path:
         "## Orders not placed over the lookback window",
         f"- Actionable recommendations: {review['actionable_count']} | Executed: {review['executed_count']}",
         f"- Never decided (expired, no approve/reject ever recorded): {len(review['never_decided'])}",
-        f"- Approved but never submitted: {len(review['approved_not_executed'])}",
+        f"- Human-approved but never submitted: {len(review['approved_not_executed'])}",
+        f"- Auto-apply approved, outcome not logged (predates the attempt log): "
+        f"{len(review['auto_outcome_unlogged'])}",
         f"- Human-rejected: {len(review['rejected'])}",
-        f"- Auto-apply attempts by status: {review['auto_apply_attempts_by_status']}",
+        f"- Auto-apply attempts by status ({review['attempt_log_span']}): "
+        f"{review['auto_apply_attempts_by_status']}",
     ]
     if review["refusal_breakdown"]:
-        lines.append("- Refusal breakdown:")
+        lines.append(f"- Refusal breakdown ({review['attempt_log_span']}):")
         for label, count in sorted(review["refusal_breakdown"].items(), key=lambda kv: -kv[1]):
             lines.append(f"  - {label}: {count}")
 
@@ -834,15 +874,20 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
 
     attempted_keys = {(a["_day"], a.get("checkpoint"), a.get("ticker")) for a in window_attempts}
 
-    actionable_keys = [
-        (day, rec.get("checkpoint"), rec.get("ticker"))
-        for day, recs in recs_by_day.items()
-        for rec in recs
-        if rec.get("action") in ("BUY", "SELL")
-    ]
+    # A checkpoint re-run on the same day appends a second copy of the same
+    # recommendation; count each (day, checkpoint, ticker) once.
+    actionable_keys = list(
+        dict.fromkeys(
+            (day, rec.get("checkpoint"), rec.get("ticker"))
+            for day, recs in recs_by_day.items()
+            for rec in recs
+            if rec.get("action") in ("BUY", "SELL")
+        )
+    )
 
     never_decided: list[dict[str, Any]] = []
     approved_not_executed: list[dict[str, Any]] = []
+    auto_outcome_unlogged: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     for key in actionable_keys:
         if key in executed_keys or key in attempted_keys:
@@ -853,10 +898,18 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
         decision = decision_index.get(key)
         if decision is None:
             never_decided.append({**rec, "_category": "never decided"})
-        elif decision.get("decision") == "approve":
-            approved_not_executed.append({**rec, "_category": "approved, never executed"})
-        else:
+        elif decision.get("decision") != "approve":
             rejected.append({**rec, "_category": "human-rejected"})
+        elif (decision.get("terms") or {}).get("source") == "auto":
+            # auto_apply() records its approval before submitting, so an auto
+            # approval with no trade and no attempt record was refused or
+            # errored on a day before _persist_attempt() existed — not a
+            # human who forgot to run `trading-agent execute`.
+            auto_outcome_unlogged.append({**rec, "_category": "auto-apply, outcome not logged"})
+        else:
+            approved_not_executed.append({**rec, "_category": "approved, never executed"})
+
+    attempt_log_days = [day for day in days if attempts_by_day[day]]
 
     refused_candidates: list[dict[str, Any]] = []
     refusal_breakdown: dict[str, int] = {}
@@ -869,7 +922,7 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
         if rec is not None:
             refused_candidates.append({**rec, "_category": f"auto-refused: {label}"})
 
-    missed_candidates = never_decided + approved_not_executed + rejected + refused_candidates
+    missed_candidates = never_decided + approved_not_executed + auto_outcome_unlogged + rejected + refused_candidates
     missed_opportunities = _missed_opportunity_counterfactuals(missed_candidates)
 
     signal_hit_rates = _signal_type_hit_rates()
@@ -886,7 +939,9 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
         "executed_count": sum(1 for key in actionable_keys if key in executed_keys),
         "never_decided": never_decided,
         "approved_not_executed": approved_not_executed,
+        "auto_outcome_unlogged": auto_outcome_unlogged,
         "rejected": rejected,
+        "attempt_log_days": attempt_log_days,
         "auto_apply_attempts_by_status": {
             status: sum(1 for a in window_attempts if a.get("status") == status)
             for status in ("submitted", "refused", "skipped", "error")
@@ -898,8 +953,16 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
         "scoring_weights": load_agent_config().get("scoring_weights", {}),
         "learning_outcome": _learning_outcome_note(signal_hit_rates),
     }
+    review["attempt_log_coverage_days"] = _attempt_log_coverage(attempt_log_days, days)
+    review["attempt_log_span"] = _attempt_log_span(attempt_log_days, days)
     review["config_tuning_notes"] = _config_tuning_notes(
-        window_attempts, refusal_breakdown, never_decided, approved_not_executed, lookback_days
+        window_attempts,
+        refusal_breakdown,
+        never_decided,
+        approved_not_executed,
+        auto_outcome_unlogged,
+        attempt_log_days,
+        days,
     )
     review["report_path"] = str(_write_learning_review_markdown(review))
     return review

@@ -669,3 +669,139 @@ def test_build_weekly_learning_review_picks_up_recs_from_anywhere_in_the_30_day_
 
     assert review["actionable_count"] == 1
     assert [r["ticker"] for r in review["never_decided"]] == ["OLD"]
+
+
+# --- accuracy fixes found by the first live run (2026-10-02) -----------------
+
+
+def test_auto_approval_with_no_trade_or_attempt_is_not_blamed_on_a_human(monkeypatch, tmp_path):
+    """auto_apply() writes its approval before submitting, so an auto approval
+    from before the attempt log existed shows up with no trade and no attempt.
+    That's an unlogged auto-apply outcome, not a human who forgot to execute."""
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    day = "2026-09-25"
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("AUTO", "pre_open", "BUY"))
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("HUMAN", "pre_open", "BUY"))
+    append_json(
+        day_dir(rb.APPROVALS_DIR, day) / "decisions_pre_open.json",
+        {"ticker": "AUTO", "checkpoint": "pre_open", "decision": "approve", "terms": {"source": "auto", "qty": 5}},
+    )
+    append_json(
+        day_dir(rb.APPROVALS_DIR, day) / "decisions_pre_open.json",
+        {"ticker": "HUMAN", "checkpoint": "pre_open", "decision": "approve", "terms": {"qty": 5}},
+    )
+
+    review = rb.build_weekly_learning_review("2026-10-02")
+
+    assert [r["ticker"] for r in review["auto_outcome_unlogged"]] == ["AUTO"]
+    assert [r["ticker"] for r in review["approved_not_executed"]] == ["HUMAN"]
+    notes = " ".join(review["config_tuning_notes"])
+    assert "predate the per-attempt log" in notes
+
+
+def test_rerun_checkpoint_duplicates_are_counted_once(monkeypatch, tmp_path):
+    """A checkpoint re-run the same day appends the same recommendation again;
+    it must not inflate the actionable or executed counts."""
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    day = "2026-10-01"
+    for _ in range(2):
+        append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("DUP", "pre_open", "BUY"))
+    append_json(
+        day_dir(rb.TRADES_DIR, day) / "orders_submitted.json",
+        {"order": {"symbol": "DUP", "side": "buy", "qty": 5}, "recommendation": {"checkpoint": "pre_open", "ticker": "DUP"}},
+    )
+
+    review = rb.build_weekly_learning_review("2026-10-02")
+
+    assert review["actionable_count"] == 1
+    assert review["executed_count"] == 1
+    assert review["executed_count"] <= review["trades_count"]
+
+
+def test_attempt_log_coverage_is_reported_not_assumed_to_be_the_whole_window(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    day = "2026-09-30"
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("REF", "pre_open", "BUY"))
+    append_json(
+        day_dir(rb.TRADES_DIR, day) / "auto_apply_attempts_pre_open.json",
+        {
+            "ticker": "REF",
+            "checkpoint": "pre_open",
+            "status": "refused",
+            "reason": "REF's price has moved 5.00% since this recommendation was scored, past the 3.0% drift limit.",
+        },
+    )
+
+    review = rb.build_weekly_learning_review("2026-10-02")
+
+    assert review["attempt_log_days"] == ["2026-09-30"]
+    # Logging covers 09-30 through the window's end (10-02), not just the one
+    # day that happened to have a log file.
+    assert review["attempt_log_coverage_days"] == 3
+    assert review["attempt_log_span"] == "3 of the last 30 days, since 2026-09-30"
+    text = Path(review["report_path"]).read_text()
+    assert "Refusal breakdown (3 of the last 30 days, since 2026-09-30):" in text
+    assert "logs cover 3 of the last 30 days, since 2026-09-30" in " ".join(
+        review["config_tuning_notes"]
+    )
+
+
+def test_attempt_log_span_when_no_logs_or_full_coverage():
+    window = rb._lookback_dates("2026-10-02", 30)
+    assert rb._attempt_log_span([], window) == "no attempt logs in the last 30 days"
+    assert rb._attempt_log_span([window[0]], window) == "all 30 days"
+
+
+def test_weight_proposal_needs_enough_outcomes_per_signal(monkeypatch, tmp_path):
+    """3 outcomes per signal (the first live run's actual history) is too few
+    to compare signals — no proposal and no outcome note, rather than a
+    'technical 100% vs sentiment 67%' finding built on noise."""
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+    (tmp_path / "performance").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "performance" / "strategy_metrics.json").write_text(
+        json.dumps(
+            {
+                "by_signal_type": {
+                    "sentiment": {"hit_rate": 0.67, "n": 3},
+                    "technical": {"hit_rate": 1.0, "n": 3},
+                }
+            }
+        )
+    )
+
+    review = rb.build_weekly_learning_review("2026-10-02")
+
+    assert len(review["optimization_proposals"]) == 1
+    assert "Not enough outcome history" in review["optimization_proposals"][0]
+    assert "3 outcome(s)" in review["optimization_proposals"][0]
+    assert review["learning_outcome"] is None
+
+
+def test_weight_proposal_ignores_under_sampled_signals_but_compares_the_rest(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+    (tmp_path / "performance").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "performance" / "strategy_metrics.json").write_text(
+        json.dumps(
+            {
+                "by_signal_type": {
+                    "sentiment": {"hit_rate": 0.35, "n": 12},
+                    "catalyst": {"hit_rate": 0.75, "n": 12},
+                    "technical": {"hit_rate": 0.0, "n": 2},  # worst, but too few outcomes to count
+                }
+            }
+        )
+    )
+
+    review = rb.build_weekly_learning_review("2026-10-02")
+
+    proposal = review["optimization_proposals"][0]
+    assert "'sentiment'" in proposal and "'catalyst'" in proposal
+    assert "technical" not in proposal

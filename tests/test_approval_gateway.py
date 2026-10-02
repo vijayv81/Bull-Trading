@@ -466,18 +466,24 @@ def test_weekly_learning_review_includes_orders_not_placed_and_refusal_breakdown
         _review(
             never_decided=[{"ticker": "AAA"}],
             approved_not_executed=[{"ticker": "BBB"}],
+            auto_outcome_unlogged=[{"ticker": "DDD"}, {"ticker": "EEE"}],
             rejected=[{"ticker": "CCC"}],
             auto_apply_attempts_by_status={"submitted": 1, "refused": 2, "skipped": 1, "error": 0},
             refusal_breakdown={"stale: price drift": 2},
+            attempt_log_span="3 of the last 30 days, since 2026-09-30",
         )
     )
 
     plain_body, html_body = calls[0][1], calls[0][2]
     assert "1 never decided" in plain_body
-    assert "1 approved but never submitted" in plain_body
+    assert "1 human-approved but never submitted" in plain_body
+    assert "2 auto-apply with no logged outcome" in plain_body
     assert "1 human-rejected" in plain_body
+    assert "Refusal breakdown (3 of the last 30 days, since 2026-09-30):" in plain_body
     assert "stale: price drift: 2" in plain_body
     assert "Orders not placed" in html_body
+    assert "auto-apply, outcome not logged" in html_body
+    assert "3 of the last 30 days, since 2026-09-30" in html_body
     assert "stale: price drift" in html_body
 
 

@@ -263,6 +263,21 @@ run.
   (`execute/auto_pilot.py`'s persisted attempt log), broken down by which
   guardrail refused it (`_categorize_refusal()` matches each attempt's
   refusal string against the fixed phrases `guardrails.py` actually raises).
+  Three accuracy rules, all from checking the first live run (2026-10-02)
+  against the raw data: (1) an `approve` decision tagged `terms.source:
+  "auto"` with no trade and no attempt record is its own bucket,
+  `auto_outcome_unlogged` — `auto_apply()` records its approval *before*
+  submitting, so these are auto-apply attempts from before
+  `_persist_attempt()` existed, never a human who forgot to run `execute`
+  (the first run blamed 32 of them on the human; all 74 approvals in that
+  window were auto). (2) Attempt-log counts (status totals, refusal
+  breakdown, the stale-refusal note) are always labeled with how much of
+  the window the log actually covers (`attempt_log_span`, e.g. "3 of the
+  last 30 days, since 2026-09-30") — logging started mid-history, so those
+  counts can cover far less than the 30 days the rest of the report does.
+  (3) A checkpoint re-run the same day appends a duplicate recommendation;
+  each (day, checkpoint, ticker) is counted once, so "executed" can never
+  exceed the actual trade count.
 - **Opportunities lost or avoided** — a hindsight price check
   (`_missed_opportunity_counterfactuals()`) on a sample of those unexecuted
   calls (deduped by ticker, highest confidence first, capped at
@@ -283,7 +298,13 @@ run.
   means exactly what it means everywhere else in this codebase (plan
   §6.3): surfaced for a human to read and decide on. **This routine never
   writes `config/agent_config.yaml` or `config/risk_limits.yaml`** — same
-  hard rule as every other proposal mechanism here.
+  hard rule as every other proposal mechanism here. `propose_weight_adjustments()`
+  (and `_learning_outcome_note()`, which mirrors it) only compares signals
+  with at least `MIN_OUTCOMES_PER_SIGNAL_FOR_PROPOSAL` (10) measured
+  outcomes each, and says "not enough outcome history" otherwise — the first
+  live run proposed cutting `sentiment`'s weight on 3 outcomes per signal,
+  where one call moves a hit rate 33 points. This applies to the daily
+  summary's proposals too, since both read the same function.
 - **Other observations** (`_config_tuning_notes()`) — qualitative,
   data-grounded notes citing the window's actual counts (e.g. "N of M
   auto-apply refusals over the last 30 days were stale-recommendation
