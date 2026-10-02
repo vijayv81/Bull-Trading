@@ -75,12 +75,35 @@ notifications:
   # change needed. Still gated by `channel` including email/sms above.
   daily_summary_enabled: true
 
+  # Saturday weekly retrospective email/SMS — trades, portfolio status,
+  # every order NOT placed and why, and a hindsight check on what those
+  # skipped/refused/undecided calls' prices did since. See
+  # `trading-agent weekly-learning-review` and
+  # routines/weekly_learning_review.md. false is a one-line way to keep
+  # every other notification without this one, no code change needed.
+  # Still gated by `channel` including email/sms above.
+  weekly_learning_review_enabled: true
+
   # URL of the published Claude Artifact "Approval Ticket" page email links
   # point to (its own small database holds the click-through decision until
   # it's synced into data/approvals/ — see .claude/skills/trading-trade
   # "Sync email-link decisions first"). Not a secret, just a page URL; null
   # disables the sync step entirely.
   approval_ticket_artifact_url: "https://claude.ai/artifact/RopjHYW6Rtr9n3t8Ka7MNT"
+
+# Reporting parameters — distinct from scoring/risk config above, these only
+# shape what a report looks back over, never a trading decision itself.
+reporting:
+  # Per user instruction 2026-10-02 ("look broader into last 30 rolling days
+  # to ensure analysis and predictions are more accurate"): the weekly
+  # learning review (`trading-agent weekly-learning-review`,
+  # reporting/report_builder.py:build_weekly_learning_review()) analyzes
+  # this many rolling calendar days ending today, not the 7-day calendar
+  # week `weekly-report` uses — a single quiet week was otherwise too thin
+  # a sample for its refusal-category and missed-opportunity patterns to
+  # mean much. The routine still fires weekly (Saturdays); only the
+  # analysis window is wider.
+  weekly_learning_review_lookback_days: 30
 
 # Alpaca's own fundamentals/screener coverage is limited (plan §5) — no
 # secondary data vendor is wired up yet (plan §12 open decision). Fundamental

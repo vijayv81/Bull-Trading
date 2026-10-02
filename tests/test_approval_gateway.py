@@ -392,6 +392,156 @@ def test_daily_summary_send_failure_does_not_raise(monkeypatch):
     gw.notify_daily_summary(_summary())  # must not raise
 
 
+# --- notify_weekly_learning_review --------------------------------------------
+
+
+def _review(**overrides):
+    base = {
+        "window_start": "2026-09-03",
+        "window_end": "2026-10-02",
+        "lookback_days": 30,
+        "trades_count": 2,
+        "realized_pnl": {"total": 150.0, "by_symbol": {"TSLA": 150.0}, "pending_fills": 0},
+        "unrealized_pnl": {"positions": [], "total": -25.0, "error": None},
+        "portfolio_status": {"equity": 100000.0, "cash": 50000.0, "buying_power": 50000.0, "error": None},
+        "actionable_count": 5,
+        "executed_count": 2,
+        "never_decided": [],
+        "approved_not_executed": [],
+        "rejected": [],
+        "auto_apply_attempts_by_status": {"submitted": 2, "refused": 0, "skipped": 0, "error": 0},
+        "refusal_breakdown": {},
+        "missed_opportunities": [],
+        "signal_hit_rates": {},
+        "optimization_proposals": ["No performance history yet — nothing to propose."],
+        "scoring_weights": {},
+        "learning_outcome": None,
+        "config_tuning_notes": [],
+    }
+    base.update(overrides)
+    return base
+
+
+def test_weekly_learning_review_skipped_when_disabled(monkeypatch):
+    monkeypatch.setattr(
+        gw, "load_agent_config",
+        lambda: {"notifications": {"channel": ["email"], "weekly_learning_review_enabled": False}},
+    )
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(_review())
+    assert calls == []
+
+
+def test_weekly_learning_review_skipped_when_no_email_or_sms_channel(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["console"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(_review())
+    assert calls == []
+
+
+def test_weekly_learning_review_includes_trades_and_portfolio_status(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(_review())
+
+    subject, plain_body, html_body = calls[0][0], calls[0][1], calls[0][2]
+    assert "last 30 days (2026-09-03 to 2026-10-02)" in subject
+    assert "last 30 days (2026-09-03 to 2026-10-02)" in plain_body
+    assert "Trades executed: 2" in plain_body
+    assert "Realized P&L: $150.00" in plain_body
+    assert "equity $100,000.00" in plain_body
+    assert "Trades executed" in html_body
+    assert "Portfolio status" in html_body
+    assert "last 30 days" in html_body
+
+
+def test_weekly_learning_review_includes_orders_not_placed_and_refusal_breakdown(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(
+        _review(
+            never_decided=[{"ticker": "AAA"}],
+            approved_not_executed=[{"ticker": "BBB"}],
+            rejected=[{"ticker": "CCC"}],
+            auto_apply_attempts_by_status={"submitted": 1, "refused": 2, "skipped": 1, "error": 0},
+            refusal_breakdown={"stale: price drift": 2},
+        )
+    )
+
+    plain_body, html_body = calls[0][1], calls[0][2]
+    assert "1 never decided" in plain_body
+    assert "1 approved but never submitted" in plain_body
+    assert "1 human-rejected" in plain_body
+    assert "stale: price drift: 2" in plain_body
+    assert "Orders not placed" in html_body
+    assert "stale: price drift" in html_body
+
+
+def test_weekly_learning_review_includes_missed_opportunities_hindsight(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(
+        _review(
+            missed_opportunities=[
+                {
+                    "ticker": "WON", "action": "BUY", "confidence": 90, "category": "never decided",
+                    "reference_price": 100.0, "current_price": 110.0, "pct_change": 10.0, "would_have_helped": True,
+                },
+                {
+                    "ticker": "LOST", "action": "BUY", "confidence": 90, "category": "auto-refused: stale: price drift",
+                    "reference_price": 100.0, "current_price": 90.0, "pct_change": -10.0, "would_have_helped": False,
+                },
+            ]
+        )
+    )
+
+    plain_body, html_body = calls[0][1], calls[0][2]
+    assert "WON BUY" in plain_body and "would have helped" in plain_body
+    assert "LOST BUY" in plain_body and "would NOT have helped" in plain_body
+    assert "WOULD HAVE HELPED" in html_body
+    assert "AVOIDED CORRECTLY" in html_body
+
+
+def test_weekly_learning_review_includes_learning_and_optimization(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(
+        _review(
+            optimization_proposals=["Reduce sentiment weight (hit rate 32% vs technical's 61%)"],
+            signal_hit_rates={"technical": {"hit_rate": 0.61, "n": 20}},
+            learning_outcome="If incorporated, scoring would lean more on technical.",
+            scoring_weights={"technical": 0.4},
+            config_tuning_notes=["3 of 5 refusals this week were stale blocks."],
+        )
+    )
+
+    plain_body, html_body = calls[0][1], calls[0][2]
+    assert "Reduce sentiment weight" in plain_body
+    assert "technical: 61%" in plain_body
+    assert "If incorporated" in plain_body
+    assert "Weights currently in effect: technical 0.4" in plain_body
+    assert "3 of 5 refusals" in plain_body
+    assert "never applied automatically" in plain_body
+    assert "Reduce sentiment weight" in html_body
+    assert "Other observations for next week" in html_body
+
+
+def test_weekly_learning_review_send_failure_does_not_raise(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+
+    def boom(*a, **k):
+        raise RuntimeError("RESEND_API_KEY not set")
+
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
+    gw.notify_weekly_learning_review(_review())  # must not raise
+
+
 # --- pending_approvals_today / notify_pending_reminder -------------------------
 
 

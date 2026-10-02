@@ -553,6 +553,258 @@ def notify_weekly_report(report_path: Path) -> None:
             print(f"NOTIFY (weekly report sms) failed: {exc}")
 
 
+def _weekly_learning_review_html(review: dict[str, Any]) -> str:
+    from trading_agent.notify import html as h
+
+    border = h.COLORS["border"]
+    muted = h.COLORS["muted"]
+
+    inner = ""
+    inner += h.stat_card("Trades executed", str(review["trades_count"]))
+    inner += h.stat_card("Realized P&L (this week)", h.signed_dollar(review["realized_pnl"]["total"]))
+    if review["unrealized_pnl"]["error"]:
+        inner += h.muted(f"Unrealized (live positions): unavailable — {review['unrealized_pnl']['error']}")
+    else:
+        inner += h.stat_card("Unrealized P&L (live, now)", h.signed_dollar(review["unrealized_pnl"]["total"]))
+
+    inner += h.section_heading("Portfolio status")
+    status = review["portfolio_status"]
+    if status["error"]:
+        inner += h.muted(f"Unavailable — {status['error']}")
+    else:
+        inner += (
+            f'<div style="font-size:14px;padding:4px 0;">'
+            f"Equity ${status['equity']:,.2f} &middot; Cash ${status['cash']:,.2f} &middot; "
+            f"Buying power ${status['buying_power']:,.2f} &middot; "
+            f"{len(review['unrealized_pnl']['positions'])} open position(s)"
+            f"</div>"
+        )
+
+    inner += h.section_heading("Orders not placed")
+    never_chip = h.chip(f"{len(review['never_decided'])} never decided", "negative")
+    approved_chip = h.chip(f"{len(review['approved_not_executed'])} approved, not executed", "negative")
+    rejected_chip = h.chip(f"{len(review['rejected'])} human-rejected", "neutral")
+    inner += f'<div style="padding:6px 0;">{never_chip} {approved_chip} {rejected_chip}</div>'
+
+    attempts_summary = review["auto_apply_attempts_by_status"]
+    submitted_chip = h.chip(f"{attempts_summary.get('submitted', 0)} submitted", "positive")
+    refused_chip = h.chip(f"{attempts_summary.get('refused', 0)} refused", "negative")
+    skipped_chip = h.chip(f"{attempts_summary.get('skipped', 0)} skipped", "neutral")
+    error_chip = h.chip(f"{attempts_summary.get('error', 0)} errored", "negative")
+    inner += (
+        f'<div style="padding:6px 0;">Auto-apply attempts: '
+        f"{submitted_chip} {refused_chip} {skipped_chip} {error_chip}</div>"
+    )
+    if review["refusal_breakdown"]:
+        refusal_items = " ".join(
+            h.chip(f"{label}: {count}", "negative")
+            for label, count in sorted(review["refusal_breakdown"].items(), key=lambda kv: -kv[1])
+        )
+        inner += f'<div style="padding:6px 0;">{refusal_items}</div>'
+
+    inner += h.section_heading("Opportunities lost or avoided")
+    if review["missed_opportunities"]:
+        for m in review["missed_opportunities"][:15]:
+            verdict_kind = "negative" if m["would_have_helped"] else "neutral"
+            verdict_label = "WOULD HAVE HELPED" if m["would_have_helped"] else "AVOIDED CORRECTLY"
+            verdict_chip = h.chip(verdict_label, verdict_kind)
+            action_badge = h.badge(m["action"])
+            inner += (
+                f'<div style="padding:8px 0;font-size:14px;border-bottom:1px solid {border};">'
+                f"{verdict_chip} <b>{m['ticker']}</b> {action_badge} "
+                f'<span style="color:{muted};">[{m["category"]}] conf {m["confidence"]}</span>'
+                f'<div style="margin-top:3px;">{m["reference_price"]:.2f} &rarr; {m["current_price"]:.2f} '
+                f"({m['pct_change']:+.2f}%)</div></div>"
+            )
+    else:
+        inner += h.muted("No unexecuted actionable recommendations with a usable reference price this week.")
+
+    inner += h.section_heading("Signal performance so far")
+    if review["signal_hit_rates"]:
+        rate_chips = " ".join(
+            h.chip(f"{sig} {stats.get('hit_rate', 0):.0%}", "neutral")
+            for sig, stats in sorted(review["signal_hit_rates"].items())
+        )
+        inner += f'<div style="padding:6px 0;">{rate_chips}</div>'
+    else:
+        inner += h.muted("Not enough outcome history yet.")
+
+    inner += h.section_heading("Proposed model/config improvements")
+    for p in review.get("optimization_proposals") or []:
+        proposal_chip = h.chip("PROPOSAL", "neutral")
+        inner += f'<div style="padding:6px 0;font-size:14px;">{proposal_chip} {p}</div>'
+    if review.get("learning_outcome"):
+        inner += f'<div style="padding:6px 0;font-size:14px;"><b>Possible outcome:</b> {review["learning_outcome"]}</div>'
+    weights = review.get("scoring_weights") or {}
+    if weights:
+        weight_str = ", ".join(f"{k} {v:g}" for k, v in weights.items())
+        inner += h.muted(f"Weights currently in effect: {weight_str}")
+
+    notes = review.get("config_tuning_notes") or []
+    if notes:
+        inner += h.section_heading("Other observations for next week")
+        for n in notes:
+            inner += f'<div style="padding:6px 0;font-size:14px;">{n}</div>'
+
+    inner += h.muted(
+        "Nothing above is applied automatically — incorporating any of it means a human edits "
+        "config/agent_config.yaml or config/risk_limits.yaml and commits the change deliberately."
+    )
+
+    subtitle = f"last {review['lookback_days']} days ({review['window_start']} to {review['window_end']})"
+    return h.wrap("Weekly Learning Review", subtitle, inner)
+
+
+def notify_weekly_learning_review(review: dict[str, Any]) -> None:
+    """Saturday weekly retrospective email/SMS (per user instruction
+    2026-10-02, "evaluate all trades, portfolio status, trade orders not
+    placed and opportunities lost ... feed and optimize for following week
+    runs ... email should be sent out based on analysis, what
+    recommendations were made and why"). `review` is
+    reporting.report_builder.build_weekly_learning_review()'s return.
+
+    Distinct from notify_weekly_report() (P&L + activity counts only, sent
+    from the Friday pre_close trading-report routine, strict calendar week)
+    — this is a separate Saturday-morning routine (see
+    routines/weekly_learning_review.md) that looks specifically at what
+    DIDN'T happen over a rolling `review['lookback_days']`-day window
+    (30 by default, per user instruction 2026-10-02, "look broader ... to
+    ensure analysis and predictions are more accurate" — wider than the
+    weekly cadence this fires on so a single light week doesn't starve the
+    patterns below of data): recommendations that expired undecided, were
+    approved but never submitted, or were refused by a guardrail/auto-apply,
+    plus a hindsight price check on each, and the same
+    propose_weight_adjustments() proposals `trading-agent propose-weights`
+    already surfaces — never applied automatically here either.
+
+    Config-gated independently, same convention as daily_summary_enabled:
+    notifications.weekly_learning_review_enabled (default true). A send
+    failure is reported, not raised, same as every other notify_* function
+    here.
+    """
+    if not load_agent_config().get("notifications", {}).get("weekly_learning_review_enabled", True):
+        return
+    channels = notification_channels()
+    if not channels & {"email", "sms"}:
+        return
+
+    lines = [
+        f"Bull-Trading weekly learning review — last {review['lookback_days']} days "
+        f"({review['window_start']} to {review['window_end']})",
+        "",
+    ]
+
+    lines.append(
+        f"Trades executed: {review['trades_count']} | Realized P&L: ${review['realized_pnl']['total']:,.2f}"
+    )
+    if review["realized_pnl"]["pending_fills"]:
+        lines.append(f"  ({review['realized_pnl']['pending_fills']} order(s) with no confirmed fill yet)")
+    if review["unrealized_pnl"]["error"]:
+        lines.append(f"Unrealized (live positions): unavailable — {review['unrealized_pnl']['error']}")
+    else:
+        lines.append(f"Unrealized (live, open positions right now): ${review['unrealized_pnl']['total']:,.2f}")
+
+    status = review["portfolio_status"]
+    lines.append("")
+    if status["error"]:
+        lines.append(f"Portfolio status: unavailable — {status['error']}")
+    else:
+        lines.append(
+            f"Portfolio status: equity ${status['equity']:,.2f}, cash ${status['cash']:,.2f}, "
+            f"buying power ${status['buying_power']:,.2f}, "
+            f"{len(review['unrealized_pnl']['positions'])} open position(s)"
+        )
+
+    lines.append("")
+    lines.append(
+        f"Orders not placed: {len(review['never_decided'])} never decided, "
+        f"{len(review['approved_not_executed'])} approved but never submitted, "
+        f"{len(review['rejected'])} human-rejected"
+    )
+    attempts_summary = review["auto_apply_attempts_by_status"]
+    lines.append(
+        f"Auto-apply attempts: {attempts_summary.get('submitted', 0)} submitted, "
+        f"{attempts_summary.get('refused', 0)} refused, {attempts_summary.get('skipped', 0)} skipped, "
+        f"{attempts_summary.get('error', 0)} errored"
+    )
+    if review["refusal_breakdown"]:
+        lines.append("Refusal breakdown:")
+        for label, count in sorted(review["refusal_breakdown"].items(), key=lambda kv: -kv[1]):
+            lines.append(f"  - {label}: {count}")
+
+    lines.append("")
+    if review["missed_opportunities"]:
+        lines.append("Opportunities lost or avoided (hindsight check):")
+        for m in review["missed_opportunities"][:15]:
+            verdict = "would have helped" if m["would_have_helped"] else "would NOT have helped"
+            lines.append(
+                f"- {m['ticker']} {m['action']} [{m['category']}] conf {m['confidence']}: "
+                f"{m['reference_price']:.2f} -> {m['current_price']:.2f} ({m['pct_change']:+.2f}%) — {verdict}"
+            )
+    else:
+        lines.append("No unexecuted actionable recommendations with a usable reference price this week.")
+
+    lines.append("")
+    lines.append("Signal performance so far:")
+    if review["signal_hit_rates"]:
+        for sig, stats in sorted(review["signal_hit_rates"].items()):
+            lines.append(f"  - {sig}: {stats.get('hit_rate', 0):.0%} over {stats.get('n', 0)} call(s)")
+    else:
+        lines.append("  Not enough outcome history yet.")
+
+    lines.append("")
+    lines.append("Proposed model/config improvements (never applied automatically):")
+    for p in review.get("optimization_proposals") or []:
+        lines.append(f"- {p}")
+    if review.get("learning_outcome"):
+        lines.append(f"  Possible outcome if incorporated: {review['learning_outcome']}")
+    weights = review.get("scoring_weights") or {}
+    if weights:
+        weight_str = ", ".join(f"{k} {v:g}" for k, v in weights.items())
+        lines.append(f"  Weights currently in effect: {weight_str}")
+
+    notes = review.get("config_tuning_notes") or []
+    if notes:
+        lines.append("")
+        lines.append("Other observations for next week:")
+        for n in notes:
+            lines.append(f"- {n}")
+
+    lines.append("")
+    lines.append(
+        "Nothing above is applied automatically — incorporating any of it means a human edits "
+        "config/agent_config.yaml or config/risk_limits.yaml and commits the change deliberately."
+    )
+
+    subject = (
+        f"[Bull-Trading] Weekly learning review — last {review['lookback_days']} days "
+        f"({review['window_start']} to {review['window_end']})"
+    )
+    body = "\n".join(lines)
+    html_body = _weekly_learning_review_html(review)
+
+    if "email" in channels:
+        try:
+            from trading_agent.notify.senders import send_email
+
+            send_email(subject, body, html_body)
+        except Exception as exc:  # noqa: BLE001 - a broken channel must not halt the routine
+            print(f"NOTIFY (weekly learning review email) failed: {exc}")
+
+    if "sms" in channels:
+        try:
+            from trading_agent.notify.senders import send_sms
+
+            headline = (
+                f"Bull-Trading weekly learning review ({review['window_start']} to {review['window_end']}): "
+                f"{review['trades_count']} trades, {len(review['never_decided'])} never decided, "
+                f"{len(review['approved_not_executed'])} approved-not-executed. Full report by email."
+            )
+            send_sms(headline[:300])
+        except Exception as exc:  # noqa: BLE001
+            print(f"NOTIFY (weekly learning review sms) failed: {exc}")
+
+
 def record_decision(
     ticker: str, checkpoint: str, decision: Decision, terms: dict[str, Any] | None = None
 ) -> None:

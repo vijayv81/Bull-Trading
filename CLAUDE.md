@@ -60,12 +60,14 @@ src/trading_agent/
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
   notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — email/SMS over Resend's HTTPS API (plan §12)
   execute/                 order_manager.py — approval + kill-switch gated Alpaca submission; auto_pilot.py — opt-in auto-apply (see below)
-  reporting/               report_builder.py — daily/weekly markdown reports + realized/unrealized P&L
+  reporting/               report_builder.py — daily/weekly markdown reports + realized/unrealized P&L,
+                           plus the Saturday weekly learning review (see below)
   agents/                  interactive Claude Agent SDK research (see above)
   backtest/                engine.py — backtest_moving_average() (standalone SMA-crossover
                            comparison, from the original scaffold) + backtest_strategy()
                            (walks the real technical_score()/score_candidate() formula)
-routines/                 trading_checkpoints.md — spec for the 4 scheduled routines (/schedule)
+routines/                 trading_checkpoints.md — spec for the 4 scheduled routines (/schedule);
+                          weekly_learning_review.md — spec for the 5th, Saturday-only routine
 scripts/check_no_secrets.py   pre-commit credential scanner (plan §7.1 backstop)
 data/                     raw+processed are gitignored; recommendations/approvals/trades/performance ARE tracked (audit trail)
 ```
@@ -208,6 +210,93 @@ mobile-friendly HTML rendering (`notify/html.py` — inline styles only, no
 external CSS/webfonts, so it renders consistently in Gmail/Apple Mail on a
 phone) alongside the plain-text body `senders.send_email()` already sent;
 plain text remains the fallback for clients that strip HTML.
+
+## Weekly learning review (new routine, Saturdays)
+
+Per user instruction 2026-10-02 ("set up a weekly learning routine that
+will evaluate all trades, portfolio status, trade orders not placed and
+opportunities lost. This should feed and optimize for following week runs.
+Email should be sent out based on analysis, what recommendations were made
+and why. Set this job to run every Saturday 6am"): a fifth scheduled
+routine — see `routines/weekly_learning_review.md` for the full spec and
+how it's set up — distinct from the four weekday checkpoints and from the
+Friday `pre_close` weekly report, firing once a week on Saturday morning
+when the market's closed.
+
+**Rolling 30-day analysis window**, per (the same day's) follow-up user
+instruction ("look broader into last 30 rolling days to ensure analysis and
+predictions are more accurate"): the routine still *fires* weekly
+(Saturdays), but `build_weekly_learning_review(as_of, lookback_days)`
+analyzes `lookback_days` rolling calendar days ending at `as_of` (default:
+today) — not the 7-day Monday-start calendar week `build_weekly_report()`
+uses. `lookback_days` defaults to `agent_config.yaml -> reporting.
+weekly_learning_review_lookback_days` (30) when not passed explicitly, via
+the new `reporting:` top-level config section (distinct from `scoring_weights`/
+`notifications` — these are report-shape parameters, not scoring or risk
+ones). The point of widening it: a single light week was too thin a sample
+for the refusal-category and missed-opportunity patterns below to mean
+much — 30 rolling days gives them more to work with without changing how
+often the email actually goes out. `trading-agent weekly-learning-review
+--as-of YYYY-MM-DD --lookback-days N` overrides either for an ad hoc run;
+the review's own `window_start`/`window_end`/`lookback_days` fields (and
+the email subject/report header) always say exactly what window produced
+the numbers, so this is never silently inconsistent with a shorter/longer
+run.
+
+`reporting/report_builder.py:build_weekly_learning_review()` /
+`notify/approval_gateway.py:notify_weekly_learning_review()`
+(`trading-agent weekly-learning-review`) cover, over that window:
+
+- **Trades evaluated** — realized P&L (confirmed fills) over the window and
+  a live unrealized P&L snapshot, reusing `_realized_pnl()`/`_unrealized_pnl()`
+  from `build_weekly_report()`.
+- **Portfolio status** — a live equity/cash/buying-power snapshot plus open
+  position count, as of when the routine runs.
+- **Trade orders not placed, and why** — unlike every other report here,
+  this one also looks at actionable (BUY/SELL) recommendations with NO
+  trade behind them at all, split by why: never decided (expired with no
+  human response — these never even reached `data/journal/`, so the
+  improvement loop never learned anything from them), approved but never
+  submitted (a human recorded an approval but never ran `trading-agent
+  execute` — approval and execution are deliberately separate steps, see
+  `.claude/skills/trading-trade`), human-rejected, and auto-apply-refused
+  (`execute/auto_pilot.py`'s persisted attempt log), broken down by which
+  guardrail refused it (`_categorize_refusal()` matches each attempt's
+  refusal string against the fixed phrases `guardrails.py` actually raises).
+- **Opportunities lost or avoided** — a hindsight price check
+  (`_missed_opportunity_counterfactuals()`) on a sample of those unexecuted
+  calls (deduped by ticker, highest confidence first, capped at
+  `MAX_MISSED_OPPORTUNITY_LOOKUPS` live quote lookups): current price vs.
+  the recommendation's own `reference_price`, reusing the same comparison
+  `journal.mark_outcomes()` does for a decided-and-journaled call.
+  Deliberately two-sided — `would_have_helped` is reported both ways, not
+  just the cases that make skipping a trade look like a mistake, same
+  honesty the earlier 2026-09 stale-recommendation counterfactual chat
+  analysis insisted on (a modest, non-uniform result, not every blocked
+  trade a missed win). A candidate with no reference price or no live quote
+  is excluded, not guessed at — same "exclude, don't fake" convention as
+  every scoring component in this project.
+- **Signal performance + weight proposals** — the exact same
+  `recommendation_engine.propose_weight_adjustments()` output
+  `trading-agent propose-weights` already prints, plus the scoring weights
+  actually in effect right now. "Feed and optimize for following week runs"
+  means exactly what it means everywhere else in this codebase (plan
+  §6.3): surfaced for a human to read and decide on. **This routine never
+  writes `config/agent_config.yaml` or `config/risk_limits.yaml`** — same
+  hard rule as every other proposal mechanism here.
+- **Other observations** (`_config_tuning_notes()`) — qualitative,
+  data-grounded notes citing the window's actual counts (e.g. "N of M
+  auto-apply refusals over the last 30 days were stale-recommendation
+  blocks — current `execution.max_price_drift_pct` is X%"), never a config
+  change applied by this function.
+
+Writes `reports/learning/<window_end>.md` (tracked in git, same as
+`reports/weekly/` and `reports/daily/` — dated by the window's end rather
+than an ISO week number, since the window is no longer Monday-aligned) and
+emails/SMS's it in one step, with a styled HTML rendering alongside the
+plain-text body, same convention as the daily summary. Gated independently
+by `notifications.weekly_learning_review_enabled` (default `true`) —
+`false` keeps every other notification unaffected, no code change needed.
 
 ## Approval + execution (hard requirement, plan §8)
 

@@ -81,6 +81,15 @@ def signed_pct(value: float | None, decimals: int = 2) -> str:
     return f'<span style="color:{color};font-weight:700;">{sign}{value:.{decimals}f}%</span>'
 
 
+def signed_dollar(value: float | None, decimals: int = 2) -> str:
+    """A +/- dollar amount, colored green (>=0) or red (<0) — same convention as signed_pct()."""
+    if value is None:
+        return f'<span style="color:{COLORS["muted"]};">unavailable</span>'
+    color = COLORS["positive"] if value >= 0 else COLORS["negative"]
+    sign = "+" if value >= 0 else "-"
+    return f'<span style="color:{color};font-weight:700;">{sign}${abs(value):,.{decimals}f}</span>'
+
+
 def alert_banner(text: str) -> str:
     return (
         f'<div style="background-color:{COLORS["alert_bg"]};color:{COLORS["alert"]};'

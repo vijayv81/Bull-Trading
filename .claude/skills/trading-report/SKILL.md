@@ -1,6 +1,6 @@
 ---
 name: trading-report
-description: Builds the daily and weekly markdown reports, surfaces proposed scoring-weight changes, and commits the day's audit snapshot to git. Use this at pre_close, whenever the user asks for a daily or weekly summary, when they ask how the week went, when they want the strategy weights reviewed, or when they ask you to commit the day's data. Use it even for loose phrasings like "wrap up the day" or "what happened this week?"
+description: Builds the daily and weekly markdown reports, the Saturday weekly learning review (trades, portfolio status, orders not placed, missed opportunities), surfaces proposed scoring-weight changes, and commits the day's audit snapshot to git. Use this at pre_close, on the Saturday weekly-learning-review routine, whenever the user asks for a daily or weekly summary, when they ask how the week went, when they want the strategy weights reviewed, or when they ask you to commit the day's data. Use it even for loose phrasings like "wrap up the day" or "what happened this week?"
 ---
 
 # Daily and weekly reporting
@@ -105,6 +105,42 @@ The "Guardrail / Incident Notes" section in the daily report is currently always
 empty — decision values are only ever `approve` or `reject`, so nothing can land
 there. Don't present its emptiness as "no incidents"; it isn't evidence of
 anything yet.
+
+## Send the weekly learning review (Saturdays, its own routine)
+
+Separate from everything above: `routines/weekly_learning_review.md`
+describes a fifth scheduled routine, distinct from the four weekday
+checkpoints and from the Friday `pre_close` weekly report, that fires once
+a week on Saturday morning when the market's closed.
+
+```bash
+trading-agent weekly-learning-review                    # last 30 rolling days ending today
+trading-agent weekly-learning-review --as-of YYYY-MM-DD --lookback-days N
+```
+
+Rolling window, not a calendar week: it analyzes `lookback_days` days
+ending at `as_of` (defaults: `reporting.weekly_learning_review_lookback_days`
+in `agent_config.yaml`, 30, and today) — wider on purpose than the weekly
+cadence it fires on, so a single light week doesn't starve its patterns of
+data. On the normal Saturday routine, run it with no flags.
+
+This builds `reports/learning/<window_end>.md` and emails/SMS's it in one
+step — trades evaluated, a live portfolio-status snapshot, every actionable
+recommendation that did NOT result in a trade over the window and why
+(never decided, approved-but-never-submitted, human-rejected, or
+auto-refused by a specific guardrail), a two-sided hindsight price check on
+those unexecuted calls ("would have helped" and "avoided correctly" both
+reported, not just the former), and the same `propose_weight_adjustments()`
+output `propose-weights` below already surfaces. Gated by
+`notifications.weekly_learning_review_enabled` (default `true`),
+independent of `daily_summary_enabled`.
+
+If you're invoked specifically for this Saturday routine, follow
+`routines/weekly_learning_review.md` end to end (push-authorized checkout
+first, run the command, report the findings, commit/push/merge the
+resulting report since no human is present) rather than treating it as an
+extra step tacked onto a weekday `pre_close` run — it's its own routine
+with its own schedule.
 
 ## Review proposed weight changes
 
