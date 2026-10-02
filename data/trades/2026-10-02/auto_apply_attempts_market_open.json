@@ -1,0 +1,87 @@
+[
+  {
+    "ticker": "SOAR",
+    "status": "refused",
+    "reason": "SOAR's price has moved 14.95% since this recommendation was scored (0.31 -> 0.35), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "TSLA",
+    "status": "refused",
+    "reason": "TSLA would reach 5.08% of the 94,860.49 portfolio (4,817.56 incl. 2,962.56 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "GRMLW",
+    "status": "refused",
+    "reason": "GRMLW's price has moved 17.83% since this recommendation was scored (0.74 -> 0.88), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "GOOG",
+    "status": "submitted",
+    "qty": 1.0,
+    "order": {
+      "id": "3a0dfde7-1809-4676-848e-de547c59169f",
+      "client_order_id": "4fd83432-b3de-4ee1-963d-486b3dc10258",
+      "created_at": "2026-10-02T13:46:32.949266Z",
+      "updated_at": "2026-10-02T13:46:32.953162Z",
+      "submitted_at": "2026-10-02T13:46:32.949266Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-10-02T20:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "f30d734c-2806-4d0d-b145-f9fade61432b",
+      "symbol": "GOOG",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "1",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "market",
+      "type": "market",
+      "side": "sell",
+      "time_in_force": "day",
+      "limit_price": null,
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "sell_to_close",
+      "ratio_qty": null
+    },
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "INLF",
+    "status": "refused",
+    "reason": "INLF's price has moved 14.84% since this recommendation was scored (3.91 -> 4.49), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "NXL",
+    "status": "refused",
+    "reason": "NXL's price has moved 13.64% since this recommendation was scored (5.50 -> 6.25), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "HIMS",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "QTEX",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  }
+]

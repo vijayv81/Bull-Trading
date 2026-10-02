@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "GOOG",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 74.6,
+    "reasoning": "Auto-applied: confidence 74.6 (technical=0.48977035233960725, sentiment=0.75, catalyst=1.0, fundamental=None)",
+    "reference_price": 340.995,
+    "recorded_at": "2026-10-02T13:46:33.328249+00:00",
+    "outcome": null
+  }
+]

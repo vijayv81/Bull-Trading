@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "SOAR",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 11796.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T13:46:24.321024+00:00"
+  },
+  {
+    "ticker": "TSLA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T13:46:25.513178+00:00"
+  },
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T13:46:29.211367+00:00"
+  },
+  {
+    "ticker": "GOOG",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T13:46:30.978173+00:00"
+  },
+  {
+    "ticker": "INLF",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 380.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T13:46:34.562416+00:00"
+  },
+  {
+    "ticker": "NXL",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 758.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-02T13:53:00.825516+00:00"
+  }
+]
