@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "GRMLW",
+    "status": "refused",
+    "reason": "GRMLW's price has moved 14.00% since this recommendation was scored (0.77 -> 0.88), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "SOAR",
+    "status": "refused",
+    "reason": "SOAR's price has moved 13.61% since this recommendation was scored (0.29 -> 0.25), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "AIFF",
+    "status": "refused",
+    "reason": "AIFF's price has moved 13.70% since this recommendation was scored (1.46 -> 1.26), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "GOOG",
+    "status": "refused",
+    "reason": "GOOG's price has moved 5.48% since this recommendation was scored (334.93 -> 316.58), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "INLF",
+    "status": "refused",
+    "reason": "INLF's price has moved 16.26% since this recommendation was scored (4.06 -> 4.72), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "XRPN",
+    "status": "refused",
+    "reason": "XRPN's price has moved 4.31% since this recommendation was scored (23.43 -> 22.42), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "XRPNW",
+    "status": "refused",
+    "reason": "XRPNW's price has moved 10.34% since this recommendation was scored (2.90 -> 2.60), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "SDEV",
+    "status": "refused",
+    "reason": "SDEV's price has moved 40.44% since this recommendation was scored (3.66 -> 5.14), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "WCT",
+    "status": "refused",
+    "reason": "WCT's price has moved 13.77% since this recommendation was scored (1.67 -> 1.44), past the 3.0% drift limit \u2014 re-run the checkpoint for a fresh recommendation before approving/executing.",
+    "checkpoint": "pre_open"
+  },
+  {
+    "ticker": "HIMS",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_open"
+  }
+]
