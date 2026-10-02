@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 from trading_agent.config import (
     APPROVALS_DIR,
@@ -17,6 +18,7 @@ from trading_agent.config import (
     REPORTS_DIR,
     TRADES_DIR,
     load_agent_config,
+    load_risk_limits,
 )
 from trading_agent.utils import load_json_list, today
 
@@ -246,19 +248,26 @@ def build_daily_report(day: str | None = None) -> Path:
     return path
 
 
-def build_weekly_report(week_start: str | None = None) -> Path:
-    """Aggregate the 7 days starting week_start (YYYY-MM-DD, default: most
-    recent Monday) into a weekly rollup, including realized P&L for the week
-    (from confirmed order fills) and a live unrealized P&L snapshot (straight
-    from Alpaca's own per-position figures).
+def week_dates(week_start: str | None = None) -> list[str]:
+    """The 7 days (YYYY-MM-DD) starting week_start, default: most recent
+    Monday — shared by build_weekly_report() and build_weekly_learning_review()
+    so both report on exactly the same week for the same `week_start` argument.
     """
     if week_start:
         start = datetime.strptime(week_start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     else:
         now = datetime.now(timezone.utc)
         start = now - timedelta(days=now.weekday())
+    return [(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
 
-    days = [(start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+
+def build_weekly_report(week_start: str | None = None) -> Path:
+    """Aggregate the 7 days starting week_start (YYYY-MM-DD, default: most
+    recent Monday) into a weekly rollup, including realized P&L for the week
+    (from confirmed order fills) and a live unrealized P&L snapshot (straight
+    from Alpaca's own per-position figures).
+    """
+    days = week_dates(week_start)
 
     total_recs = total_approved = total_rejected = total_expired = total_trades = 0
     per_day_lines = []
@@ -443,3 +452,414 @@ def build_daily_summary(day: str | None = None) -> dict:
         "signal_hit_rates": signal_hit_rates,
         "learning_outcome": _learning_outcome_note(signal_hit_rates),
     }
+
+
+# --- Weekly learning review (per user instruction 2026-10-02) ---------------
+#
+# "Evaluate all trades, portfolio status, trade orders not placed and
+# opportunities lost. This should feed and optimize for following week runs.
+# Email should be sent out based on analysis, what recommendations were made
+# and why." A new Saturday-morning routine, separate from the Friday
+# pre_close weekly report above — see routines/weekly_learning_review.md for
+# the schedule and what the routine session should do with this.
+#
+# "Feed and optimize for following week runs" means exactly what
+# propose_weight_adjustments() already means in this codebase (plan §6.3):
+# surfaced for a human to read and decide on, never applied automatically.
+# This review adds nothing that writes config/agent_config.yaml or
+# config/risk_limits.yaml — it only reads more of the week's data than any
+# other report here (recommendations with no trade behind them, not just
+# the ones that executed) and renders what it finds.
+
+_REFUSAL_CATEGORIES = [
+    # Checked in order — "cannot verify" first, since a fail-closed guardrail's
+    # message can also mention a cap by name (e.g. "Cannot verify the 5.0%
+    # per-position cap (...)"), and "can't read account/quote state" is a
+    # different, more useful bucket than "breached a real number".
+    ("cannot verify", "data unavailable (failed closed)"),
+    ("is an options contract", "options ban"),
+    ("bar required to buy", "below min confidence to buy"),
+    ("daily loss", "daily loss halt"),
+    ("no existing long position to reduce", "short-sale block"),
+    ("would open a short", "short-sale block"),
+    ("would reach", "position size cap"),
+    ("per-position cap", "position size cap"),
+    ("concurrent-positions cap", "max concurrent positions"),
+    ("sector concentration cap", "sector concentration cap"),
+    ("daily trade cap", "daily trade count cap"),
+    ("drift limit", "stale: price drift"),
+    ("technical signal has flipped", "stale: technical reversal"),
+    ("no approval record", "no approval record"),
+    ("has expired", "approval expired"),
+    ("does not match approved qty", "qty mismatch"),
+    ("kill switch", "kill switch off"),
+    ("not approve", "not approved"),
+]
+
+
+def _categorize_refusal(reason: str) -> str:
+    """Buckets a guardrails.py / order_manager.py refusal string into a short
+    label for the weekly review's refusal breakdown, matched by substring
+    against the fixed phrases those modules actually raise (see
+    guardrails.py). "other" is the honest fallback for a message that
+    doesn't match any of them — e.g. a raw Alpaca API error reaching
+    auto_apply() as an "error" status, not a guardrail refusal at all.
+    """
+    reason_lower = (reason or "").lower()
+    for needle, label in _REFUSAL_CATEGORIES:
+        if needle in reason_lower:
+            return label
+    return "other"
+
+
+def _portfolio_status_snapshot() -> dict[str, Any]:
+    """Live equity/cash/buying-power snapshot for the weekly learning
+    review's portfolio-status section. Best-effort, same convention as every
+    other live Alpaca read in this module: a failure reports itself rather
+    than blocking the rest of the review.
+    """
+    try:
+        from trading_agent.data.alpaca_client import get_account
+
+        account = get_account()
+        return {
+            "equity": round(float(account.get("equity") or 0.0), 2),
+            "cash": round(float(account.get("cash") or 0.0), 2),
+            "buying_power": round(float(account.get("buying_power") or 0.0), 2),
+            "error": None,
+        }
+    except Exception as exc:  # noqa: BLE001 - a report must still build without live Alpaca access
+        return {"equity": None, "cash": None, "buying_power": None, "error": str(exc)}
+
+
+MAX_MISSED_OPPORTUNITY_LOOKUPS = 30
+
+
+def _missed_opportunity_counterfactuals(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """For a sample of this week's unexecuted actionable recommendations
+    (deduped by ticker, highest confidence first, capped at
+    MAX_MISSED_OPPORTUNITY_LOOKUPS live quote lookups so a heavy week doesn't
+    turn this into dozens of sequential Alpaca calls), reports what the price
+    has actually done since vs. the recommendation's own reference_price —
+    the same comparison journal.mark_outcomes() does for a decided-and-
+    journaled call, extended here to calls that were never decided, never
+    executed, or refused, which otherwise get no hindsight check at all: no
+    journal entry exists for an undecided or refused recommendation (see
+    journal.record_entry(), only ever called at decision time or by a
+    successful auto-apply submission).
+
+    `would_have_helped` is deliberately neutral, not "should have traded": a
+    refusal or non-decision whose ticker then moved the wrong way was the
+    right outcome in hindsight, same as the earlier chat counterfactual
+    analysis of 2026-09's stale-recommendation refusals found (a modest,
+    non-uniform result — not every blocked trade would have been a win).
+    This reports both directions, not just the cases that make skipping the
+    trade look like a mistake. A candidate with no reference_price or no
+    live quote available is excluded rather than guessed at, same
+    "exclude, don't fake" convention as every scoring component here.
+    """
+    seen_tickers: set[str] = set()
+    deduped = []
+    for rec in sorted(candidates, key=lambda r: r.get("confidence") or 0, reverse=True):
+        ticker = rec.get("ticker")
+        if not ticker or ticker in seen_tickers:
+            continue
+        seen_tickers.add(ticker)
+        deduped.append(rec)
+        if len(deduped) >= MAX_MISSED_OPPORTUNITY_LOOKUPS:
+            break
+
+    from trading_agent.journal import _reference_price as _current_quote
+
+    results = []
+    for rec in deduped:
+        reference = rec.get("reference_price")
+        if not reference:
+            continue
+        current = _current_quote(rec["ticker"])
+        if not current:
+            continue
+        pct_change = round((current - reference) / reference * 100, 2)
+        action = rec.get("action")
+        would_have_helped = (action == "BUY" and pct_change > 0) or (action == "SELL" and pct_change < 0)
+        results.append(
+            {
+                "ticker": rec["ticker"],
+                "action": action,
+                "confidence": rec.get("confidence"),
+                "checkpoint": rec.get("checkpoint"),
+                "category": rec.get("_category"),
+                "reference_price": reference,
+                "current_price": current,
+                "pct_change": pct_change,
+                "would_have_helped": would_have_helped,
+            }
+        )
+    return results
+
+
+def _config_tuning_notes(
+    attempts: list[dict[str, Any]],
+    refusal_breakdown: dict[str, int],
+    never_decided: list[dict[str, Any]],
+    approved_not_executed: list[dict[str, Any]],
+) -> list[str]:
+    """Qualitative, data-grounded observations for human review — never a
+    config change applied by this function. Every note cites an actual count
+    from this week's own data; nothing here is a generic tuning tip
+    untethered from what actually happened this week.
+    """
+    notes = []
+    total_refused = sum(1 for a in attempts if a.get("status") == "refused")
+    stale_refused = refusal_breakdown.get("stale: price drift", 0) + refusal_breakdown.get(
+        "stale: technical reversal", 0
+    )
+    if total_refused and stale_refused / total_refused >= 0.3:
+        drift_pct = load_risk_limits().get("execution", {}).get("max_price_drift_pct")
+        notes.append(
+            f"{stale_refused} of {total_refused} auto-apply refusals this week "
+            f"({stale_refused / total_refused:.0%}) were stale-recommendation blocks (price drift or "
+            f"technical reversal) — current execution.max_price_drift_pct is {drift_pct}%. Consider "
+            "whether that's too tight for these tickers' volatility, or whether they need a liquidity "
+            "floor (position.candidate_min_price) like the one already applied to movers. Not applied "
+            "here — a deliberate config edit, same as every other proposal in this review."
+        )
+
+    skipped = sum(1 for a in attempts if a.get("status") == "skipped")
+    if skipped:
+        notes.append(
+            f"{skipped} auto-apply candidate(s) were skipped with qty rounding to 0 — usually a "
+            "low-priced ticker whose suggested_size_pct_of_portfolio is too small to buy even one "
+            "share at current equity. No action needed unless this recurs on the same tickers every week."
+        )
+
+    if never_decided:
+        tickers = sorted({r["ticker"] for r in never_decided})
+        shown = ", ".join(tickers[:10]) + ("..." if len(tickers) > 10 else "")
+        notes.append(
+            f"{len(never_decided)} actionable recommendation(s) this week expired with no human "
+            f"decision ever recorded ({shown}) — these never reached data/journal/ either, so the "
+            "improvement loop never learned anything from them. Consider whether notify_digest()'s "
+            "immediate email is being seen, or whether operational.approval_expiry_hours is too short."
+        )
+
+    if approved_not_executed:
+        tickers = sorted({r["ticker"] for r in approved_not_executed})
+        shown = ", ".join(tickers[:10]) + ("..." if len(tickers) > 10 else "")
+        notes.append(
+            f"{len(approved_not_executed)} recommendation(s) were approved but never submitted via "
+            f"`trading-agent execute` ({shown}) — approval and execution are deliberately separate "
+            "steps (see .claude/skills/trading-trade), but an approval nobody follows up on is a lost "
+            "opportunity either way, not a guardrail worth tuning."
+        )
+
+    return notes
+
+
+def _write_learning_review_markdown(review: dict[str, Any]) -> Path:
+    lines = [
+        f"# Weekly Learning Review — week of {review['week_start']}",
+        "",
+        "## Trades this week",
+        f"- Trades executed: {review['trades_count']}",
+        f"- Realized P&L: ${review['realized_pnl']['total']:,.2f}",
+    ]
+    if review["realized_pnl"]["pending_fills"]:
+        lines.append(f"  - {review['realized_pnl']['pending_fills']} order(s) with no confirmed fill yet")
+    if review["unrealized_pnl"]["error"]:
+        lines.append(f"- Unrealized (live positions): unavailable — {review['unrealized_pnl']['error']}")
+    else:
+        lines.append(f"- Unrealized (live, open positions right now): ${review['unrealized_pnl']['total']:,.2f}")
+
+    lines += ["", "## Portfolio status (live snapshot)"]
+    status = review["portfolio_status"]
+    if status["error"]:
+        lines.append(f"_Unavailable — {status['error']}_")
+    else:
+        lines.append(
+            f"- Equity: ${status['equity']:,.2f} | Cash: ${status['cash']:,.2f} | "
+            f"Buying power: ${status['buying_power']:,.2f}"
+        )
+        lines.append(f"- Open positions: {len(review['unrealized_pnl']['positions'])}")
+
+    lines += [
+        "",
+        "## Orders not placed this week",
+        f"- Actionable recommendations: {review['actionable_count']} | Executed: {review['executed_count']}",
+        f"- Never decided (expired, no approve/reject ever recorded): {len(review['never_decided'])}",
+        f"- Approved but never submitted: {len(review['approved_not_executed'])}",
+        f"- Human-rejected: {len(review['rejected'])}",
+        f"- Auto-apply attempts by status: {review['auto_apply_attempts_by_status']}",
+    ]
+    if review["refusal_breakdown"]:
+        lines.append("- Refusal breakdown:")
+        for label, count in sorted(review["refusal_breakdown"].items(), key=lambda kv: -kv[1]):
+            lines.append(f"  - {label}: {count}")
+
+    lines += ["", "## Opportunities lost or avoided (hindsight check)"]
+    if review["missed_opportunities"]:
+        for m in review["missed_opportunities"]:
+            verdict = "would have helped" if m["would_have_helped"] else "would NOT have helped"
+            lines.append(
+                f"- {m['ticker']} {m['action']} [{m['category']}] confidence {m['confidence']}: "
+                f"{m['reference_price']:.2f} -> {m['current_price']:.2f} ({m['pct_change']:+.2f}%) — {verdict}"
+            )
+    else:
+        lines.append("_No unexecuted actionable recommendations with a usable reference price this week._")
+
+    lines += ["", "## Signal performance so far"]
+    if review["signal_hit_rates"]:
+        for sig, stats in sorted(review["signal_hit_rates"].items()):
+            lines.append(f"- {sig}: {stats.get('hit_rate', 0):.0%} over {stats.get('n', 0)} call(s)")
+    else:
+        lines.append("_Not enough outcome history yet._")
+
+    lines += ["", "## Proposed model/config improvements (never applied automatically)"]
+    for p in review["optimization_proposals"]:
+        lines.append(f"- {p}")
+    if review["learning_outcome"]:
+        lines.append(f"- Possible outcome if incorporated: {review['learning_outcome']}")
+    weight_str = ", ".join(f"{k} {v:g}" for k, v in review["scoring_weights"].items())
+    lines.append(f"- Weights currently in effect: {weight_str or 'n/a'}")
+
+    if review["config_tuning_notes"]:
+        lines += ["", "## Other observations for next week"]
+        for n in review["config_tuning_notes"]:
+            lines.append(f"- {n}")
+
+    lines += [
+        "",
+        "## Notes",
+        "Every proposal and observation above is for human review only — nothing in this report "
+        "edits config/agent_config.yaml or config/risk_limits.yaml. Incorporating any of it into "
+        "next week's runs means a human reviews it and commits the change deliberately (plan §6.3).",
+    ]
+
+    out_dir = REPORTS_DIR / "learning"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    iso = datetime.strptime(review["week_start"], "%Y-%m-%d").isocalendar()
+    path = out_dir / f"{iso.year}-W{iso.week:02d}.md"
+    path.write_text("\n".join(lines))
+    return path
+
+
+def build_weekly_learning_review(week_start: str | None = None) -> dict[str, Any]:
+    """Weekly retrospective (per user instruction 2026-10-02, "evaluate all
+    trades, portfolio status, trade orders not placed and opportunities
+    lost ... feed and optimize for following week runs"): evaluates the
+    week's trades, current portfolio status, every actionable recommendation
+    that did NOT result in a trade (and why — never decided, approved but
+    never submitted, human-rejected, or refused by a guardrail/auto-apply),
+    and a hindsight price check on those unexecuted calls.
+
+    Distinct from build_weekly_report() (trade counts + realized/unrealized
+    P&L only) and build_daily_summary() (one day, no "what didn't happen"
+    analysis) — this is the only report that looks at recommendations with
+    no trade behind them at all. "Feed and optimize for following week runs"
+    means exactly what propose_weight_adjustments() already means here (plan
+    §6.3): surfaced for a human to read and decide on. This function never
+    writes config/agent_config.yaml or config/risk_limits.yaml.
+    """
+    from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
+
+    days = week_dates(week_start)
+
+    recs_by_day: dict[str, list[dict]] = {}
+    decisions_by_day: dict[str, list[dict]] = {}
+    trades_by_day: dict[str, list[dict]] = {}
+    attempts_by_day: dict[str, list[dict]] = {}
+    for day in days:
+        recs_by_day[day] = _day_recs(day)
+        decisions_by_day[day] = _day_decisions(day)
+        trades_by_day[day] = _day_trades(day)
+        attempts_by_day[day] = _day_auto_apply_attempts(day)
+
+    week_trades = [t for trades in trades_by_day.values() for t in trades]
+    week_attempts = [{**a, "_day": day} for day, attempts in attempts_by_day.items() for a in attempts]
+
+    rec_index: dict[tuple[str, str | None, str], dict] = {}
+    for day, recs in recs_by_day.items():
+        for rec in recs:
+            rec_index[(day, rec.get("checkpoint"), rec.get("ticker"))] = rec
+
+    decision_index: dict[tuple[str, str | None, str], dict] = {}
+    for day, decisions in decisions_by_day.items():
+        for d in decisions:
+            decision_index[(day, d.get("checkpoint"), d.get("ticker"))] = d
+
+    executed_keys = set()
+    for day, trades in trades_by_day.items():
+        for t in trades:
+            rec = t.get("recommendation", {})
+            executed_keys.add((day, rec.get("checkpoint"), rec.get("ticker")))
+
+    attempted_keys = {(a["_day"], a.get("checkpoint"), a.get("ticker")) for a in week_attempts}
+
+    actionable_keys = [
+        (day, rec.get("checkpoint"), rec.get("ticker"))
+        for day, recs in recs_by_day.items()
+        for rec in recs
+        if rec.get("action") in ("BUY", "SELL")
+    ]
+
+    never_decided: list[dict[str, Any]] = []
+    approved_not_executed: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    for key in actionable_keys:
+        if key in executed_keys or key in attempted_keys:
+            continue
+        rec = rec_index.get(key)
+        if rec is None:
+            continue
+        decision = decision_index.get(key)
+        if decision is None:
+            never_decided.append({**rec, "_category": "never decided"})
+        elif decision.get("decision") == "approve":
+            approved_not_executed.append({**rec, "_category": "approved, never executed"})
+        else:
+            rejected.append({**rec, "_category": "human-rejected"})
+
+    refused_candidates: list[dict[str, Any]] = []
+    refusal_breakdown: dict[str, int] = {}
+    for a in week_attempts:
+        if a.get("status") != "refused":
+            continue
+        label = _categorize_refusal(a.get("reason", ""))
+        refusal_breakdown[label] = refusal_breakdown.get(label, 0) + 1
+        rec = rec_index.get((a["_day"], a.get("checkpoint"), a.get("ticker")))
+        if rec is not None:
+            refused_candidates.append({**rec, "_category": f"auto-refused: {label}"})
+
+    missed_candidates = never_decided + approved_not_executed + rejected + refused_candidates
+    missed_opportunities = _missed_opportunity_counterfactuals(missed_candidates)
+
+    signal_hit_rates = _signal_type_hit_rates()
+
+    review: dict[str, Any] = {
+        "week_start": days[0],
+        "week_end": days[-1],
+        "trades_count": len(week_trades),
+        "realized_pnl": _realized_pnl(week_trades),
+        "unrealized_pnl": _unrealized_pnl(),
+        "portfolio_status": _portfolio_status_snapshot(),
+        "actionable_count": len(actionable_keys),
+        "executed_count": sum(1 for key in actionable_keys if key in executed_keys),
+        "never_decided": never_decided,
+        "approved_not_executed": approved_not_executed,
+        "rejected": rejected,
+        "auto_apply_attempts_by_status": {
+            status: sum(1 for a in week_attempts if a.get("status") == status)
+            for status in ("submitted", "refused", "skipped", "error")
+        },
+        "refusal_breakdown": refusal_breakdown,
+        "missed_opportunities": missed_opportunities,
+        "signal_hit_rates": signal_hit_rates,
+        "optimization_proposals": propose_weight_adjustments(),
+        "scoring_weights": load_agent_config().get("scoring_weights", {}),
+        "learning_outcome": _learning_outcome_note(signal_hit_rates),
+    }
+    review["config_tuning_notes"] = _config_tuning_notes(
+        week_attempts, refusal_breakdown, never_decided, approved_not_executed
+    )
+    review["report_path"] = str(_write_learning_review_markdown(review))
+    return review

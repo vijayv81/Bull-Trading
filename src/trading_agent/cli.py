@@ -9,7 +9,8 @@ Command groups map onto the plan's modules:
                                except execute/auto_pilot.py when operational.auto_apply is on)
   execute                   -> execute/order_manager.py (approval + kill-switch gated)
   report / daily-summary /
-    weekly-report            -> reporting/report_builder.py, notify/approval_gateway.py
+    weekly-report /
+    weekly-learning-review   -> reporting/report_builder.py, notify/approval_gateway.py
   propose-weights           -> scoring/recommendation_engine.py (never auto-applies)
   notify-test / cron-status -> notify/senders.py, scheduling.py
   chat                      -> agents/orchestrator.py (interactive Claude Agent SDK research)
@@ -244,6 +245,21 @@ def cmd_weekly_report(args: argparse.Namespace) -> None:
     print(f"Wrote and sent {path}")
 
 
+def cmd_weekly_learning_review(args: argparse.Namespace) -> None:
+    from trading_agent.notify.approval_gateway import notify_weekly_learning_review
+    from trading_agent.reporting.report_builder import build_weekly_learning_review
+
+    review = build_weekly_learning_review(args.week_start)
+    notify_weekly_learning_review(review)
+    print(f"Wrote and sent {review['report_path']}")
+    print(
+        f"{review['trades_count']} trades, {review['executed_count']}/{review['actionable_count']} "
+        f"actionable recs executed, {len(review['never_decided'])} never decided, "
+        f"{len(review['approved_not_executed'])} approved-not-executed, "
+        f"{review['auto_apply_attempts_by_status'].get('refused', 0)} auto-apply refusals."
+    )
+
+
 def cmd_propose_weights(args: argparse.Namespace) -> None:
     from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
 
@@ -403,6 +419,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     weekly_report.add_argument("--week-start", help="YYYY-MM-DD Monday, defaults to this week.")
     weekly_report.set_defaults(func=cmd_weekly_report)
+
+    weekly_learning_review = sub.add_parser(
+        "weekly-learning-review",
+        help=(
+            "Build + email/SMS the weekly trades/portfolio/missed-opportunity retrospective "
+            "(notifications.weekly_learning_review_enabled)."
+        ),
+    )
+    weekly_learning_review.add_argument("--week-start", help="YYYY-MM-DD Monday, defaults to this week.")
+    weekly_learning_review.set_defaults(func=cmd_weekly_learning_review)
 
     propose = sub.add_parser("propose-weights", help="Print (never apply) proposed scoring-weight changes.")
     propose.set_defaults(func=cmd_propose_weights)

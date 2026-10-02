@@ -75,6 +75,15 @@ notifications:
   # change needed. Still gated by `channel` including email/sms above.
   daily_summary_enabled: true
 
+  # Saturday weekly retrospective email/SMS — trades, portfolio status,
+  # every order NOT placed and why, and a hindsight check on what those
+  # skipped/refused/undecided calls' prices did since. See
+  # `trading-agent weekly-learning-review` and
+  # routines/weekly_learning_review.md. false is a one-line way to keep
+  # every other notification without this one, no code change needed.
+  # Still gated by `channel` including email/sms above.
+  weekly_learning_review_enabled: true
+
   # URL of the published Claude Artifact "Approval Ticket" page email links
   # point to (its own small database holds the click-through decision until
   # it's synced into data/approvals/ — see .claude/skills/trading-trade

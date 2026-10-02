@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -367,3 +368,235 @@ def test_build_daily_summary_no_outcome_note_when_gap_too_small(monkeypatch, tmp
 
     assert summary["learning_outcome"] is None
     assert "No signal-type gap large enough" in summary["optimization_proposals"][0]
+
+
+# --- _categorize_refusal -------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "reason,expected",
+    [
+        ("Cannot verify the 5.0% per-position cap (timeout) — refusing to proceed blind.", "data unavailable (failed closed)"),
+        ("TSLA is an options contract — this project never trades options.", "options ban"),
+        ("TSLA confidence 70 is below the 85% bar required to buy (...)", "below min confidence to buy"),
+        ("Daily loss -2.50% has reached the 2.0% cap — halted for the day (...)", "daily loss halt"),
+        ("SELL 10 TSLA refused: no existing long position to reduce (held: 0.0).", "short-sale block"),
+        ("SELL 10 TSLA refused: only 5 shares held — selling 10 would open a short.", "short-sale block"),
+        ("TSLA would reach 6.00% of the 100,000.00 portfolio, over the 5.0% cap.", "position size cap"),
+        ("Opening TSLA would exceed the 10-position concurrent-positions cap (...)", "max concurrent positions"),
+        ("TSLA would push the Technology sector past the 30.0% sector concentration cap.", "sector concentration cap"),
+        ("Daily trade cap reached: 5 of 5 orders already submitted today.", "daily trade count cap"),
+        ("TSLA's price has moved 4.00% since this recommendation was scored, past the 3.0% drift limit.", "stale: price drift"),
+        ("TSLA's technical signal has flipped since this recommendation was scored.", "stale: technical reversal"),
+        ("No approval record for TSLA @ pre_open.", "no approval record"),
+        ("Approval for TSLA has expired.", "approval expired"),
+        ("Requested qty 10 does not match approved qty 5 within 1.0% tolerance.", "qty mismatch"),
+        ("Kill switch is off (config/risk_limits.yaml: trading_enabled=false).", "kill switch off"),
+        ("Some entirely unrecognized refusal text.", "other"),
+    ],
+)
+def test_categorize_refusal_matches_known_guardrail_messages(reason, expected):
+    assert rb._categorize_refusal(reason) == expected
+
+
+# --- build_weekly_learning_review ---------------------------------------------
+
+
+def _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path):
+    monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
+    monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
+    monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
+    monkeypatch.setattr(rb, "REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr(rb, "PERFORMANCE_DIR", tmp_path / "performance")
+    monkeypatch.setattr("trading_agent.scoring.recommendation_engine.PERFORMANCE_DIR", tmp_path / "performance")
+    monkeypatch.setattr(rb, "load_agent_config", lambda: {"scoring_weights": {}})
+    monkeypatch.setattr(rb, "load_risk_limits", lambda: {"execution": {"max_price_drift_pct": 3.0}})
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_positions", lambda: [])
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account",
+        lambda: {"equity": "100000", "cash": "50000", "buying_power": "50000", "last_equity": "100000"},
+    )
+
+
+def _rec(ticker, checkpoint, action, confidence=90, reference_price=100.0):
+    return {
+        "ticker": ticker,
+        "checkpoint": checkpoint,
+        "action": action,
+        "confidence": confidence,
+        "reference_price": reference_price,
+    }
+
+
+def test_build_weekly_learning_review_partitions_unexecuted_recs(monkeypatch, tmp_path):
+    """Executed, never-decided, approved-but-not-executed, human-rejected,
+    and auto-refused recommendations must each land in exactly one bucket —
+    no double counting across them."""
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote",
+        lambda ticker: {"bid_price": 100.0, "ask_price": 100.0},
+    )
+
+    week_start = "2026-09-21"  # a Monday
+    day = week_start
+
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("EXEC", "pre_open", "BUY"))
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("NEVER", "pre_open", "BUY"))
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("APPROVED", "pre_open", "BUY"))
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("REJECTED", "pre_open", "BUY"))
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec("REFUSED", "pre_open", "BUY"))
+
+    append_json(
+        day_dir(rb.APPROVALS_DIR, day) / "decisions_pre_open.json",
+        {"ticker": "EXEC", "checkpoint": "pre_open", "decision": "approve", "terms": {"qty": 5}},
+    )
+    append_json(
+        day_dir(rb.APPROVALS_DIR, day) / "decisions_pre_open.json",
+        {"ticker": "APPROVED", "checkpoint": "pre_open", "decision": "approve", "terms": {"qty": 5}},
+    )
+    append_json(
+        day_dir(rb.APPROVALS_DIR, day) / "decisions_pre_open.json",
+        {"ticker": "REJECTED", "checkpoint": "pre_open", "decision": "reject", "terms": {}},
+    )
+
+    append_json(
+        day_dir(rb.TRADES_DIR, day) / "orders_submitted.json",
+        {"order": {"symbol": "EXEC", "side": "buy", "qty": 5}, "recommendation": {"checkpoint": "pre_open", "ticker": "EXEC"}},
+    )
+    append_json(
+        day_dir(rb.TRADES_DIR, day) / "auto_apply_attempts_pre_open.json",
+        {"ticker": "REFUSED", "checkpoint": "pre_open", "status": "refused", "reason": "Kill switch is off (...)"},
+    )
+
+    review = rb.build_weekly_learning_review(week_start)
+
+    assert review["actionable_count"] == 5
+    assert review["executed_count"] == 1
+    assert [r["ticker"] for r in review["never_decided"]] == ["NEVER"]
+    assert [r["ticker"] for r in review["approved_not_executed"]] == ["APPROVED"]
+    assert [r["ticker"] for r in review["rejected"]] == ["REJECTED"]
+    assert review["auto_apply_attempts_by_status"] == {"submitted": 0, "refused": 1, "skipped": 0, "error": 0}
+    assert review["refusal_breakdown"] == {"kill switch off": 1}
+
+
+def test_build_weekly_learning_review_missed_opportunity_counterfactual(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote",
+        lambda ticker: {"bid_price": 110.0, "ask_price": 110.0} if ticker == "WON" else {"bid_price": 90.0, "ask_price": 90.0},
+    )
+
+    week_start = "2026-09-21"
+    day = week_start
+    append_json(
+        day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json",
+        _rec("WON", "pre_open", "BUY", reference_price=100.0),
+    )
+    append_json(
+        day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json",
+        _rec("LOST", "pre_open", "BUY", reference_price=100.0),
+    )
+
+    review = rb.build_weekly_learning_review(week_start)
+
+    by_ticker = {m["ticker"]: m for m in review["missed_opportunities"]}
+    assert by_ticker["WON"]["would_have_helped"] is True
+    assert by_ticker["WON"]["pct_change"] == 10.0
+    assert by_ticker["LOST"]["would_have_helped"] is False
+    assert by_ticker["LOST"]["pct_change"] == -10.0
+    assert by_ticker["WON"]["category"] == "never decided"
+
+
+def test_build_weekly_learning_review_excludes_candidates_with_no_reference_price(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote",
+        lambda ticker: {"bid_price": 100.0, "ask_price": 100.0},
+    )
+
+    day = "2026-09-21"
+    append_json(
+        day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json",
+        _rec("NOPRICE", "pre_open", "BUY", reference_price=None),
+    )
+
+    review = rb.build_weekly_learning_review(day)
+
+    assert review["missed_opportunities"] == []
+
+
+def test_build_weekly_learning_review_portfolio_status_live_snapshot(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    review = rb.build_weekly_learning_review("2026-09-21")
+
+    assert review["portfolio_status"] == {"equity": 100000.0, "cash": 50000.0, "buying_power": 50000.0, "error": None}
+
+
+def test_build_weekly_learning_review_portfolio_status_unavailable(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    def boom():
+        raise RuntimeError("alpaca unreachable")
+
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_account", boom)
+
+    review = rb.build_weekly_learning_review("2026-09-21")
+
+    assert review["portfolio_status"]["equity"] is None
+    assert "alpaca unreachable" in review["portfolio_status"]["error"]
+
+
+def test_build_weekly_learning_review_writes_markdown_report(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    review = rb.build_weekly_learning_review("2026-09-21")
+
+    path = Path(review["report_path"])
+    assert path.exists()
+    assert path.parent.name == "learning"
+    text = path.read_text()
+    assert "# Weekly Learning Review" in text
+    assert "## Orders not placed this week" in text
+    assert "## Opportunities lost or avoided" in text
+    assert "never applied automatically" in text or "never applied" in text
+
+
+def test_build_weekly_learning_review_config_tuning_note_for_stale_refusals(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    day = "2026-09-21"
+    for i in range(3):
+        ticker = f"STALE{i}"
+        append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_open.json", _rec(ticker, "pre_open", "BUY"))
+        append_json(
+            day_dir(rb.TRADES_DIR, day) / "auto_apply_attempts_pre_open.json",
+            {
+                "ticker": ticker,
+                "checkpoint": "pre_open",
+                "status": "refused",
+                "reason": f"{ticker}'s price has moved 5.00% since this recommendation was scored, past the 3.0% drift limit.",
+            },
+        )
+
+    review = rb.build_weekly_learning_review(day)
+
+    notes = " ".join(review["config_tuning_notes"])
+    assert "stale-recommendation blocks" in notes
+    assert "3.0%" in notes
+
+
+def test_build_weekly_learning_review_no_proposal_without_history(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda ticker: {})
+
+    review = rb.build_weekly_learning_review("2026-09-21")
+
+    assert review["optimization_proposals"] == ["No performance history yet — nothing to propose."]
+    assert review["signal_hit_rates"] == {}
+    assert review["learning_outcome"] is None
