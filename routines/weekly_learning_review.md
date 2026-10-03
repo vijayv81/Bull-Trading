@@ -17,7 +17,9 @@ never submits an order and never writes `config/agent_config.yaml` or
 account state over a rolling lookback window, and reports what it finds.
 
 ```bash
-trading-agent weekly-learning-review                          # last 30 rolling days ending today
+trading-agent weekly-learning-review                          # last 30 rolling days ending today (build + email in one step; interactive use)
+trading-agent weekly-learning-review --no-send                 # scheduled run, phase 1: build + snapshot, no email
+trading-agent weekly-learning-review --send-saved --pr-url URL # scheduled run, phase 2: email the snapshot with the PR link
 trading-agent weekly-learning-review --as-of YYYY-MM-DD        # last 30 rolling days ending there
 trading-agent weekly-learning-review --lookback-days 14        # override the window size for one run
 ```
@@ -75,10 +77,20 @@ digests, the daily summary, the Friday weekly report) unaffected.
 1. **Get a push-authorized checkout first**, same reasoning as the four
    checkpoint routines — call `add_repo` for `vijayv81/bull-trading` with
    `access: "push"` and follow its instructions, then `register_repo_root`,
-   before anything else.
-2. Run `trading-agent weekly-learning-review` with no flags — it defaults
-   to the last 30 rolling days ending today, which is what this routine
-   should use on a normal run.
+   before anything else. If `add_repo` isn't available or fails, make the
+   first line of the completion message "WEEKLY LEARNING REVIEW DID NOT
+   RUN: <reason>" and stop — the first Saturday run (2026-10-03) ended
+   silently after ~29s for exactly this kind of reason and nobody noticed
+   until no email arrived.
+2. **Build the report without emailing it:**
+   ```bash
+   trading-agent weekly-learning-review --no-send
+   ```
+   Defaults to the last 30 rolling days ending today. Writes
+   `reports/learning/<window_end>.md`, saves the options to
+   `data/optimizations/<date>/options.json`, and snapshots the review under
+   `data/processed/` (gitignored) so step 6 emails exactly what gets
+   committed rather than a recompute with different live quotes.
 3. **Load this week's options into the Optimization Ticket page**, so a
    click on an email button opens a page that shows the full change. If
    `data/optimizations/<date>/options.json` exists and
@@ -87,24 +99,35 @@ digests, the daily summary, the Friday weekly report) unaffected.
    option, `{op: "set", collection: "options", doc_id: <option id>, data:
    <the option object>}`. This is display data only; applying always
    re-reads the option from the repo. If the write fails, say so and carry
-   on. The page still works from the link alone, showing the option id and
-   pointing back to the email for details.
-4. Report the findings in your completion message: the window analyzed,
-   trades, portfolio status, how many orders weren't placed and the top
-   refusal reasons, the headline from the opportunities-lost hindsight
-   check, and whether a weight-adjustment proposal was surfaced.
-5. **Commit the report** — same convention as `trading-report`'s "Commit
-   the snapshot" step:
+   on.
+4. **Commit and push the report** — same convention as `trading-report`'s
+   "Commit the snapshot" step:
    ```bash
    git add reports/learning/ data/optimizations/
    git status
    git commit -m "Weekly learning review <window_end>: <n> trades, <n> never decided, <n> refused"
    ```
-   **No human is present** (this is a scheduled routine) — push, open a PR
-   against `main`, and merge it yourself, same as `trading-report`'s Friday
-   weekly-report commit. If the push/PR/merge fails, say so plainly in the
-   completion message rather than silently dropping it; the commit is still
-   safe locally for a later run to pick up.
+5. **Open a PR against `main` and do NOT merge it** (per user instruction
+   2026-10-03: "pr should be included as clickable link in email with
+   details so I can review and approve"). Unlike the weekday snapshot
+   commits, the user reviews and merges this one. Give it a descriptive
+   body: the window analyzed, the headline numbers, and each option (title,
+   the exact config change, whether it loosens a guardrail). If the push or
+   PR fails, say so plainly in the completion message and still go on to
+   step 6 without a link — the email must go out either way.
+6. **Email the review with the PR link:**
+   ```bash
+   trading-agent weekly-learning-review --send-saved --pr-url <the PR's URL>
+   ```
+   The email leads with a "Review & approve this report" button linking to
+   the PR, what it contains, and what merging does. Merging matters: an
+   option's Apply click can only be carried out by a later checkpoint once
+   the options file is on `main`, so an unmerged PR leaves clicks pending.
+7. Report the findings in your completion message: the window analyzed,
+   trades, portfolio status, how many orders weren't placed and the top
+   refusal reasons, the headline from the opportunities-lost hindsight
+   check, whether a weight-adjustment proposal was surfaced, and the PR URL
+   (stating that it is awaiting the user's merge).
 
 Invoke the `trading-report` skill for this — it already owns weekly
 reporting and weight-proposal review, and this routine is a superset of
@@ -119,8 +142,9 @@ Create one Saturday-morning cron routine (via `/schedule` or the
 Claude Code Remote `create_trigger` tool directly), e.g.:
 
 > Create a weekly routine that fires every Saturday morning (US/Eastern) and
-> runs `trading-agent weekly-learning-review` in a fresh checkout of
-> `vijayv81/bull-trading`, then commits/pushes/merges the resulting report.
+> runs the steps above in a fresh checkout of `vijayv81/bull-trading`:
+> commits/pushes the report, opens a PR (never merges it), then emails the
+> review with the PR link.
 
 Same UTC-only caveat as the four checkpoints applies if the schedule is
 pinned to a specific ET wall-clock time: recompute the cron expression

@@ -660,7 +660,34 @@ def _optimization_options_html(review: dict[str, Any]) -> str:
     )
 
 
-def _weekly_learning_review_html(review: dict[str, Any]) -> str:
+def _report_pr_summary(review: dict[str, Any]) -> list[str]:
+    """What the report PR contains and what merging it does — shared by the
+    plain-text and HTML renderings so they can't drift apart."""
+    n_options = len(review.get("optimization_options") or [])
+    contents = f"reports/learning/{review['window_end']}.md"
+    if n_options:
+        contents += f" and this week's {n_options} optimization option(s) (data/optimizations/)"
+    return [
+        f"Contains: {contents}.",
+        "Merging adds them to main; nothing else changes. An Apply click below can't take "
+        "effect until this is merged, because the next checkpoint reads the option from main.",
+    ]
+
+
+def _report_pr_html(review: dict[str, Any], pr_url: str) -> str:
+    from html import escape
+
+    from trading_agent.notify import html as h
+
+    details = "".join(f'<div style="font-size:14px;padding:2px 0;">{escape(line)}</div>' for line in _report_pr_summary(review))
+    return (
+        h.section_heading("Review &amp; approve this report")
+        + details
+        + h.button("Review the report PR", pr_url)
+    )
+
+
+def _weekly_learning_review_html(review: dict[str, Any], pr_url: str | None = None) -> str:
     from trading_agent.notify import html as h
 
     border = h.COLORS["border"]
@@ -673,6 +700,9 @@ def _weekly_learning_review_html(review: dict[str, Any]) -> str:
         inner += h.muted(f"Unrealized (live positions): unavailable — {review['unrealized_pnl']['error']}")
     else:
         inner += h.stat_card("Unrealized P&L (live, now)", h.signed_dollar(review["unrealized_pnl"]["total"]))
+
+    if pr_url:
+        inner += _report_pr_html(review, pr_url)
 
     inner += _optimization_options_html(review)
 
@@ -767,7 +797,7 @@ def _weekly_learning_review_html(review: dict[str, Any]) -> str:
     return h.wrap("Weekly Learning Review", subtitle, inner)
 
 
-def notify_weekly_learning_review(review: dict[str, Any]) -> None:
+def notify_weekly_learning_review(review: dict[str, Any], pr_url: str | None = None) -> None:
     """Saturday weekly retrospective email/SMS (per user instruction
     2026-10-02, "evaluate all trades, portfolio status, trade orders not
     placed and opportunities lost ... feed and optimize for following week
@@ -797,6 +827,11 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
     `trading-agent optimizations apply`, within optimizations.py's
     hard-coded bounds.
 
+    `pr_url` (the PR carrying this week's report + options file; the
+    scheduled routine opens it and does NOT merge it) leads the email as a
+    clickable "review & approve" link, with what's in it and what merging
+    does. Omitted -> no such section, same email as before.
+
     Config-gated independently, same convention as daily_summary_enabled:
     notifications.weekly_learning_review_enabled (default true). A send
     failure is reported, not raised, same as every other notify_* function
@@ -813,6 +848,13 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
         f"({review['window_start']} to {review['window_end']})",
         "",
     ]
+
+    if pr_url:
+        lines.append("Review & approve this report (merge the PR):")
+        lines.append(f"  {pr_url}")
+        for detail in _report_pr_summary(review):
+            lines.append(f"  {detail}")
+        lines.append("")
 
     options = review.get("optimization_options") or []
     lines.append("Optimizations you can apply:")
@@ -932,8 +974,10 @@ def notify_weekly_learning_review(review: dict[str, Any]) -> None:
     )
     if options:
         subject += f" — {len(options)} optimization(s) to review"
+    if pr_url:
+        subject += " — PR to approve"
     body = "\n".join(lines)
-    html_body = _weekly_learning_review_html(review)
+    html_body = _weekly_learning_review_html(review, pr_url)
 
     if "email" in channels:
         try:

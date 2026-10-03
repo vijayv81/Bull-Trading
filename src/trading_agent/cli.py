@@ -246,13 +246,40 @@ def cmd_weekly_report(args: argparse.Namespace) -> None:
     print(f"Wrote and sent {path}")
 
 
+def _learning_snapshot_path(window_end: str):
+    from trading_agent.config import PROCESSED_DATA_DIR
+
+    return PROCESSED_DATA_DIR / f"learning_review_{window_end}.json"
+
+
 def cmd_weekly_learning_review(args: argparse.Namespace) -> None:
+    import json
+
     from trading_agent.notify.approval_gateway import notify_weekly_learning_review
     from trading_agent.reporting.report_builder import build_weekly_learning_review
+    from trading_agent.utils import today
+
+    if args.send_saved:
+        # Second phase of the scheduled routine: the report is already
+        # committed and its PR open, so email exactly what was committed
+        # (not a fresh recompute with different live quotes), with the PR link.
+        path = _learning_snapshot_path(args.as_of or today())
+        if not path.exists():
+            raise SystemExit(f"No saved review at {path} — run with --no-send first.")
+        review = json.loads(path.read_text())
+        notify_weekly_learning_review(review, pr_url=args.pr_url)
+        print(f"Sent saved review {review['report_path']}")
+        return
 
     review = build_weekly_learning_review(args.as_of, args.lookback_days)
-    notify_weekly_learning_review(review)
-    print(f"Wrote and sent {review['report_path']}")
+    if args.no_send:
+        path = _learning_snapshot_path(review["window_end"])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(review, default=str))
+        print(f"Wrote {review['report_path']} (not sent; snapshot at {path})")
+    else:
+        notify_weekly_learning_review(review, pr_url=args.pr_url)
+        print(f"Wrote and sent {review['report_path']}")
     print(
         f"Last {review['lookback_days']} days ({review['window_start']} to {review['window_end']}): "
         f"{review['trades_count']} trades, {review['executed_count']}/{review['actionable_count']} "
@@ -469,6 +496,19 @@ def build_parser() -> argparse.ArgumentParser:
         "--lookback-days",
         type=int,
         help="Rolling window size, defaults to reporting.weekly_learning_review_lookback_days (30).",
+    )
+    weekly_learning_review.add_argument(
+        "--no-send",
+        action="store_true",
+        help="Write the report and options but don't email; saves a snapshot for --send-saved.",
+    )
+    weekly_learning_review.add_argument(
+        "--send-saved",
+        action="store_true",
+        help="Email the snapshot saved by --no-send (for --as-of, default today) instead of recomputing.",
+    )
+    weekly_learning_review.add_argument(
+        "--pr-url", help="Link to the PR carrying the report + options; leads the email as a review link."
     )
     weekly_learning_review.set_defaults(func=cmd_weekly_learning_review)
 

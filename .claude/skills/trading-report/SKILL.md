@@ -137,10 +137,12 @@ independent of `daily_summary_enabled`.
 
 If you're invoked specifically for this Saturday routine, follow
 `routines/weekly_learning_review.md` end to end (push-authorized checkout
-first, run the command, report the findings, commit/push/merge the
-resulting report since no human is present) rather than treating it as an
-extra step tacked onto a weekday `pre_close` run — it's its own routine
-with its own schedule.
+first, `--no-send`, commit/push, open a PR, then email with `--send-saved
+--pr-url` — **never merge it**: the PR link in the email is how the user
+reviews and approves it) rather than treating it as an extra step tacked
+onto a weekday `pre_close` run — it's its own routine with its own
+schedule. This is the one routine that does NOT self-merge, unlike the
+snapshot commits below.
 
 ## Review proposed weight changes
 
