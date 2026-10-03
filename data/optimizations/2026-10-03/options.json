@@ -1,0 +1,34 @@
+[
+  {
+    "id": "2026-10-03-max-price-drift-4",
+    "title": "Raise the stale-price limit from 3% to 4%",
+    "why": "54 of 62 logged auto-apply refusals (87%; 4 of the last 30 days, since 2026-09-30) were blocked because the price or signal moved between scoring and submission.",
+    "effect": "Orders whose price moved up to 4% since scoring can go through instead of being refused.",
+    "loosens_guardrail": true,
+    "risk": "Loosens a guardrail: some of those blocked orders would have lost money (see 'Opportunities lost or avoided'). The technical re-check still runs.",
+    "changes": [
+      {
+        "file": "risk_limits.yaml",
+        "path": "execution.max_price_drift_pct",
+        "from": 3.0,
+        "to": 4.0
+      }
+    ]
+  },
+  {
+    "id": "2026-10-03-approval-expiry-3h",
+    "title": "Keep recommendations approvable for 3h instead of 2h",
+    "why": "102 actionable recommendations over the last 30 days expired with no decision recorded.",
+    "effect": "More time to approve or reject from the email before a recommendation lapses.",
+    "loosens_guardrail": true,
+    "risk": "An older approval can still execute; the stale-price re-check at submission is what limits how far the market can have moved.",
+    "changes": [
+      {
+        "file": "risk_limits.yaml",
+        "path": "operational.approval_expiry_hours",
+        "from": 2,
+        "to": 3
+      }
+    ]
+  }
+]
