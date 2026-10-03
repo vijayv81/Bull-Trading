@@ -759,3 +759,39 @@ def test_notify_weekly_report_send_failure_does_not_raise(monkeypatch, tmp_path)
 
     monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
     gw.notify_weekly_report(report_path)  # must not raise
+
+
+# --- report PR link in the weekly learning review email -----------------------
+
+PR_URL = "https://github.com/vijayv81/Bull-Trading/pull/99"
+
+
+def _send_review(monkeypatch, review, **kwargs):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(review, **kwargs)
+    return calls[0]
+
+
+def test_weekly_learning_review_leads_with_a_clickable_pr_link(monkeypatch):
+    subject, plain, html = _send_review(
+        monkeypatch,
+        _review(optimization_options=[{"id": "o1", "title": "t", "changes": [], "why": "w", "effect": "e"}]),
+        pr_url=PR_URL,
+    )
+    assert PR_URL in plain
+    assert plain.index(PR_URL) < plain.index("Optimizations you can apply")  # leads the email
+    assert "reports/learning/2026-10-02.md" in plain
+    assert "1 optimization option(s)" in plain
+    assert "can't take effect until this is merged" in plain
+    assert f'href="{PR_URL}"' in html
+    assert "Review &amp; approve this report" in html
+    assert "PR to approve" in subject
+
+
+def test_weekly_learning_review_has_no_pr_section_without_a_url(monkeypatch):
+    subject, plain, html = _send_review(monkeypatch, _review())
+    assert "Review & approve" not in plain
+    assert "approve this report" not in html
+    assert "PR to approve" not in subject

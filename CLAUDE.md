@@ -324,6 +324,20 @@ plain-text body, same convention as the daily summary. Gated independently
 by `notifications.weekly_learning_review_enabled` (default `true`) —
 `false` keeps every other notification unaffected, no code change needed.
 
+**The report goes through a PR the user merges**, per user instruction
+2026-10-03 ("pr should be included as clickable link in email with details
+so I can review and approve"; the first scheduled run, 2026-10-03, had
+silently produced nothing at all). The scheduled routine runs
+`weekly-learning-review --no-send` (writes the report + options, snapshots
+the review under gitignored `data/processed/`), commits, pushes and opens a
+PR but **never merges it**, then runs `weekly-learning-review --send-saved
+--pr-url <url>`, which emails that exact snapshot with a "Review & approve
+this report" button leading the email. Merging is what puts the options file
+on `main`, so an Apply click stays pending until then. The routine must say
+"WEEKLY LEARNING REVIEW DID NOT RUN" on its first line if it can't start
+(see `routines/weekly_learning_review.md`). Plain `weekly-learning-review`
+(no flags) still builds and emails in one step for interactive use.
+
 **One-click optimization options**, per user instruction 2026-10-02 ("the
 email to have a clickable optimization options for incorporating into the
 agent ... right now it seems passive"). This is a deliberate exception to
