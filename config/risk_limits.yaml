@@ -152,9 +152,10 @@ execution:
   # guardrails.stale_recommendation_reason(), enforced in
   # execute.order_manager.submit_approved_order(). A recommendation can sit
   # for up to operational.approval_expiry_hours waiting on a human decision,
-  # and the market doesn't wait with it. Refuses if the current quote has
-  # moved more than this % from the recommendation's own reference_price
-  # (the price technical_score() was actually computed from). Unset/zero
+  # and the market doesn't wait with it. Refuses if the current bid/ask
+  # midpoint has moved more than this % from the recommendation's own
+  # reference_price (the live midpoint at scoring time, or the last daily
+  # close when no quote was available). Unset/zero
   # skips this specific check (no config to compare against), same
   # unset-means-uncapped convention as the guardrails above.
   max_price_drift_pct: 3.0
@@ -164,6 +165,12 @@ execution:
   # even when price alone hasn't drifted past the cap above. false is a
   # one-line revert to price-drift-only checking.
   reverify_technical: true
+  # Exits skip both checks above. A SELL here can only reduce an existing
+  # long (no shorts, ever), so selling late still lowers risk; refusing it
+  # only keeps the loss open. In the week to 2026-10-02, 34 SELLs of the
+  # account's worst losers were refused by these checks, every checkpoint.
+  # BUYs are still checked. false is the one-line revert.
+  exempt_exits_from_stale_check: true
 
 # Equities only — there is deliberately no `allow_options` key here. The ban is
 # code-level (guardrails.is_option_symbol, enforced in both order_manager and

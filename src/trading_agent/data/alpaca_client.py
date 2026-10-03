@@ -62,6 +62,17 @@ def get_latest_quote(ticker: str) -> dict[str, Any]:
     return quotes[ticker].model_dump(mode="json")
 
 
+def get_mid_price(ticker: str) -> float | None:
+    """Midpoint of the latest bid/ask, or whichever side exists, or None.
+    The midpoint is used where the question is "where is the price", not
+    "what would a fill cost": on thinly traded names the ask alone can sit
+    10-50% above the bid."""
+    quote = get_latest_quote(ticker)
+    sides = [float(quote.get(k) or 0.0) for k in ("bid_price", "ask_price")]
+    sides = [s for s in sides if s > 0]
+    return sum(sides) / len(sides) if sides else None
+
+
 def get_recent_bars(ticker: str, lookback_days: int = 120) -> list[dict[str, Any]]:
     # 120 calendar days ~= 85 trading days after weekends/holidays — comfortably
     # above scoring.recommendation_engine.MIN_BARS_FOR_TECHNICAL (50). A lower

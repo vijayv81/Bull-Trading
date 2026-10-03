@@ -24,6 +24,7 @@ from trading_agent.config import load_risk_limits, load_watchlist
 from trading_agent.data.alpaca_client import (
     get_market_movers,
     get_market_return_pct,
+    get_mid_price,
     get_positions,
     get_recent_bars,
 )
@@ -90,16 +91,18 @@ def _above_min_price(movers: list[dict[str, Any]], min_price: float | None) -> l
     return [m for m in movers if (m.get("price") or 0) >= min_price]
 
 
-def _held_position_pnl_pct() -> dict[str, float]:
+def _held_position_pnl_pct() -> dict[str, float] | None:
     """Every current Alpaca position's unrealized return, as a percent
     (Alpaca's own `unrealized_plpc` is a fraction, e.g. 0.05 = +5%). Used
     both to force continuous monitoring of anything already held (see
     run_checkpoint() below) and to feed score_candidate()'s stop-loss/
-    take-profit bias. Best-effort: an unreadable account degrades to "no
-    positions known" rather than blocking the checkpoint — the existing
-    watchlist/movers research still runs either way, this only means a
-    held position drops out of monitoring for this one run, same as any
-    other best-effort Alpaca read in this module (get_market_movers()).
+    take-profit bias. Best-effort: an unreadable account returns None
+    rather than blocking the checkpoint — the existing watchlist/movers
+    research still runs either way, this only means a held position drops
+    out of monitoring for this one run, same as any other best-effort Alpaca
+    read in this module (get_market_movers()). None, not {}, so callers can
+    tell "holds nothing" from "couldn't tell": score_candidate() only turns a
+    bearish call into HOLD for a ticker *known* not to be held.
     """
     try:
         return {
@@ -109,7 +112,22 @@ def _held_position_pnl_pct() -> dict[str, float]:
         }
     except Exception as exc:  # noqa: BLE001 - one bad read must not block the checkpoint
         print(f"Could not read current positions for continuous monitoring: {exc}")
-        return {}
+        return None
+
+
+def _scoring_reference_price(ticker: str, bars: pd.DataFrame, have_bars: bool) -> tuple[float | None, str | None]:
+    """(price, source): the live bid/ask midpoint when a quote is available,
+    else the last daily close, else (None, None) — in which case the stale
+    check skips its price comparison, same as for any record without one."""
+    try:
+        mid = get_mid_price(ticker)
+    except Exception:  # noqa: BLE001 - a missing quote just falls back
+        mid = None
+    if mid:
+        return round(mid, 6), "live_mid"
+    if have_bars:
+        return float(bars["close"].iloc[-1]), "daily_close"
+    return None, None
 
 
 def _score_tickers(
@@ -117,6 +135,7 @@ def _score_tickers(
     checkpoint: str,
     held_pnl: dict[str, float],
     market_return_pct: float | None,
+    positions_known: bool = True,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """The research -> bars -> score body for one batch of tickers — shared
     by run_checkpoint()'s two passes (held positions, then watchlist/movers;
@@ -139,10 +158,15 @@ def _score_tickers(
             # placeholder as this ticker's actual technical signal.
             have_bars = len(bars) >= MIN_BARS_FOR_TECHNICAL
             tech = technical_score(bars) if have_bars else None
-            # The price technical_score() actually read — recorded so a later
-            # order submission can catch the market having moved since
-            # (guardrails.stale_recommendation_reason()).
-            reference_price = float(bars["close"].iloc[-1]) if have_bars else None
+            # The price at scoring time, for guardrails.stale_recommendation_reason()
+            # to compare against right before submission. A live bid/ask
+            # midpoint, not the last daily close: the daily close is usually
+            # yesterday's, so the check was measuring the overnight gap plus
+            # the spread (often 10-50% on thin names) instead of the minutes
+            # between scoring and submission — most of the week-to-2026-10-02's
+            # 44 drift refusals read 10%+ by that measure. Falls back to the
+            # daily close only when no quote is available.
+            reference_price, reference_price_source = _scoring_reference_price(ticker, bars, have_bars)
             # None below MIN_BARS_FOR_TREND (its own, stricter bar count) —
             # long_term_trend() handles that itself, no extra guard needed here.
             trend = long_term_trend(bars)
@@ -163,7 +187,9 @@ def _score_tickers(
                 reference_price=reference_price,
                 long_term_trend_ctx=trend,
                 market_return_pct=market_return_pct,
+                held=(ticker in held_pnl) if positions_known else None,
             )
+            rec["reference_price_source"] = reference_price_source
             rec["rationale"] = (research.get("headline_summary") or "")[:280]
             rec["sources"] = research.get("sources", [])
             rec["research_source"] = research.get("research_source", "perplexity")
@@ -186,7 +212,9 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     if halt:
         raise RoutineHalted(halt)
 
-    held_pnl = _held_position_pnl_pct()
+    positions = _held_position_pnl_pct()
+    positions_known = positions is not None
+    held_pnl = positions or {}
     # Read once per checkpoint (not once per ticker) and handed to every held
     # position's scoring call for score_candidate()'s market-regime stop-loss
     # dampening. Best-effort, same tolerance as every other Alpaca read here:
@@ -250,7 +278,9 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     for batch in (held_tickers, watchlist_tickers):
         if not batch:
             continue
-        batch_results, batch_failed = _score_tickers(sorted(batch), checkpoint, held_pnl, market_return_pct)
+        batch_results, batch_failed = _score_tickers(
+            sorted(batch), checkpoint, held_pnl, market_return_pct, positions_known
+        )
         results.extend(batch_results)
         failed_tickers.extend(batch_failed)
 

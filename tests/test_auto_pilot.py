@@ -27,6 +27,8 @@ def isolated(monkeypatch, tmp_path):
     # writes to the real data/journal/ — tests that care about journaling
     # override this again themselves.
     monkeypatch.setattr("trading_agent.journal.record_entry", lambda *a, **k: None)
+    # _symbols_at_position_cap() reads live positions; tests that care set them.
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_positions", lambda: [])
 
 
 def _enabled(max_trades_per_day=5):
@@ -359,6 +361,10 @@ def test_journal_reasoning_includes_sell_pressure_when_present(monkeypatch):
     monkeypatch.setattr(
         "trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"ask_price": "100"}
     )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_positions",
+        lambda: [{"symbol": "TSLA", "qty": "1000", "market_value": "1000"}],
+    )
     reasonings = []
     monkeypatch.setattr(
         "trading_agent.journal.record_entry",
@@ -373,3 +379,75 @@ def test_journal_reasoning_includes_sell_pressure_when_present(monkeypatch):
 
     assert "sell_pressure=0.8" in reasonings[0]
     assert "position_pnl_pct=-6.4" in reasonings[0]
+
+
+# --- at-cap BUYs and refusals don't use up slots (2026-10-02 review) ----------
+
+
+def _market(monkeypatch, positions=()):
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"ask_price": "100"})
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_positions", lambda: list(positions))
+
+
+def _enabled_with_cap(max_trades_per_day=5, cap_pct=5.0):
+    return lambda: {
+        "operational": {"auto_apply": {"enabled": True, "max_trades_per_day": max_trades_per_day}},
+        "position": {"max_position_pct_of_portfolio": cap_pct},
+    }
+
+
+def test_buy_on_a_symbol_already_at_the_cap_is_never_attempted(monkeypatch):
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled_with_cap())
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+    submitted = []
+    monkeypatch.setattr(ap, "submit_approved_order", lambda rec, qty, source: submitted.append(rec["ticker"]) or {"id": "x"})
+    _market(monkeypatch, positions=[{"symbol": "MGLD", "market_value": "5200", "qty": "2600"}])  # 5.2% of 100k
+
+    results = ap.auto_apply([_rec("MGLD", confidence=99), _rec("NEW", confidence=80)], "pre_open")
+
+    assert [r["ticker"] for r in results] == ["NEW"]
+    assert submitted == ["NEW"]
+
+
+def test_sell_of_an_at_cap_position_is_still_attempted(monkeypatch):
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled_with_cap())
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+    monkeypatch.setattr(ap, "submit_approved_order", lambda rec, qty, source: {"id": "x"})
+    _market(monkeypatch, positions=[{"symbol": "MGLD", "market_value": "5200", "qty": "2600"}])
+
+    results = ap.auto_apply([_rec("MGLD", action="SELL", confidence=99)], "pre_open")
+
+    assert results[0]["ticker"] == "MGLD" and results[0]["status"] == "submitted"
+
+
+def test_refusals_do_not_use_up_slots_for_lower_ranked_candidates(monkeypatch):
+    """Only the top `remaining` used to be tried, so two refused high-ranked
+    picks meant nothing was placed even with good candidates further down."""
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled_with_cap(max_trades_per_day=2))
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+
+    def submit(rec, qty, source):
+        if rec["ticker"].startswith("STALE"):
+            raise ap.OrderRefused("price has moved 20.00% ... past the 3.0% drift limit")
+        return {"id": "x"}
+
+    monkeypatch.setattr(ap, "submit_approved_order", submit)
+    _market(monkeypatch)
+    recs = [
+        _rec("STALE1", confidence=99),
+        _rec("STALE2", confidence=98),
+        _rec("GOOD1", confidence=90),
+        _rec("GOOD2", confidence=80),
+        _rec("GOOD3", confidence=70),
+    ]
+
+    results = ap.auto_apply(recs, "pre_open")
+
+    statuses = [(r["ticker"], r["status"]) for r in results]
+    assert statuses == [
+        ("STALE1", "refused"),
+        ("STALE2", "refused"),
+        ("GOOD1", "submitted"),
+        ("GOOD2", "submitted"),
+    ]  # stops once 2 are placed; GOOD3 never tried

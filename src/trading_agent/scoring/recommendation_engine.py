@@ -173,6 +173,7 @@ def score_candidate(
     reference_price: float | None = None,
     long_term_trend_ctx: dict[str, Any] | None = None,
     market_return_pct: float | None = None,
+    held: bool | None = None,
 ) -> dict[str, Any]:
     """Combine component scores (each 0-1) into a 0-100 confidence + action.
 
@@ -231,12 +232,19 @@ def score_candidate(
     long_term_trend() itself. Dampened, not zeroed, because a broad-market
     day doesn't fully rule out real stock-specific weakness either.
 
-    reference_price (the last close technical_score() was actually computed
-    from, when bars were available) is recorded on the returned dict so
-    guardrails.stale_recommendation_reason() can catch a stale recommendation
-    at order-submission time — a recommendation can sit for up to
-    approval_expiry_hours waiting on a human, and the market doesn't wait
-    with it.
+    reference_price (the live bid/ask midpoint at scoring time, or the last
+    daily close when no quote was available — see
+    orchestrator._scoring_reference_price()) is recorded on the returned dict
+    so guardrails.stale_recommendation_reason() can catch a stale
+    recommendation at order-submission time — a recommendation can sit for
+    up to approval_expiry_hours waiting on a human, and the market doesn't
+    wait with it.
+
+    held (False: the caller read positions and this ticker isn't one; None:
+    unknown) turns a SELL on a ticker with no position into HOLD, flagged
+    `bearish_not_held`. A SELL here only ever reduces an existing long, so
+    one on a ticker not held can never execute. None keeps the SELL rather
+    than guess; guardrails.short_sale_reason() still bounds it.
     """
     weights = load_agent_config()["scoring_weights"]
     hitrate = historical_hitrate(ticker)
@@ -297,6 +305,16 @@ def score_candidate(
             # position stop_loss_pct/take_profit_pct exist to catch.
             action = "SELL"
 
+    # A SELL can only ever reduce a long here (guardrails.short_sale_reason()),
+    # so a bearish call on a ticker that isn't held can never execute. As a
+    # SELL it was skipped every time (16 "computed qty is 0" attempts in the
+    # week to 2026-10-02) and counted as actionable in every email. Only when
+    # the caller *knows* it isn't held: `held=None` (unknown, e.g. a failed
+    # positions read or an ad hoc caller) keeps the SELL.
+    bearish_not_held = action == "SELL" and held is False
+    if bearish_not_held:
+        action = "HOLD"
+
     return {
         "ticker": ticker,
         "checkpoint": checkpoint,
@@ -313,6 +331,7 @@ def score_candidate(
         "long_term_trend": long_term_trend_ctx,
         "market_return_pct": market_return_pct,
         "regime_dampened": regime_dampened,
+        "bearish_not_held": bearish_not_held,
         "note": "Research-only output, not investment advice.",
     }
 

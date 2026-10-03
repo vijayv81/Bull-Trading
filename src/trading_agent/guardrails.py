@@ -109,6 +109,15 @@ def _reference_price(symbol: str) -> float:
     raise ValueError(f"No usable quote price for {symbol}")
 
 
+def _mid_price(symbol: str) -> float:
+    from trading_agent.data.alpaca_client import get_mid_price
+
+    mid = get_mid_price(symbol)
+    if not mid:
+        raise ValueError(f"No usable quote price for {symbol}")
+    return mid
+
+
 def daily_loss_reason() -> str | None:
     """Breach reason once today's drawdown reaches portfolio.max_daily_drawdown_pct.
 
@@ -312,6 +321,19 @@ def stale_recommendation_reason(rec: dict[str, Any]) -> str | None:
        MIN_BARS_FOR_TECHNICAL threshold used everywhere else).
 
     Only applies to BUY/SELL — a HOLD never reaches order submission at all.
+
+    Exits are exempt (`execution.exempt_exits_from_stale_check`, default
+    true): a SELL here can only reduce an existing long
+    (short_sale_reason()), so selling late still lowers risk, and refusing
+    it only keeps the loss open. In the week to 2026-10-02, 34 SELLs of the
+    account's worst losers were refused this way, every checkpoint. The
+    technical re-check also mis-fired on stop-loss SELLs: it recomputes
+    technical alone and ignores the sell_pressure that made them SELLs.
+    false is the one-line revert.
+
+    The price comparison uses the bid/ask midpoint, not the ask: on thin
+    names the ask alone can sit 10-50% above the bid, which read as "the
+    price moved" when nothing had.
     """
     action = rec.get("action")
     if action not in ("BUY", "SELL"):
@@ -319,12 +341,14 @@ def stale_recommendation_reason(rec: dict[str, Any]) -> str | None:
 
     symbol = rec["ticker"]
     cfg = load_risk_limits().get("execution", {})
+    if action == "SELL" and cfg.get("exempt_exits_from_stale_check", True):
+        return None
     max_drift_pct = cfg.get("max_price_drift_pct")
     reference_price = rec.get("reference_price")
 
     if max_drift_pct and reference_price:
         try:
-            current_price = _reference_price(symbol)
+            current_price = _mid_price(symbol)
         except Exception as exc:
             return f"Cannot verify {symbol}'s current price before submission ({exc}) — refusing to proceed blind."
 
