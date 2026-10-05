@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2497.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-05T12:51:44.771714+00:00"
+  },
+  {
+    "ticker": "TSLA",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-05T12:51:47.189151+00:00"
+  },
+  {
+    "ticker": "AIXI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 775.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-05T12:51:51.093844+00:00"
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1533.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-05T12:51:53.947634+00:00"
+  },
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 12512.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-05T12:51:57.015260+00:00"
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 191097.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-05T12:52:00.305180+00:00"
+  }
+]

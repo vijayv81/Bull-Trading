@@ -1,0 +1,57 @@
+[
+  {
+    "ticker": "GRMLW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 100.0,
+    "reasoning": "Auto-applied: confidence 100.0 (technical=1.0, sentiment=None, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-44.76)",
+    "reference_price": 0.5485,
+    "recorded_at": "2026-10-05T12:51:46.346289+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "AIXI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 88.2,
+    "reasoning": "Auto-applied: confidence 88.2 (technical=1.0, sentiment=1.0, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.47)",
+    "reference_price": 1.7349999999999999,
+    "recorded_at": "2026-10-05T12:51:52.656577+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "AIFF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 84.5,
+    "reasoning": "Auto-applied: confidence 84.5 (technical=0.7417908391991812, sentiment=None, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.18)",
+    "reference_price": 1.15,
+    "recorded_at": "2026-10-05T12:51:55.635839+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "SOAR",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 84.3,
+    "reasoning": "Auto-applied: confidence 84.3 (technical=1.0, sentiment=1.0, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-15.25)",
+    "reference_price": 0.234,
+    "recorded_at": "2026-10-05T12:51:58.921775+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 65.3,
+    "reasoning": "Auto-applied: confidence 65.3 (technical=0.4218837484447402, sentiment=None, catalyst=1.0, fundamental=None), sell_pressure=0.82 (position_pnl_pct=13.1)",
+    "reference_price": 0.0076500000000000005,
+    "recorded_at": "2026-10-05T12:52:01.998570+00:00",
+    "outcome": null
+  }
+]
