@@ -158,7 +158,7 @@ execution:
   # close when no quote was available). Unset/zero
   # skips this specific check (no config to compare against), same
   # unset-means-uncapped convention as the guardrails above.
-  max_price_drift_pct: 3.0
+  max_price_drift_pct: 4.0
   # Also recomputes technical_score() from fresh bars right before
   # submission and refuses if the direction it implies no longer agrees
   # with the recommendation's own action — catches a signal that reversed

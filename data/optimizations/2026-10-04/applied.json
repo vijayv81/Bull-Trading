@@ -1,0 +1,17 @@
+[
+  {
+    "option_id": "2026-10-04-max-price-drift-4",
+    "title": "Raise the stale-price limit from 3% to 4%",
+    "changes": [
+      {
+        "file": "risk_limits.yaml",
+        "path": "execution.max_price_drift_pct",
+        "from": 3.0,
+        "to": 4.0
+      }
+    ],
+    "loosens_guardrail": true,
+    "decided_by": "email-link",
+    "applied_at": "2026-10-05T12:46:51.667300+00:00"
+  }
+]
