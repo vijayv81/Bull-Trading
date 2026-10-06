@@ -42,5 +42,16 @@
     "reference_price": 0.01635,
     "recorded_at": "2026-10-06T12:49:19.581446+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 67.6,
+    "reasoning": "Auto-applied: confidence 67.6 (technical=0.5691876288717225, sentiment=0.5, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-38.09)",
+    "reference_price": 0.01185,
+    "recorded_at": "2026-10-06T13:44:23.562345+00:00",
+    "outcome": null
   }
 ]
