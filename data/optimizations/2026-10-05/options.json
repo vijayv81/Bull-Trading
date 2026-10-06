@@ -1,0 +1,23 @@
+[
+  {
+    "id": "2026-10-05-weights-catalyst-to-technical",
+    "title": "Shift 0.05 of scoring weight from catalyst to technical",
+    "why": "catalyst has agreed with actual price direction 30% of the time over 10 measured calls, vs. technical's 70% over 10.",
+    "effect": "Confidence scores lean slightly more on technical and less on catalyst.",
+    "loosens_guardrail": false,
+    "changes": [
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.catalyst",
+        "from": 0.2,
+        "to": 0.15
+      },
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.technical",
+        "from": 0.3,
+        "to": 0.35
+      }
+    ]
+  }
+]
