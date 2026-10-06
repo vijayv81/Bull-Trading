@@ -222,7 +222,7 @@ def cmd_report_daily_summary(args: argparse.Namespace) -> None:
     from trading_agent.reporting.report_builder import build_daily_summary
 
     summary = build_daily_summary(args.day)
-    notify_daily_summary(summary)
+    notify_daily_summary(summary, pr_url=args.pr_url)
 
     portfolio_pct = summary["portfolio_return_pct"]
     benchmark_pct = summary["benchmark_return_pct"]
@@ -300,6 +300,22 @@ def cmd_optimizations_list(args: argparse.Namespace) -> None:
         flag = " [loosens a guardrail]" if option.get("loosens_guardrail") else ""
         print(f"{option['id']}  (proposed {option['proposed_on']}){flag}")
         print(f"  {option['title']}")
+        for c in option["changes"]:
+            print(f"    {c['file']}: {c['path']} {c['from']} -> {c['to']}")
+
+
+def cmd_optimizations_propose(args: argparse.Namespace) -> None:
+    from trading_agent.optimizations import propose_daily
+    from trading_agent.reporting.report_builder import _signal_type_hit_rates
+    from trading_agent.utils import today
+
+    day = args.day or today()
+    fresh = propose_daily(day, _signal_type_hit_rates())
+    if not fresh:
+        print("No new daily option (not enough evidence, a shift applied recently, or already pending).")
+        return
+    for option in fresh:
+        print(f"{option['id']}  {option['title']}")
         for c in option["changes"]:
             print(f"    {c['file']}: {c['path']} {c['from']} -> {c['to']}")
 
@@ -476,6 +492,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Email/SMS today's learnings + benchmark (SPY) comparison (notifications.daily_summary_enabled).",
     )
     daily_summary.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
+    daily_summary.add_argument(
+        "--pr-url",
+        help="Link to the PR carrying today's proposed config change; adds a 'review & merge' section.",
+    )
     daily_summary.set_defaults(func=cmd_report_daily_summary)
 
     weekly_report = sub.add_parser(
@@ -519,6 +539,12 @@ def build_parser() -> argparse.ArgumentParser:
     optimizations_sub.add_parser("list", help="Options not yet applied or dismissed.").set_defaults(
         func=cmd_optimizations_list
     )
+    propose = optimizations_sub.add_parser(
+        "propose",
+        help="Save today's learning proposal (a scoring-weight shift) as an applicable option, if the evidence clears the bar.",
+    )
+    propose.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
+    propose.set_defaults(func=cmd_optimizations_propose)
     for decision in ("apply", "dismiss"):
         decide = optimizations_sub.add_parser(decision)
         decide.add_argument("option_id")

@@ -795,3 +795,33 @@ def test_weekly_learning_review_has_no_pr_section_without_a_url(monkeypatch):
     assert "Review & approve" not in plain
     assert "approve this report" not in html
     assert "PR to approve" not in subject
+
+
+# --- daily summary: capped rows collapse, "as of" note ------------------------
+
+
+def test_daily_summary_collapses_capped_attempts_into_one_row_per_checkpoint(monkeypatch):
+    capped = [
+        {"ticker": t, "status": "capped", "checkpoint": "pre_close",
+         "reason": "daily auto-apply cap reached (5 of 5 orders today)"}
+        for t in ("IREN", "PDSB", "SDEV")
+    ]
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary(auto_apply_attempts=capped))
+    plain, html = calls[0][1], calls[0][2]
+
+    assert plain.count("capped") == 1
+    assert "3 candidate(s) [pre_close]: capped — not attempted, daily auto-apply cap reached" in plain
+    assert "IREN, PDSB, SDEV" in plain
+    assert html.count("CAPPED") == 1 and "IREN, PDSB, SDEV" in html
+
+
+def test_daily_summary_states_when_the_figures_were_taken(monkeypatch):
+    note = "Figures as of 15:55 ET — before the 4:00pm ET close, so today's return and outcomes are not final"
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary(as_of_note=note))
+    assert note in calls[0][1] and "Figures as of 15:55 ET" in calls[0][2]

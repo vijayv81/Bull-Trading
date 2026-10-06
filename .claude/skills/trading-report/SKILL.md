@@ -35,7 +35,39 @@ trading-agent daily-summary                   # today
 trading-agent daily-summary --day YYYY-MM-DD
 ```
 
-This is separate from `report daily` above — it's the "learnings + how we did
+**Before sending it, propose the day's learning as a PR (pre_close, daily).**
+The email's learning section can carry a clickable "review & merge" link, which
+means the PR has to exist first:
+
+```bash
+trading-agent optimizations propose
+```
+
+If it prints `No new daily option ...`, skip to the plain `daily-summary` above:
+not enough evidence, a weight shift applied in the last 7 days, or the same
+change is already pending in an earlier, unmerged PR. If it prints an option
+id (it starts with the date, `<day>`), open a PR for it. **Never merge this
+PR** — the user's merge is the approval, and this is the one PR the routine
+does not self-merge:
+
+```bash
+git switch -c optimization/<id>                 # takes the uncommitted options file along
+trading-agent optimizations apply <id> --decided-by daily-pr
+git add config/ data/optimizations/
+git commit -m "Apply <id> (daily learning proposal)"
+git push -u origin optimization/<id>
+# open a PR against main from optimization/<id>; body = the option's title, why, effect and each config change
+git switch <the branch you were on>             # config goes back to main's values
+git checkout optimization/<id> -- data/optimizations/<day>/options.json
+trading-agent daily-summary --pr-url <the PR's URL>
+```
+
+Restore only `options.json`, not the whole directory: the email describes the
+change from that file, and `applied.json` would make it look already applied.
+If the apply is refused, or the push or PR fails, say so plainly and send the
+plain `daily-summary` instead — the email must go out either way.
+
+`daily-summary` is separate from `report daily` above — it's the "learnings + how we did
 vs. SPY today" email, not a markdown file. It's gated by
 `notifications.daily_summary_enabled`; if the user's turned that off, running
 it is a silent no-op, so check the config before telling them it didn't send.

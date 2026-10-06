@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 import re
 import shutil
 from pathlib import Path
@@ -21,6 +22,20 @@ def sandbox(monkeypatch, tmp_path):
     config_dir.mkdir()
     for name in ("agent_config.yaml", "risk_limits.yaml", "watchlist.yaml"):
         shutil.copy(REAL_CONFIG_DIR / name, config_dir / name)
+    # The tunable values these tests are written against. The live config
+    # moves as options get applied (max_price_drift_pct went 3.0 -> 4.0 on
+    # 2026-10-05), so pin them here instead of inheriting whatever it holds.
+    for file, path, value in (
+        ("risk_limits.yaml", "execution.max_price_drift_pct", 3.0),
+        ("risk_limits.yaml", "operational.approval_expiry_hours", 2),
+        ("agent_config.yaml", "scoring_weights.sentiment", 0.25),
+        ("agent_config.yaml", "scoring_weights.technical", 0.30),
+        ("agent_config.yaml", "scoring_weights.fundamental", 0.15),
+        ("agent_config.yaml", "scoring_weights.catalyst", 0.20),
+        ("agent_config.yaml", "scoring_weights.historical_hitrate", 0.10),
+    ):
+        target = config_dir / file
+        target.write_text(opt.set_yaml_scalar(target.read_text(), path, value))
     monkeypatch.setattr(cfg, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(opt, "CONFIG_DIR", config_dir)
     monkeypatch.setattr(opt, "OPTIMIZATIONS_DIR", tmp_path / "optimizations")
@@ -72,9 +87,11 @@ def test_set_yaml_scalar_refuses_missing_path_and_mappings():
 
 def test_set_yaml_scalar_on_real_config_files_preserves_everything_else():
     for name, path, value in (
-        ("risk_limits.yaml", "execution.max_price_drift_pct", 4.0),
-        ("risk_limits.yaml", "operational.approval_expiry_hours", 3),
-        ("agent_config.yaml", "scoring_weights.sentiment", 0.2),
+        # Values the live config won't plausibly already hold, so exactly one
+        # line has to change whatever options have been applied so far.
+        ("risk_limits.yaml", "execution.max_price_drift_pct", 2.5),
+        ("risk_limits.yaml", "operational.approval_expiry_hours", 5),
+        ("agent_config.yaml", "scoring_weights.sentiment", 0.17),
     ):
         original = (REAL_CONFIG_DIR / name).read_text()
         out = opt.set_yaml_scalar(original, path, value)
@@ -408,3 +425,125 @@ def test_weekly_report_section_falls_back_to_the_command(sandbox, monkeypatch):
     _save([_drift_option()])
     [line] = rb._open_option_lines()
     assert "`trading-agent optimizations apply 2026-10-02-max-price-drift-4 --acknowledge-loosening`" in line
+
+
+# --- daily proposal (2026-10-05) ----------------------------------------------
+
+DAILY_RATES = {
+    "technical": {"hit_rate": 0.7, "n": 10},
+    "catalyst": {"hit_rate": 0.3, "n": 10},
+    "sentiment": {"hit_rate": 0.5, "n": 6},
+}
+
+
+def test_propose_daily_saves_the_weight_shift_as_an_applicable_option(sandbox):
+    [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
+    assert option["id"] == "2026-10-05-weights-catalyst-to-technical"
+    assert option["changes"] == [
+        {"file": "agent_config.yaml", "path": "scoring_weights.catalyst", "from": 0.2, "to": 0.15},
+        {"file": "agent_config.yaml", "path": "scoring_weights.technical", "from": 0.3, "to": 0.35},
+    ]
+    assert not option["loosens_guardrail"]
+    assert [o["id"] for o in opt.options_proposed_on("2026-10-05")] == [option["id"]]
+
+    opt.apply_option(option["id"], decided_by="daily-pr")
+    weights = _load(sandbox, "agent_config.yaml")["scoring_weights"]
+    assert weights["catalyst"] == 0.15 and weights["technical"] == 0.35
+    assert abs(sum(weights.values()) - 1.0) < 1e-9
+
+
+def test_propose_daily_needs_the_same_evidence_as_the_weekly_review(sandbox):
+    thin = {"technical": {"hit_rate": 0.7, "n": 5}, "catalyst": {"hit_rate": 0.3, "n": 5}}
+    assert opt.propose_daily("2026-10-05", thin) == []
+    close = {"technical": {"hit_rate": 0.55, "n": 12}, "catalyst": {"hit_rate": 0.45, "n": 12}}
+    assert opt.propose_daily("2026-10-05", close) == []
+
+
+def test_propose_daily_never_offers_the_weekly_only_options(sandbox):
+    # Only signal_hit_rates go in, so the refusal/expiry options can't appear.
+    assert [o["id"] for o in opt.propose_daily("2026-10-05", DAILY_RATES)] == [
+        "2026-10-05-weights-catalyst-to-technical"
+    ]
+
+
+def test_propose_daily_skips_what_is_already_pending(sandbox):
+    assert len(opt.propose_daily("2026-10-05", DAILY_RATES)) == 1
+    assert opt.propose_daily("2026-10-06", DAILY_RATES) == []  # same change, still unmerged
+
+
+def test_no_new_weight_shift_for_a_week_after_one_is_applied(sandbox):
+    [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
+    opt.apply_option(option["id"], decided_by="daily-pr")
+    # The rolling hit rates barely move day to day; without a pause the next
+    # morning would propose catalyst 0.15 -> 0.10 on the same evidence.
+    assert opt.propose_daily("2026-10-06", DAILY_RATES) == []
+    # ...and it applies to the weekly review's weight option too.
+    review = _review(signal_hit_rates=DAILY_RATES)
+    assert opt.build_options(review) == []
+
+
+def test_weight_cooldown_expires(sandbox, monkeypatch):
+    [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
+    opt.apply_option(option["id"], decided_by="daily-pr")
+    later = datetime.now(timezone.utc) + timedelta(days=opt.WEIGHT_COOLDOWN_DAYS + 1)
+    assert opt._weights_applied_within(opt.WEIGHT_COOLDOWN_DAYS, now=later) is False
+    assert opt._weights_applied_within(opt.WEIGHT_COOLDOWN_DAYS) is True
+
+
+def test_add_options_keeps_what_the_weekly_review_already_saved_for_that_day(sandbox):
+    opt.save_options([{"id": "weekly-one", "changes": []}], "2026-10-05")
+    opt.add_options([{"id": "daily-one", "changes": []}, {"id": "weekly-one", "changes": []}], "2026-10-05")
+    saved = json.loads((opt.OPTIMIZATIONS_DIR / "2026-10-05" / "options.json").read_text())
+    assert [o["id"] for o in saved] == ["weekly-one", "daily-one"]
+
+
+# --- daily email PR section ----------------------------------------------------
+
+DAILY_PR = "https://github.com/vijayv81/Bull-Trading/pull/77"
+
+
+def _daily_summary(**overrides):
+    base = {
+        "day": "2026-10-05", "portfolio_return_pct": 1.0, "benchmark_symbol": "SPY",
+        "benchmark_return_pct": 0.5, "outperformance_pct": 0.5, "recommendations_count": 3,
+        "trades_count": 1, "journal_entries": [],
+        "optimization_proposals": ["catalyst trails technical"], "optimization_options": [],
+    }
+    base.update(overrides)
+    return base
+
+
+def _send_daily(monkeypatch, summary, **kwargs):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(summary, **kwargs)
+    return calls[0]
+
+
+def test_daily_email_links_the_pr_with_the_change_details(monkeypatch):
+    option = {
+        "id": "o", "title": "Shift 0.05 of scoring weight from catalyst to technical",
+        "why": "catalyst agreed 30% over 10 vs technical 70% over 10.",
+        "effect": "Confidence leans more on technical.",
+        "changes": [{"file": "agent_config.yaml", "path": "scoring_weights.catalyst", "from": 0.2, "to": 0.15}],
+    }
+    subject, plain, html = _send_daily(monkeypatch, _daily_summary(optimization_options=[option]), pr_url=DAILY_PR)
+    assert DAILY_PR in plain
+    assert "scoring_weights.catalyst: 0.2 -> 0.15" in plain
+    assert "Merging applies the change to main" in plain
+    assert f'href="{DAILY_PR}"' in html
+    assert "scoring_weights.catalyst: 0.2 -&gt; 0.15" in html or "scoring_weights.catalyst: 0.2 -> 0.15" in html
+    assert "change to approve" in subject
+    assert "Proposals are never applied automatically — incorporating" not in plain
+
+
+def test_daily_email_is_unchanged_without_a_pr(monkeypatch):
+    subject, plain, html = _send_daily(monkeypatch, _daily_summary())
+    assert "Review & approve" not in plain and "change to approve" not in subject
+    assert "Proposals are never applied automatically — incorporating" in plain
+
+
+def test_daily_email_ignores_a_pr_url_when_there_is_no_option(monkeypatch):
+    subject, plain, html = _send_daily(monkeypatch, _daily_summary(), pr_url=DAILY_PR)
+    assert DAILY_PR not in plain and DAILY_PR not in html

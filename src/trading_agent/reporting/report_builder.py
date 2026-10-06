@@ -412,6 +412,20 @@ def _benchmark_return_pct(symbol: str = BENCHMARK_SYMBOL) -> float | None:
     return get_market_return_pct(symbol, lookback_days=5)
 
 
+def _as_of_note(now: datetime | None = None) -> str:
+    """When the figures were taken. The summary goes out from the pre_close
+    run, a few minutes before the 4:00pm ET close, so today's return and the
+    marked outcomes are not final-close numbers — say so rather than let
+    them read as end-of-day."""
+    from zoneinfo import ZoneInfo
+
+    et = (now or datetime.now(ZoneInfo("America/New_York"))).astimezone(ZoneInfo("America/New_York"))
+    note = f"Figures as of {et:%H:%M} ET"
+    if et.weekday() < 5 and (et.hour, et.minute) < (16, 0):
+        note += " — before the 4:00pm ET close, so today's return and outcomes are not final"
+    return note
+
+
 def build_daily_summary(day: str | None = None) -> dict:
     """End-of-day learnings + benchmark comparison — distinct from
     build_daily_report()'s activity log. Pulls today's journaled reasoning and
@@ -443,6 +457,7 @@ def build_daily_summary(day: str | None = None) -> dict:
     say anything, same threshold propose_weight_adjustments() itself uses.
     """
     from trading_agent.journal import load_entries
+    from trading_agent.optimizations import options_proposed_on
     from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
 
     day = day or today()
@@ -485,6 +500,10 @@ def build_daily_summary(day: str | None = None) -> dict:
         "scoring_weights": load_agent_config().get("scoring_weights", {}),
         "signal_hit_rates": signal_hit_rates,
         "learning_outcome": _learning_outcome_note(signal_hit_rates),
+        # Today's proposal as a saved, applicable option (optimizations.
+        # propose_daily()) — what the email's "review & approve" PR carries.
+        "optimization_options": options_proposed_on(day),
+        "as_of_note": _as_of_note(),
     }
 
 
@@ -961,6 +980,13 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
     refused_candidates: list[dict[str, Any]] = []
     refusal_breakdown: dict[str, int] = {}
     for a in window_attempts:
+        if a.get("status") == "capped":
+            # Not a guardrail refusal (so not in refusal_breakdown), but still
+            # an unexecuted call worth the hindsight check.
+            rec = rec_index.get((a["_day"], a.get("checkpoint"), a.get("ticker")))
+            if rec is not None:
+                refused_candidates.append({**rec, "_category": "auto-capped: daily trade limit"})
+            continue
         if a.get("status") != "refused":
             continue
         label = _categorize_refusal(a.get("reason", ""))
@@ -991,7 +1017,7 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
         "attempt_log_days": attempt_log_days,
         "auto_apply_attempts_by_status": {
             status: sum(1 for a in window_attempts if a.get("status") == status)
-            for status in ("submitted", "refused", "skipped", "error")
+            for status in ("submitted", "refused", "skipped", "error", "capped")
         },
         "refusal_breakdown": refusal_breakdown,
         "missed_opportunities": missed_opportunities,

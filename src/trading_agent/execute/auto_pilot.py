@@ -54,6 +54,33 @@ def _persist_attempt(result: dict[str, Any], checkpoint: str) -> None:
         print(f"Could not persist auto-apply attempt for {result.get('ticker')}: {exc}")
 
 
+def _record_capped(recs: list[dict[str, Any]], checkpoint: str, daily_cap: int, ordered: int) -> None:
+    """Log the actionable candidates the daily cap kept auto-apply from trying.
+
+    Once the day's orders were used up, auto_apply() used to return before
+    touching a single candidate, leaving no trace: on 2026-10-05 five
+    pre_open SELLs filled the cap, and pre_close's three BUYs (IREN, PDSB,
+    SDEV, 85-100 confidence) looked in every report like calls that were
+    simply never picked. Status "capped" says what happened — not a refusal
+    (no guardrail judged them) and not a skip for size. Persisted only, not
+    returned: the per-checkpoint digest stays as it was.
+    """
+    seen: set[str] = set()
+    for rec in sorted(recs, key=lambda r: r["confidence"], reverse=True):
+        ticker = str(rec.get("ticker", "")).upper()
+        if rec.get("action") not in ("BUY", "SELL") or ticker in seen:
+            continue
+        seen.add(ticker)
+        _persist_attempt(
+            {
+                "ticker": rec["ticker"],
+                "status": "capped",
+                "reason": f"daily auto-apply cap reached ({ordered} of {daily_cap} orders today)",
+            },
+            checkpoint,
+        )
+
+
 def _journal_auto_decision(rec: dict[str, Any], checkpoint: str) -> None:
     """Auto-apply picks its own trades with no human reasoning to record —
     but journal.record_entry() was previously only ever called from the
@@ -167,8 +194,10 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
         return []
 
     daily_cap = auto_cfg.get("max_trades_per_day", 5)
-    remaining = daily_cap - _todays_auto_trade_count()
+    ordered_today = _todays_auto_trade_count()
+    remaining = daily_cap - ordered_today
     if remaining <= 0:
+        _record_capped(recs, checkpoint, daily_cap, ordered_today)
         return []
 
     # A BUY on a symbol already at the per-position cap can't place even one
@@ -192,8 +221,11 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
     # have filled — previously only the top `remaining` were ever tried.
     results = []
     submitted = 0
-    for rec in candidates:
+    for index, rec in enumerate(candidates):
         if submitted >= remaining:
+            # The cap was reached partway through the ranked list; the rest
+            # were never tried.
+            _record_capped(candidates[index:], checkpoint, daily_cap, ordered_today + submitted)
             break
         try:
             from trading_agent.data.alpaca_client import get_account, get_latest_quote
