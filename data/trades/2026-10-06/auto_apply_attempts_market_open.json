@@ -1,0 +1,81 @@
+[
+  {
+    "ticker": "TSLA",
+    "status": "refused",
+    "reason": "TSLA would reach 6.87% of the 94,541.54 portfolio (6,497.84 incl. 3,041.84 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "DAICW",
+    "status": "submitted",
+    "qty": 105690.0,
+    "order": {
+      "id": "afd41653-f09f-4476-b30b-0a965aec3811",
+      "client_order_id": "bc6c4a8d-b43e-4643-a7d4-b302edfb210b",
+      "created_at": "2026-10-06T13:44:23.184994Z",
+      "updated_at": "2026-10-06T13:44:23.190974Z",
+      "submitted_at": "2026-10-06T13:44:23.184994Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-10-06T20:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "fc8db685-7c26-4f62-8a7d-865fdbe5e4ce",
+      "symbol": "DAICW",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "105690",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "market",
+      "type": "market",
+      "side": "sell",
+      "time_in_force": "day",
+      "limit_price": null,
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "sell_to_close",
+      "ratio_qty": null
+    },
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "APUS",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "INLF",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABLVW",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "JAGX",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "OPCH",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "ticker": "TSLA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 9.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-06T13:44:17.191007+00:00"
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 105690.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-06T13:44:21.520866+00:00"
+  }
+]
