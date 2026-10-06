@@ -34,9 +34,9 @@ credentials:
 # nothing here is ever auto-adjusted.
 scoring_weights:
   sentiment: 0.25
-  technical: 0.30
+  technical: 0.35
   fundamental: 0.15
-  catalyst: 0.20
+  catalyst: 0.15
   historical_hitrate: 0.10
 
 # plan §12 open decision — intraday | swing | longer_horizon. Currently informational
