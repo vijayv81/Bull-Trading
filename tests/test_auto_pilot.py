@@ -451,3 +451,49 @@ def test_refusals_do_not_use_up_slots_for_lower_ranked_candidates(monkeypatch):
         ("GOOD1", "submitted"),
         ("GOOD2", "submitted"),
     ]  # stops once 2 are placed; GOOD3 never tried
+
+
+# --- candidates the daily cap kept from being tried are logged (2026-10-05) ---
+
+
+def _logged_attempts(tmp_path, checkpoint):
+    from trading_agent.utils import today
+
+    path = tmp_path / "trades" / today() / f"auto_apply_attempts_{checkpoint}.json"
+    return json.loads(path.read_text()) if path.exists() else []
+
+
+def test_when_the_daily_cap_is_already_used_up_every_actionable_candidate_is_logged_capped(monkeypatch, tmp_path):
+    from trading_agent.utils import append_json, day_dir
+
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled_with_cap(max_trades_per_day=2))
+    append_json(day_dir(ap.TRADES_DIR) / "orders_submitted.json", {"source": "auto", "order": {}})
+    append_json(day_dir(ap.TRADES_DIR) / "orders_submitted.json", {"source": "auto", "order": {}})
+    submitted = []
+    monkeypatch.setattr(ap, "submit_approved_order", lambda *a, **k: submitted.append(1))
+
+    recs = [_rec("IREN", confidence=85), _rec("PDSB", confidence=100), _rec("IREN", confidence=80),
+            _rec("HOLDME", action="HOLD", confidence=99)]
+    assert ap.auto_apply(recs, "pre_close") == []  # the digest still sees nothing new
+
+    logged = _logged_attempts(tmp_path, "pre_close")
+    assert [a["ticker"] for a in logged] == ["PDSB", "IREN"]  # ranked by confidence, each ticker once, no HOLD
+    assert {a["status"] for a in logged} == {"capped"}
+    assert "2 of 2 orders today" in logged[0]["reason"]
+    assert submitted == []
+
+
+def test_cap_reached_partway_logs_only_the_untried_candidates(monkeypatch, tmp_path):
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled_with_cap(max_trades_per_day=1))
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+    monkeypatch.setattr(ap, "submit_approved_order", lambda rec, qty, source: {"id": "x"})
+    _market(monkeypatch)
+
+    results = ap.auto_apply([_rec("FIRST", confidence=95), _rec("SECOND", confidence=90), _rec("THIRD", confidence=80)], "midday")
+
+    assert [r["ticker"] for r in results] == ["FIRST"]
+    logged = _logged_attempts(tmp_path, "midday")
+    assert [(a["ticker"], a["status"]) for a in logged if a["status"] == "capped"] == [
+        ("SECOND", "capped"), ("THIRD", "capped")
+    ]
+    assert "1 of 1 orders today" in logged[-1]["reason"]

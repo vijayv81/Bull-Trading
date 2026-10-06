@@ -267,7 +267,10 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
     if not channels & {"email", "sms"}:
         return
 
-    lines = [f"Bull-Trading daily summary — {summary['day']}", ""]
+    lines = [f"Bull-Trading daily summary — {summary['day']}"]
+    if summary.get("as_of_note"):
+        lines.append(summary["as_of_note"])
+    lines.append("")
     portfolio_pct = summary["portfolio_return_pct"]
     benchmark_pct = summary["benchmark_return_pct"]
     if portfolio_pct is not None:
@@ -313,7 +316,7 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
     if attempts:
         lines.append("")
         lines.append("Auto-apply attempts:")
-        for a in attempts:
+        for a in _attempt_rows(attempts):
             if a["status"] == "submitted":
                 lines.append(f"- {a['ticker']} [{a.get('checkpoint', '')}]: submitted qty={a.get('qty')}")
             else:
@@ -410,6 +413,8 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
         inner += h.stat_card(f"Vs. {summary['benchmark_symbol']}", h.signed_pct(outperformance_pct) + " pts")
     if portfolio_pct is None or benchmark_pct is None:
         inner += h.muted("One or both returns unavailable today — see the weekly report's P&L section instead.")
+    if summary.get("as_of_note"):
+        inner += h.muted(summary["as_of_note"])
 
     inner += h.section_heading("Activity")
     inner += (
@@ -466,7 +471,7 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
     if attempts:
         inner += h.section_heading("Auto-apply attempts")
         status_kind = {"submitted": "positive", "refused": "negative", "error": "negative", "skipped": "neutral"}
-        for a in attempts:
+        for a in _attempt_rows(attempts):
             detail = f"qty={a.get('qty')}" if a["status"] == "submitted" else (a.get("reason") or "")[:120]
             inner += (
                 f'<div style="padding:8px 0;font-size:14px;border-bottom:1px solid {border};">'
@@ -680,6 +685,31 @@ def _optimization_options_html(review: dict[str, Any]) -> str:
     )
 
 
+def _attempt_rows(attempts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Daily-summary rows for the auto-apply attempts. "capped" ones (daily
+    order cap reached, see auto_pilot._record_capped()) can be a dozen a
+    checkpoint, so they collapse to one row per checkpoint instead of
+    burying the real attempts."""
+    rows: list[dict[str, Any]] = []
+    capped: dict[str, list[dict[str, Any]]] = {}
+    for a in attempts:
+        if a["status"] == "capped":
+            capped.setdefault(a.get("checkpoint", ""), []).append(a)
+        else:
+            rows.append(a)
+    for checkpoint, items in capped.items():
+        tickers = ", ".join(a["ticker"] for a in items[:8]) + ("..." if len(items) > 8 else "")
+        rows.append(
+            {
+                "status": "capped",
+                "ticker": f"{len(items)} candidate(s)",
+                "checkpoint": checkpoint,
+                "reason": f"not attempted, {items[0].get('reason', 'daily cap reached')}: {tickers}",
+            }
+        )
+    return rows
+
+
 def _daily_pr_lines(options: list[dict[str, Any]]) -> list[str]:
     """What the daily email's PR changes and what merging does — shared by the
     plain-text and HTML renderings so they can't drift apart."""
@@ -780,10 +810,11 @@ def _weekly_learning_review_html(review: dict[str, Any], pr_url: str | None = No
     submitted_chip = h.chip(f"{attempts_summary.get('submitted', 0)} submitted", "positive")
     refused_chip = h.chip(f"{attempts_summary.get('refused', 0)} refused", "negative")
     skipped_chip = h.chip(f"{attempts_summary.get('skipped', 0)} skipped", "neutral")
+    capped_chip = h.chip(f"{attempts_summary.get('capped', 0)} capped (daily limit)", "neutral")
     error_chip = h.chip(f"{attempts_summary.get('error', 0)} errored", "negative")
     inner += (
         f'<div style="padding:6px 0;">Auto-apply attempts{span_note}: '
-        f"{submitted_chip} {refused_chip} {skipped_chip} {error_chip}</div>"
+        f"{submitted_chip} {refused_chip} {skipped_chip} {capped_chip} {error_chip}</div>"
     )
     if review["refusal_breakdown"]:
         refusal_items = " ".join(
@@ -965,6 +996,7 @@ def notify_weekly_learning_review(review: dict[str, Any], pr_url: str | None = N
     lines.append(
         f"Auto-apply attempts{span_suffix}: {attempts_summary.get('submitted', 0)} submitted, "
         f"{attempts_summary.get('refused', 0)} refused, {attempts_summary.get('skipped', 0)} skipped, "
+        f"{attempts_summary.get('capped', 0)} capped by the daily limit, "
         f"{attempts_summary.get('error', 0)} errored"
     )
     if review["refusal_breakdown"]:

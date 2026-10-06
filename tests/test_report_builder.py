@@ -485,7 +485,7 @@ def test_build_weekly_learning_review_partitions_unexecuted_recs(monkeypatch, tm
     assert [r["ticker"] for r in review["never_decided"]] == ["NEVER"]
     assert [r["ticker"] for r in review["approved_not_executed"]] == ["APPROVED"]
     assert [r["ticker"] for r in review["rejected"]] == ["REJECTED"]
-    assert review["auto_apply_attempts_by_status"] == {"submitted": 0, "refused": 1, "skipped": 0, "error": 0}
+    assert review["auto_apply_attempts_by_status"] == {"submitted": 0, "refused": 1, "skipped": 0, "error": 0, "capped": 0}
     assert review["refusal_breakdown"] == {"kill switch off": 1}
 
 
@@ -814,3 +814,44 @@ def test_weight_proposal_ignores_under_sampled_signals_but_compares_the_rest(mon
     proposal = review["optimization_proposals"][0]
     assert "'sentiment'" in proposal and "'catalyst'" in proposal
     assert "technical" not in proposal
+
+
+def test_weekly_review_counts_cap_blocked_calls_as_capped_not_never_decided(monkeypatch, tmp_path):
+    """A BUY the daily order cap kept auto-apply from trying isn't a call a
+    human ignored; counting it under "never decided" inflated the evidence
+    for lengthening the approval window."""
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_latest_quote",
+        lambda ticker: {"bid_price": 100.0, "ask_price": 100.0},
+    )
+    day = "2026-09-21"
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_close.json", _rec("CAPPED", "pre_close", "BUY"))
+    append_json(day_dir(rb.RECOMMENDATIONS_DIR, day) / "recs_pre_close.json", _rec("IGNORED", "pre_close", "BUY"))
+    append_json(
+        day_dir(rb.TRADES_DIR, day) / "auto_apply_attempts_pre_close.json",
+        {"ticker": "CAPPED", "checkpoint": "pre_close", "status": "capped",
+         "reason": "daily auto-apply cap reached (5 of 5 orders today)"},
+    )
+
+    review = rb.build_weekly_learning_review(day)
+
+    assert [r["ticker"] for r in review["never_decided"]] == ["IGNORED"]
+    assert review["auto_apply_attempts_by_status"]["capped"] == 1
+    assert review["refusal_breakdown"] == {}  # not a guardrail refusal
+    assert {m["category"] for m in review["missed_opportunities"] if m["ticker"] == "CAPPED"} == {
+        "auto-capped: daily trade limit"
+    }
+
+
+def test_as_of_note_flags_a_summary_taken_before_the_close():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    et = ZoneInfo("America/New_York")
+    before = rb._as_of_note(datetime(2026, 10, 5, 15, 55, tzinfo=et))  # a Monday
+    assert "15:55 ET" in before and "before the 4:00pm ET close" in before and "not final" in before
+    after = rb._as_of_note(datetime(2026, 10, 5, 16, 30, tzinfo=et))
+    assert "16:30 ET" in after and "before the 4:00pm" not in after
+    weekend = rb._as_of_note(datetime(2026, 10, 3, 10, 0, tzinfo=et))  # a Saturday
+    assert "before the 4:00pm" not in weekend

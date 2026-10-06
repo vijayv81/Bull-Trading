@@ -182,6 +182,14 @@ hit rates barely move day to day, so the next morning would re-propose the
 same shift), and nothing is proposed that an already-pending option already
 proposes.
 
+**"As of" note**, per the 2026-10-05 review: the summary is sent from the
+`pre_close` run, minutes before the 4:00pm ET close, so the portfolio-vs-SPY
+return (equity vs. prior close, live) and the marked outcomes are not
+final-close numbers. `_as_of_note()` puts "Figures as of HH:MM ET — before
+the 4:00pm ET close, so today's return and outcomes are not final" under the
+title in both renderings (no caveat on a weekend or after the close). A
+summary on final closing prices would need a separate after-close trigger.
+
 `trading-agent weekly-report` builds `reporting/report_builder.py`'s weekly
 markdown rollup (`reports/weekly/<year>-W<week>.md`) *and* emails/SMS it —
 `build_weekly_report()` itself only ever wrote the file; nothing sent it
@@ -445,6 +453,23 @@ one-line revert with no code change.
   place even one share, and was refused every checkpoint (MGLD/AIFF, week
   to 2026-10-02). Best-effort: an unreadable account means no pre-filter,
   and `position_size_reason()` still refuses at submission.
+- Candidates the daily cap kept it from trying are logged, not dropped
+  (2026-10-05 review): once the day's orders were used up, `auto_apply()`
+  returned before touching a single candidate and left no trace — five
+  `pre_open` SELLs filled the cap that day, and `pre_close`'s three BUYs
+  (IREN, PDSB, SDEV, 85–100 confidence) looked in every report like calls
+  that were simply never picked. `_record_capped()` writes each untried
+  BUY/SELL (ranked, one per ticker) to the attempt log with status
+  `capped` and a reason naming the cap, both when the cap was already used
+  up on entry and when it's reached partway down the ranked list. Persisted
+  only: the return value, and so the per-checkpoint digest, is unchanged.
+  `capped` is neither a refusal (no guardrail judged it, so it isn't in the
+  refusal breakdown) nor a size skip. The daily summary collapses them to one
+  row per checkpoint; the weekly review counts them separately, runs the
+  hindsight check on them ("auto-capped: daily trade limit"), and — because
+  they now have an attempt record — no longer files them under "never
+  decided", which had inflated the evidence for lengthening
+  `approval_expiry_hours`.
 - It writes its own `data/approvals/` decision — tagged `terms.source: "auto"`
   — then calls the exact same `submit_approved_order()` a human's approval
   would. Every guardrail still runs: `trading_enabled`, the options ban, the
