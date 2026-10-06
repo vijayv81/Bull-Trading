@@ -443,6 +443,7 @@ def build_daily_summary(day: str | None = None) -> dict:
     say anything, same threshold propose_weight_adjustments() itself uses.
     """
     from trading_agent.journal import load_entries
+    from trading_agent.optimizations import options_proposed_on
     from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
 
     day = day or today()
@@ -485,6 +486,9 @@ def build_daily_summary(day: str | None = None) -> dict:
         "scoring_weights": load_agent_config().get("scoring_weights", {}),
         "signal_hit_rates": signal_hit_rates,
         "learning_outcome": _learning_outcome_note(signal_hit_rates),
+        # Today's proposal as a saved, applicable option (optimizations.
+        # propose_daily()) — what the email's "review & approve" PR carries.
+        "optimization_options": options_proposed_on(day),
     }
 
 

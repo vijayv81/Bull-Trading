@@ -60,6 +60,12 @@ EXPIRY_STEP_HOURS = 1
 MIN_LOGGED_REFUSALS = 10
 STALE_REFUSAL_SHARE = 0.5
 MIN_NEVER_DECIDED = 10
+# After a scoring-weight shift is applied, no new one is offered for this
+# long. The daily proposal re-reads the same rolling hit rates every day, so
+# without a pause a merged shift would be re-proposed the next morning (and
+# the one after) on evidence that hasn't materially changed, walking the
+# weights 0.05 a day.
+WEIGHT_COOLDOWN_DAYS = 7
 
 
 class OptimizationRefused(Exception):
@@ -88,6 +94,21 @@ def _change(path: str, current: Any, proposed: Any) -> dict[str, Any]:
     return {"file": CLICKABLE_SETTINGS[path][0], "path": path, "from": current, "to": proposed}
 
 
+def _weights_applied_within(days: int, now: datetime | None = None) -> bool:
+    """True if any applied option changed a scoring weight in the last `days`."""
+    cutoff = (now or datetime.now(timezone.utc)).timestamp() - days * 86400
+    for day in _option_days():
+        for rec in load_json_list(OPTIMIZATIONS_DIR / day / "applied.json"):
+            if not any(str(c.get("path", "")).startswith("scoring_weights.") for c in rec.get("changes", [])):
+                continue
+            try:
+                if datetime.fromisoformat(rec["applied_at"]).timestamp() >= cutoff:
+                    return True
+            except (KeyError, ValueError):
+                continue
+    return False
+
+
 def build_options(review: dict[str, Any]) -> list[dict[str, Any]]:
     """Concrete options from a build_weekly_learning_review() result. Each is
     only offered when the review's own data clears a minimum-evidence bar,
@@ -110,6 +131,7 @@ def build_options(review: dict[str, Any]) -> list[dict[str, Any]]:
             and best_path in CLICKABLE_SETTINGS
             and worst_w is not None
             and best_w is not None
+            and not _weights_applied_within(WEIGHT_COOLDOWN_DAYS)
             and worst_w - WEIGHT_STEP >= CLICKABLE_SETTINGS[worst_path][1]
             and best_w + WEIGHT_STEP <= CLICKABLE_SETTINGS[best_path][2]
         ):
@@ -196,6 +218,41 @@ def save_options(options: list[dict[str, Any]], day: str) -> Path:
     path = day_dir(OPTIMIZATIONS_DIR, day) / "options.json"
     path.write_text(json.dumps(options, indent=2, default=str))
     return path
+
+
+def add_options(options: list[dict[str, Any]], day: str) -> Path:
+    """save_options() that keeps what's already saved for `day` (the weekly
+    review and the daily proposal can both write the same day's file)."""
+    path = day_dir(OPTIMIZATIONS_DIR, day) / "options.json"
+    existing = load_json_list(path)
+    have = {o["id"] for o in existing}
+    path.write_text(json.dumps(existing + [o for o in options if o["id"] not in have], indent=2, default=str))
+    return path
+
+
+def propose_daily(day: str, signal_hit_rates: dict[str, Any]) -> list[dict[str, Any]]:
+    """The daily summary's learning proposal as a saved, applicable option.
+
+    Only the scoring-weight shift: the refusal and expiry options are built
+    from the weekly review's 30-day evidence and stay weekly. Same
+    minimum-evidence bar as the weekly review (build_options()), and nothing
+    is offered that an already-pending option already proposes. Returns the
+    newly saved options."""
+    pending = {json.dumps(o["changes"], sort_keys=True) for o in pending_options()}
+    fresh = [
+        o
+        for o in build_options({"window_end": day, "signal_hit_rates": signal_hit_rates})
+        if json.dumps(o["changes"], sort_keys=True) not in pending
+    ]
+    if fresh:
+        add_options(fresh, day)
+    return fresh
+
+
+def options_proposed_on(day: str) -> list[dict[str, Any]]:
+    """Options saved for `day` that can still apply (what the daily email's
+    review section describes)."""
+    return [o for o in open_options() if o["proposed_on"] == day]
 
 
 def _option_days() -> list[str]:

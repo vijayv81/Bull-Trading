@@ -159,6 +159,29 @@ every time: proposals are never applied automatically. No proposal yet
 (too little journaled history for `propose_weight_adjustments()` to say
 anything) reports exactly that, not a fabricated finding.
 
+**The daily proposal goes through a PR the user merges**, per user instruction
+2026-10-05 ("apply the daily learning recommendation ... and modify the daily
+email to include a clickable link to approve/merge the changes"). At
+`pre_close`, `trading-agent optimizations propose` turns the same per-signal
+hit rates the email shows into a saved, applicable option (the scoring-weight
+shift only — the refusal and expiry options need the weekly review's 30-day
+evidence), with the same minimum-evidence bar as the weekly review. If it
+produces one, the routine applies it **on its own branch**
+(`optimization/<id>`), pushes, and opens a PR it **never merges**, then runs
+`trading-agent daily-summary --pr-url <url>`: the email's "Review & approve
+today's change" section shows the exact config change, why, and the effect,
+with a button to the PR. Merging is the approval; closing the PR leaves the
+weights alone. The routine's `pre_close` snapshot commit still self-merges as
+before; only this config-change PR waits for you. Without a PR URL (or
+without a proposal) the email is unchanged. See
+`.claude/skills/trading-report/SKILL.md` for the exact commands.
+
+Two limits keep a daily cadence from walking the weights: no new weight shift
+is proposed for `WEIGHT_COOLDOWN_DAYS` (7) after one is applied (the rolling
+hit rates barely move day to day, so the next morning would re-propose the
+same shift), and nothing is proposed that an already-pending option already
+proposes.
+
 `trading-agent weekly-report` builds `reporting/report_builder.py`'s weekly
 markdown rollup (`reports/weekly/<year>-W<week>.md`) *and* emails/SMS it —
 `build_weekly_report()` itself only ever wrote the file; nothing sent it

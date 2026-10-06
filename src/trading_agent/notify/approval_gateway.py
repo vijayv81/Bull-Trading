@@ -238,7 +238,7 @@ def _auto_result_line(result: dict[str, Any]) -> str:
     return f"- {result['ticker']}: {status} — {result.get('reason', '')}"
 
 
-def notify_daily_summary(summary: dict[str, Any]) -> None:
+def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> None:
     """End-of-day learnings + benchmark comparison email/SMS (plan §12) — one
     per day, separate from notify_digest()'s per-checkpoint messages. `summary`
     is reporting.report_builder.build_daily_summary()'s return.
@@ -335,6 +335,12 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
 
     lines.append("")
     lines.append("Learning & optimization:")
+    options = summary.get("optimization_options") or []
+    if pr_url and options:
+        lines.append("Review & approve today's proposed change (merge the PR):")
+        lines.append(f"  {pr_url}")
+        lines.extend(f"  {line}" for line in _daily_pr_lines(options))
+        lines.append("")
     for p in summary.get("optimization_proposals") or []:
         lines.append(f"- {p}")
     signal_hit_rates = summary.get("signal_hit_rates") or {}
@@ -348,14 +354,21 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
     if weights:
         weight_str = ", ".join(f"{k} {v:g}" for k, v in weights.items())
         lines.append(f"  Weights currently in effect: {weight_str}")
-    lines.append(
-        "  Proposals are never applied automatically — incorporating one means a human "
-        "edits config/agent_config.yaml and commits the change deliberately."
-    )
+    if pr_url and options:
+        lines.append(
+            "  Nothing changes until you merge the PR above — proposals are never applied automatically."
+        )
+    else:
+        lines.append(
+            "  Proposals are never applied automatically — incorporating one means a human "
+            "edits config/agent_config.yaml and commits the change deliberately."
+        )
 
     subject = f"[Bull-Trading] Daily summary — {summary['day']}"
+    if pr_url and options:
+        subject += " — change to approve"
     body = "\n".join(lines)
-    html_body = _daily_summary_html(summary)
+    html_body = _daily_summary_html(summary, pr_url)
 
     if "email" in channels:
         try:
@@ -381,7 +394,7 @@ def notify_daily_summary(summary: dict[str, Any]) -> None:
             print(f"NOTIFY (daily summary sms) failed: {exc}")
 
 
-def _daily_summary_html(summary: dict[str, Any]) -> str:
+def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> str:
     from trading_agent.notify import html as h
 
     portfolio_pct = summary["portfolio_return_pct"]
@@ -480,6 +493,10 @@ def _daily_summary_html(summary: dict[str, Any]) -> str:
         inner += h.muted("No journaled decisions today.")
 
     inner += h.section_heading("Learning &amp; Optimization")
+    pr_options = summary.get("optimization_options") or []
+    if pr_url and pr_options:
+        inner += h.section_heading("Review &amp; approve today's change")
+        inner += _daily_pr_html(pr_options, pr_url)
     proposals = summary.get("optimization_proposals") or []
     if proposals:
         for p in proposals:
@@ -504,10 +521,13 @@ def _daily_summary_html(summary: dict[str, Any]) -> str:
         weight_str = ", ".join(f"{k} {v:g}" for k, v in weights.items())
         inner += h.muted(f"Weights currently in effect: {weight_str}")
 
-    inner += h.muted(
-        "Proposals are never applied automatically — incorporating one means a human edits "
-        "config/agent_config.yaml and commits the change deliberately."
-    )
+    if pr_url and pr_options:
+        inner += h.muted("Nothing changes until you merge the PR above — proposals are never applied automatically.")
+    else:
+        inner += h.muted(
+            "Proposals are never applied automatically — incorporating one means a human edits "
+            "config/agent_config.yaml and commits the change deliberately."
+        )
 
     return h.wrap("Daily Summary", summary["day"], inner)
 
@@ -658,6 +678,34 @@ def _optimization_options_html(review: dict[str, Any]) -> str:
         "on the next page. The next checkpoint run applies it within fixed limits and commits it to "
         "git, so it can be reverted."
     )
+
+
+def _daily_pr_lines(options: list[dict[str, Any]]) -> list[str]:
+    """What the daily email's PR changes and what merging does — shared by the
+    plain-text and HTML renderings so they can't drift apart."""
+    lines: list[str] = []
+    for option in options:
+        lines.append(option["title"])
+        for c in option["changes"]:
+            lines.append(f"  {c['path']}: {c['from']} -> {c['to']}")
+        lines.append(f"  Why: {option['why']}")
+        lines.append(f"  Effect: {option['effect']}")
+    lines.append(
+        "Merging applies the change to main, and the next checkpoint uses it. Closing the PR "
+        "without merging leaves the weights as they are."
+    )
+    return lines
+
+
+def _daily_pr_html(options: list[dict[str, Any]], pr_url: str) -> str:
+    from html import escape
+
+    from trading_agent.notify import html as h
+
+    body = "".join(
+        f'<div style="font-size:14px;padding:2px 0;">{escape(line)}</div>' for line in _daily_pr_lines(options)
+    )
+    return body + h.button("Review and merge the change", pr_url)
 
 
 def _report_pr_summary(review: dict[str, Any]) -> list[str]:

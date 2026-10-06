@@ -73,7 +73,10 @@ without editing their instructions by hand — see "Refining them" below.
 At `pre_close`, also invoke **`trading-journal`** to mark outcomes and
 aggregate performance, **`trading-report`** to build the daily report and
 commit the day's snapshot, and **`trading-report`'s daily-summary step** to
-send the end-of-day learnings + SPY comparison email.
+send the end-of-day learnings + SPY comparison email. That step first runs
+`trading-agent optimizations propose` and, when the day's learning clears the
+evidence bar, opens a PR with the config change (never merged by the routine)
+so the email can link to it as "review & merge".
 
 Invoke the skill rather than reaching for the CLI directly. The skills carry the
 refusal handling, the "never decide for the user" rule, and the accumulated
