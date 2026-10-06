@@ -1,0 +1,38 @@
+[
+  {
+    "ticker": "TSLA",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "INLF",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "ABLVW",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "FVNNU",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "VJET",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "XRPN",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "midday"
+  }
+]
