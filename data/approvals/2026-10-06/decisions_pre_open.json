@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "MGLD",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2326.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-06T12:49:04.213291+00:00"
+  },
+  {
+    "ticker": "DAICW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 158345.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-06T12:49:08.396092+00:00"
+  },
+  {
+    "ticker": "APUS",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 180.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-06T12:49:11.691305+00:00"
+  },
+  {
+    "ticker": "INLF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 319.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-06T12:49:14.621642+00:00"
+  },
+  {
+    "ticker": "ABLVW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 45613.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-06T12:49:17.742633+00:00"
+  }
+]
