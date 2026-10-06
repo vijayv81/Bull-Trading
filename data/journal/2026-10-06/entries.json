@@ -1,0 +1,46 @@
+[
+  {
+    "ticker": "DAICW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 66.5,
+    "reasoning": "Auto-applied: confidence 66.5 (technical=0.5691876288717225, sentiment=None, catalyst=0.6666666666666666, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-38.09)",
+    "reference_price": 0.0073,
+    "recorded_at": "2026-10-06T12:49:10.241306+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "APUS",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 36.7,
+    "reasoning": "Auto-applied: confidence 36.7 (technical=0.0, sentiment=0.5, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-31.33)",
+    "reference_price": 4.48,
+    "recorded_at": "2026-10-06T12:49:13.322940+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "INLF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 31.1,
+    "reasoning": "Auto-applied: confidence 31.1 (technical=0.0, sentiment=0.3333333333333333, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-33.2)",
+    "reference_price": 2.93,
+    "recorded_at": "2026-10-06T12:49:16.355272+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "ABLVW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 16.2,
+    "reasoning": "Auto-applied: confidence 16.2 (technical=0.20366276346139156, sentiment=0.0, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.27)",
+    "reference_price": 0.01635,
+    "recorded_at": "2026-10-06T12:49:19.581446+00:00",
+    "outcome": null
+  }
+]
