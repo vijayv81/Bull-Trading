@@ -32,6 +32,16 @@ def _day_recs(day: str) -> list[dict]:
     return items
 
 
+def _day_halts(day: str) -> list[dict]:
+    """Checkpoints that halted that day (notify.approval_gateway.
+    record_checkpoint_halt()), in the order they happened."""
+    items: list[dict] = []
+    if (RECOMMENDATIONS_DIR / day).exists():
+        for path in (RECOMMENDATIONS_DIR / day).glob("halt_*.json"):
+            items.extend(load_json_list(path))
+    return sorted(items, key=lambda h: h.get("halted_at", ""))
+
+
 def _day_decisions(day: str) -> list[dict]:
     items = []
     for path in sorted((APPROVALS_DIR / day).glob("decisions_*.json")) if (APPROVALS_DIR / day).exists() else []:
@@ -504,6 +514,7 @@ def build_daily_summary(day: str | None = None) -> dict:
         # propose_daily()) — what the email's "review & approve" PR carries.
         "optimization_options": options_proposed_on(day),
         "as_of_note": _as_of_note(),
+        "halted_checkpoints": _day_halts(day),
     }
 
 

@@ -855,3 +855,14 @@ def test_as_of_note_flags_a_summary_taken_before_the_close():
     assert "16:30 ET" in after and "before the 4:00pm" not in after
     weekend = rb._as_of_note(datetime(2026, 10, 3, 10, 0, tzinfo=et))  # a Saturday
     assert "before the 4:00pm" not in weekend
+
+
+def test_day_halts_reads_the_halt_records_in_order(monkeypatch, tmp_path):
+    monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path)
+    day = "2026-10-05"
+    append_json(day_dir(tmp_path, day) / "halt_midday.json", {"checkpoint": "midday", "reason": "b", "halted_at": "2026-10-05T16:30:00"})
+    append_json(day_dir(tmp_path, day) / "halt_market_open.json", {"checkpoint": "market_open", "reason": "a", "halted_at": "2026-10-05T13:40:00"})
+    append_json(day_dir(tmp_path, day) / "recs_midday.json", _rec("X", "midday", "BUY"))  # not a halt
+    assert [h["checkpoint"] for h in rb._day_halts(day)] == ["market_open", "midday"]
+    assert rb._day_halts("2026-10-06") == []
+    assert [r["ticker"] for r in rb._day_recs(day)] == ["X"]  # halt files never read as recommendations

@@ -86,6 +86,15 @@ A halt reading `Cannot verify ... refusing to proceed blind` means Alpaca was
 unreachable, not that money was lost. Say so plainly, since the remedy is
 completely different — check credentials and connectivity, then re-run.
 
+Either way the halt has already been **emailed to the user and recorded** by
+the run itself (`notify_checkpoint_halted()`: an email titled "<checkpoint>
+HALTED — no recommendations this run", plus
+`data/recommendations/<day>/halt_<checkpoint>.json`), so don't send anything
+yourself. In a scheduled run, still commit that record per "Persist the
+checkpoint's output" below — it's the audit trail showing why this checkpoint
+has no recommendations, and the daily summary lists it under "Halted
+checkpoints".
+
 ## When you see a DATA QUALITY ALERT
 
 This isn't a halt — the checkpoint still completes and still writes

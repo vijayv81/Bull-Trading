@@ -206,7 +206,8 @@ instruction 2026-10-02. The email carries an HTML rendering of the markdown
 
 ## Human-approval notifications (plan §8/§12)
 
-Two, deliberately different in cadence:
+Two, deliberately different in cadence (plus a third for the case where the
+checkpoint itself doesn't run — see "Halted checkpoints" below):
 
 1. **Immediate, per checkpoint** — `notify_digest()` (`notify/approval_gateway.py`),
    called from `orchestrator.run_checkpoint()` right after scoring. Every time
@@ -246,6 +247,25 @@ mobile-friendly HTML rendering (`notify/html.py` — inline styles only, no
 external CSS/webfonts, so it renders consistently in Gmail/Apple Mail on a
 phone) alongside the plain-text body `senders.send_email()` already sent;
 plain text remains the fallback for clients that strip HTML.
+
+**Halted checkpoints send an email**, per user instruction 2026-10-05
+(after `market_open` ended in about a minute that day with nothing saved and
+nothing sent). Every notification above is silent on a quiet run, so a
+checkpoint that halted before researching anything — `run_checkpoint()`
+raising `RoutineHalted`, today only `guardrails.daily_loss_reason()` (the 2%
+daily loss cap, or its fail-closed "Cannot verify ... refusing to proceed
+blind" variant when Alpaca can't be read) — looked exactly like "nothing
+actionable." `notify_checkpoint_halted()` now emails (and SMS, if enabled) "the
+<checkpoint> checkpoint HALTED and did not run", with the reason and what
+that means, and writes `data/recommendations/<day>/halt_<checkpoint>.json`
+(committed by the snapshot, never read as recommendations). The daily summary
+lists the day's halts under "Halted checkpoints". Gated by
+`notifications.checkpoint_halt_enabled` (default `true`; `false` is the
+one-line revert, the record is written either way). A failing notification
+or record write never masks the halt itself — `run_checkpoint()` still
+raises `RoutineHalted`. Not covered: a checkpoint that dies on an unexpected
+exception or a cloud session that ends early (the 10-05 `market_open` cause is
+unknown); those still leave no trace.
 
 ## Weekly learning review (new routine, Saturdays)
 
