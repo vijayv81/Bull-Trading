@@ -8,7 +8,13 @@
     "reasoning": "Auto-applied: confidence 66.5 (technical=0.5691876288717225, sentiment=None, catalyst=0.6666666666666666, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-38.09)",
     "reference_price": 0.0073,
     "recorded_at": "2026-10-06T12:49:10.241306+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 0.0073,
+      "price_at_measurement": 0.0087,
+      "pct_change": 19.18,
+      "directionally_correct": false,
+      "measured_at": "2026-10-06T19:52:48.668320+00:00"
+    }
   },
   {
     "ticker": "APUS",
@@ -19,7 +25,13 @@
     "reasoning": "Auto-applied: confidence 36.7 (technical=0.0, sentiment=0.5, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-31.33)",
     "reference_price": 4.48,
     "recorded_at": "2026-10-06T12:49:13.322940+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 4.48,
+      "price_at_measurement": 7.75,
+      "pct_change": 72.99,
+      "directionally_correct": false,
+      "measured_at": "2026-10-06T19:52:49.087723+00:00"
+    }
   },
   {
     "ticker": "INLF",
@@ -30,7 +42,13 @@
     "reasoning": "Auto-applied: confidence 31.1 (technical=0.0, sentiment=0.3333333333333333, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-33.2)",
     "reference_price": 2.93,
     "recorded_at": "2026-10-06T12:49:16.355272+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 2.93,
+      "price_at_measurement": 3.36,
+      "pct_change": 14.68,
+      "directionally_correct": false,
+      "measured_at": "2026-10-06T19:52:49.532922+00:00"
+    }
   },
   {
     "ticker": "ABLVW",
@@ -41,7 +59,13 @@
     "reasoning": "Auto-applied: confidence 16.2 (technical=0.20366276346139156, sentiment=0.0, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.27)",
     "reference_price": 0.01635,
     "recorded_at": "2026-10-06T12:49:19.581446+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 0.01635,
+      "price_at_measurement": 0.01885,
+      "pct_change": 15.29,
+      "directionally_correct": false,
+      "measured_at": "2026-10-06T19:52:50.052977+00:00"
+    }
   },
   {
     "ticker": "DAICW",
@@ -52,6 +76,12 @@
     "reasoning": "Auto-applied: confidence 67.6 (technical=0.5691876288717225, sentiment=0.5, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-38.09)",
     "reference_price": 0.01185,
     "recorded_at": "2026-10-06T13:44:23.562345+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 0.01185,
+      "price_at_measurement": 0.0087,
+      "pct_change": -26.58,
+      "directionally_correct": true,
+      "measured_at": "2026-10-06T19:52:50.483620+00:00"
+    }
   }
 ]
