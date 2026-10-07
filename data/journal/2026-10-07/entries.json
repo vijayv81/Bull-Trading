@@ -1,0 +1,57 @@
+[
+  {
+    "ticker": "TSLA",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 88.1,
+    "reasoning": "Auto-applied: confidence 88.1 (technical=0.8888880793985134, sentiment=0.75, catalyst=1.0, fundamental=None)",
+    "reference_price": 383.54499999999996,
+    "recorded_at": "2026-10-07T12:48:46.370785+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "APUS",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 41.2,
+    "reasoning": "Auto-applied: confidence 41.2 (technical=0.14426972747483305, sentiment=1.0, catalyst=0.3333333333333333, fundamental=None), sell_pressure=0.51 (position_pnl_pct=8.1)",
+    "reference_price": 6.975,
+    "recorded_at": "2026-10-07T12:48:49.411121+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "INLF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 41.2,
+    "reasoning": "Auto-applied: confidence 41.2 (technical=0.0, sentiment=1.0, catalyst=0.6666666666666666, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-28.86)",
+    "reference_price": 3.51,
+    "recorded_at": "2026-10-07T12:48:52.639708+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "ABLVW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 19.2,
+    "reasoning": "Auto-applied: confidence 19.2 (technical=0.18173189876513082, sentiment=0.0, catalyst=0.6666666666666666, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.27)",
+    "reference_price": 0.01705,
+    "recorded_at": "2026-10-07T12:48:55.495966+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "VCIG",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 90.0,
+    "reasoning": "Auto-applied: confidence 90.0 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None)",
+    "reference_price": 1.6400000000000001,
+    "recorded_at": "2026-10-07T12:55:12.385757+00:00",
+    "outcome": null
+  }
+]
