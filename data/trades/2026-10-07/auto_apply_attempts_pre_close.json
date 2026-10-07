@@ -1,0 +1,56 @@
+[
+  {
+    "ticker": "MGLD",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "TSLA",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "APUS",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "ABLVW",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "INLF",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "XRPN",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "XRPNU",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "ALISU",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "PFAI",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  }
+]
