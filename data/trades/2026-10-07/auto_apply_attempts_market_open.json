@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "MGLD",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "APUS",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "INLF",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABLVW",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "GCDT",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  }
+]
