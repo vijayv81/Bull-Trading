@@ -8,7 +8,13 @@
     "reasoning": "Auto-applied: confidence 88.1 (technical=0.8888880793985134, sentiment=0.75, catalyst=1.0, fundamental=None)",
     "reference_price": 383.54499999999996,
     "recorded_at": "2026-10-07T12:48:46.370785+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 383.54499999999996,
+      "price_at_measurement": 378.185,
+      "pct_change": -1.4,
+      "directionally_correct": false,
+      "measured_at": "2026-10-07T19:54:44.513470+00:00"
+    }
   },
   {
     "ticker": "APUS",
@@ -19,7 +25,13 @@
     "reasoning": "Auto-applied: confidence 41.2 (technical=0.14426972747483305, sentiment=1.0, catalyst=0.3333333333333333, fundamental=None), sell_pressure=0.51 (position_pnl_pct=8.1)",
     "reference_price": 6.975,
     "recorded_at": "2026-10-07T12:48:49.411121+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 6.975,
+      "price_at_measurement": 6.64,
+      "pct_change": -4.8,
+      "directionally_correct": true,
+      "measured_at": "2026-10-07T19:54:44.918682+00:00"
+    }
   },
   {
     "ticker": "INLF",
@@ -30,7 +42,13 @@
     "reasoning": "Auto-applied: confidence 41.2 (technical=0.0, sentiment=1.0, catalyst=0.6666666666666666, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-28.86)",
     "reference_price": 3.51,
     "recorded_at": "2026-10-07T12:48:52.639708+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 3.51,
+      "price_at_measurement": 3.385,
+      "pct_change": -3.56,
+      "directionally_correct": true,
+      "measured_at": "2026-10-07T19:54:45.374830+00:00"
+    }
   },
   {
     "ticker": "ABLVW",
@@ -41,7 +59,13 @@
     "reasoning": "Auto-applied: confidence 19.2 (technical=0.18173189876513082, sentiment=0.0, catalyst=0.6666666666666666, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.27)",
     "reference_price": 0.01705,
     "recorded_at": "2026-10-07T12:48:55.495966+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 0.01705,
+      "price_at_measurement": 0.01855,
+      "pct_change": 8.8,
+      "directionally_correct": false,
+      "measured_at": "2026-10-07T19:54:45.849442+00:00"
+    }
   },
   {
     "ticker": "VCIG",
@@ -52,6 +76,12 @@
     "reasoning": "Auto-applied: confidence 90.0 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None)",
     "reference_price": 1.6400000000000001,
     "recorded_at": "2026-10-07T12:55:12.385757+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1.6400000000000001,
+      "price_at_measurement": 0.81955,
+      "pct_change": -50.03,
+      "directionally_correct": false,
+      "measured_at": "2026-10-07T19:54:46.268889+00:00"
+    }
   }
 ]
