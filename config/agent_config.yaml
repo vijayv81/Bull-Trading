@@ -33,8 +33,8 @@ credentials:
 # propose_weight_adjustments() for the human-reviewed weekly proposal step (§6.3) —
 # nothing here is ever auto-adjusted.
 scoring_weights:
-  sentiment: 0.25
-  technical: 0.35
+  sentiment: 0.2
+  technical: 0.4
   fundamental: 0.15
   catalyst: 0.15
   historical_hitrate: 0.10

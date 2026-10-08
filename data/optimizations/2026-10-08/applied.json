@@ -1,0 +1,23 @@
+[
+  {
+    "option_id": "2026-10-08-weights-sentiment-to-technical",
+    "title": "Shift 0.05 of scoring weight from sentiment to technical",
+    "changes": [
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.sentiment",
+        "from": 0.25,
+        "to": 0.2
+      },
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.technical",
+        "from": 0.35,
+        "to": 0.4
+      }
+    ],
+    "loosens_guardrail": false,
+    "decided_by": "daily-pr",
+    "applied_at": "2026-10-08T19:53:10.395962+00:00"
+  }
+]
