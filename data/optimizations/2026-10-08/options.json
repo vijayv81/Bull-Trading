@@ -1,0 +1,56 @@
+[
+  {
+    "id": "2026-10-08-weights-sentiment-to-technical",
+    "title": "Shift 0.05 of scoring weight from sentiment to technical",
+    "why": "sentiment has agreed with actual price direction 29% of the time over 14 measured calls, vs. technical's 50% over 20.",
+    "effect": "Confidence scores lean slightly more on technical and less on sentiment.",
+    "loosens_guardrail": false,
+    "changes": [
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.sentiment",
+        "from": 0.25,
+        "to": 0.2
+      },
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.technical",
+        "from": 0.35,
+        "to": 0.4
+      }
+    ],
+    "risk": "Scoring weights were last changed on 2026-10-06 (2 day(s) ago): Shift 0.05 of scoring weight from catalyst to technical. The hit rates behind this proposal have had little time to change, so consider waiting."
+  },
+  {
+    "id": "2026-10-08-max-price-drift-5",
+    "title": "Raise the stale-price limit from 4% to 5%",
+    "why": "54 of 66 logged auto-apply refusals (82%; 9 of the last 30 days, since 2026-09-30) were blocked because the price or signal moved between scoring and submission.",
+    "effect": "Orders whose price moved up to 5% since scoring can go through instead of being refused.",
+    "loosens_guardrail": true,
+    "risk": "Loosens a guardrail: some of those blocked orders would have lost money (see 'Opportunities lost or avoided'). The technical re-check still runs.",
+    "changes": [
+      {
+        "file": "risk_limits.yaml",
+        "path": "execution.max_price_drift_pct",
+        "from": 4.0,
+        "to": 5.0
+      }
+    ]
+  },
+  {
+    "id": "2026-10-08-approval-expiry-3h",
+    "title": "Keep recommendations approvable for 3h instead of 2h",
+    "why": "118 actionable recommendations over the last 30 days expired with no decision recorded.",
+    "effect": "More time to approve or reject from the email before a recommendation lapses.",
+    "loosens_guardrail": true,
+    "risk": "An older approval can still execute; the stale-price re-check at submission is what limits how far the market can have moved.",
+    "changes": [
+      {
+        "file": "risk_limits.yaml",
+        "path": "operational.approval_expiry_hours",
+        "from": 2,
+        "to": 3
+      }
+    ]
+  }
+]
