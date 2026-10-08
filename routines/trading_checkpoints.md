@@ -1,4 +1,4 @@
-# Routines: the four daily checkpoints
+# Routines: the four daily checkpoints, plus the 4:30pm post-close wrap-up
 
 Scheduled Claude Code routines (set up via the `/schedule` skill) that run the
 research/scoring pipeline at each checkpoint and surface recommendations for
@@ -20,6 +20,11 @@ before touching any of that config.
 
 Each is the same pipeline (research → data → score → notify), just weighted
 differently — see `src/trading_agent/orchestrator.py:run_checkpoint()`.
+
+A fifth weekday routine, **`post_close` at 16:30 ET**, is not a checkpoint: it
+researches nothing and proposes nothing. It is the end-of-day wrap-up, run
+after the market closes so that the day's return, the marked outcomes and the
+closing balance are final (see "The 4:30pm post_close wrap-up" below).
 
 ## Capabilities are skills
 
@@ -70,17 +75,39 @@ without editing their instructions by hand — see "Refining them" below.
    take, **invoke `trading-trade`** for the approval flow, then
    **`trading-journal`** to capture their reasoning while it's fresh.
 
-At `pre_close`, also invoke **`trading-journal`** to mark outcomes and
-aggregate performance, **`trading-report`** to build the daily report and
-commit the day's snapshot, and **`trading-report`'s daily-summary step** to
-send the end-of-day learnings + SPY comparison email. That step first runs
-`trading-agent optimizations propose` and, when the day's learning clears the
-evidence bar, opens a PR with the config change (never merged by the routine)
-so the email can link to it as "review & merge".
+`pre_close` is only a checkpoint: steps 0–4 above, including the "Persist the
+checkpoint's output" commit in `trading-research`. It no longer does the
+end-of-day wrap-up — that moved to the 4:30pm `post_close` routine below.
 
 Invoke the skill rather than reaching for the CLI directly. The skills carry the
 refusal handling, the "never decide for the user" rule, and the accumulated
 feedback; a bare `trading-agent` call carries none of it.
+
+## The 4:30pm post_close wrap-up
+
+Per user instruction 2026-10-08 ("move the daily summary to be generated after
+market closes, so return and outcomes recorded are final for the day.
+Schedule it at 4.30 pm et"). A `pre_close` run at 15:45 finishes around 15:55,
+five minutes before the close, so everything it measured was intraday: the
+day's return, the SPY comparison, the outcomes marked in `data/journal/`. The
+`post_close` routine runs at 16:30 ET on weekdays and does, in this order:
+
+1. **Get a push-authorized checkout** (same as step 1 above). It starts from a
+   fresh clone of `main`, which already holds all four checkpoints' commits.
+2. Invoke **`trading-journal`** to mark the day's outcomes (measured at the
+   day's *closing price* once the session is over) and aggregate performance.
+3. Invoke **`trading-report`** for the whole wrap-up, in its order: the daily
+   report; `trading-agent optimizations propose` and, when it names an option,
+   the PR that proposes it; `trading-agent daily-summary`; the pending-approvals
+   reminder; the weekly report on Fridays (so the week's closing balance is the
+   final Friday close); and finally the day's snapshot commit (PR, self-merged
+   like every other snapshot).
+
+No human is present; it never approves, rejects or sizes a trade, and it places
+no orders (the checkpoints do that). If a step fails it says so plainly in its
+completion message and carries on to the email, which must go out either way.
+The trigger uses a `CRON_TZ=America/New_York` expression (`30 16 * * 1-5`), so
+unlike the four UTC-cron checkpoints it follows DST by itself.
 
 ## Refining them
 
@@ -95,7 +122,8 @@ accumulates, and an entry that made sense in September may not in December.
 
 ## Setting it up
 
-Run `/schedule` four times (once per checkpoint), e.g.:
+Run `/schedule` four times (once per checkpoint) and once more for the
+`post_close` wrap-up, e.g.:
 
 > Create a weekday routine at 8:45am ET that runs `trading-agent checkpoint
 > pre_open` in `G:\My Drive\VSCode\Bull-Trading` and reports the recommendations.
@@ -110,6 +138,11 @@ submits its own top picks without a human approving them first — see
 CLAUDE.md's "Auto-apply" section before enabling that combination.
 
 ## Cloud cron schedules are UTC-only — recheck at each DST transition
+
+(The 4:30pm `post_close` wrap-up is exempt: its trigger carries a
+`CRON_TZ=America/New_York` prefix, which the trigger tools accept, so it stays
+at 4:30pm ET across both transitions with no update. Only the four below need
+it.)
 
 The four cloud routines (`bull-trading-pre-open/market-open/midday/pre-close`)
 are cron-triggered in UTC; the trigger platform has no timezone field, so the

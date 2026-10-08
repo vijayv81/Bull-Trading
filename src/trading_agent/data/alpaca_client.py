@@ -140,27 +140,72 @@ def get_recent_bars(ticker: str, lookback_days: int = 120) -> list[dict[str, Any
     return [bar.model_dump(mode="json") for bar in symbol_bars]
 
 
-def get_market_return_pct(symbol: str, lookback_days: int = 5) -> float | None:
-    """Latest available daily % change for `symbol` — the most recent daily
-    bar against the one before it. If called after today's session closes,
-    that's today's move; if called intraday, it's the last fully-formed bar
-    (typically yesterday's), same lag technical_score() already has for any
-    ticker. None when bars aren't available, never a guess — used both by
-    reporting/report_builder.py's benchmark comparison and by
-    scoring.recommendation_engine's market-regime stop-loss dampening
-    (orchestrator.run_checkpoint() calls this once per checkpoint for SPY,
-    not once per ticker).
+def _bar_et_date(bar: dict[str, Any]) -> str:
+    """The ET session date a daily bar belongs to (bars are stamped at midnight ET)."""
+    from zoneinfo import ZoneInfo
+
+    stamp = str(bar["timestamp"]).replace("Z", "+00:00")
+    return datetime.fromisoformat(stamp).astimezone(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+
+
+def get_closing_price(symbol: str, day: str) -> float | None:
+    """The close of `symbol`'s daily bar for the ET session `day`, or None if
+    there is no such bar (not a trading day, or not published yet). Never a
+    guess — callers fall back to a quote or report unavailable."""
+    from zoneinfo import ZoneInfo
+
+    today_et = datetime.now(ZoneInfo("America/New_York")).date()
+    lookback = max((today_et - datetime.strptime(day, "%Y-%m-%d").date()).days, 0) + 7
+    try:
+        bars = get_recent_bars(symbol, lookback_days=lookback)
+    except Exception:  # noqa: BLE001 - a missing bar must degrade to None, never raise
+        return None
+    try:
+        for bar in bars:
+            if _bar_et_date(bar) == day:
+                close = float(bar["close"])
+                return close if close > 0 else None
+    except (KeyError, ValueError, TypeError):
+        return None
+    return None
+
+
+def get_market_return_pct(symbol: str, lookback_days: int = 5, day: str | None = None) -> float | None:
+    """Daily % change for `symbol`.
+
+    With `day` (an ET session date) it is that session's close against the
+    session before it, and None if either bar is missing — it never quietly
+    reports a different day's move. The daily summary uses this: run at
+    3:55pm, "the latest bar" can be the PREVIOUS session's, which then got set
+    against today's portfolio return.
+
+    Without `day`: the most recent daily bar against the one before it. If
+    called after today's session closes, that's today's move; if called
+    intraday, it's the last fully-formed bar (typically yesterday's), same lag
+    technical_score() already has for any ticker. None when bars aren't
+    available, never a guess — used by orchestrator.run_checkpoint()'s
+    market-regime stop-loss dampening (once per checkpoint, for SPY).
     """
     try:
         bars = get_recent_bars(symbol, lookback_days=lookback_days)
     except Exception:  # noqa: BLE001 - a benchmark read must degrade to None, never raise
         return None
-    if len(bars) < 2:
-        return None
-    prior_close = float(bars[-2]["close"])
+    if day is not None:
+        try:
+            dates = [_bar_et_date(b) for b in bars]
+        except (KeyError, ValueError, TypeError):
+            return None
+        if day not in dates or dates.index(day) == 0:
+            return None
+        index = dates.index(day)
+        prior_close, close = float(bars[index - 1]["close"]), float(bars[index]["close"])
+    else:
+        if len(bars) < 2:
+            return None
+        prior_close, close = float(bars[-2]["close"]), float(bars[-1]["close"])
     if prior_close <= 0:
         return None
-    return round((float(bars[-1]["close"]) - prior_close) / prior_close * 100, 2)
+    return round((close - prior_close) / prior_close * 100, 2)
 
 
 def get_market_movers(top_n: int = 20) -> dict[str, Any]:

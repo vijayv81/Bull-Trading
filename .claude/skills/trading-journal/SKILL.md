@@ -1,6 +1,6 @@
 ---
 name: trading-journal
-description: Captures why a trading decision was made, in the user's own words, and later measures how it turned out. Use this immediately after any approve/reject decision, whenever the user explains their reasoning about a position, when they ask "how have my calls been doing?" or want to review past decisions, and at pre_close to mark outcomes. Use it even when they're just thinking out loud about why they like or dislike a setup — that reasoning is the input the scoring loop has no other way to get.
+description: Captures why a trading decision was made, in the user's own words, and later measures how it turned out. Use this immediately after any approve/reject decision, whenever the user explains their reasoning about a position, when they ask "how have my calls been doing?" or want to review past decisions, and at the post-close wrap-up to mark outcomes. Use it even when they're just thinking out loud about why they like or dislike a setup — that reasoning is the input the scoring loop has no other way to get.
 ---
 
 # Decision and outcome journal
@@ -46,7 +46,9 @@ they skip.
 
 ## Measure outcomes
 
-At `pre_close`, or whenever the user asks how calls have gone:
+In the 4:30pm `post_close` wrap-up (after the close, so each outcome is measured
+at the day's closing price and is final), or whenever the user asks how calls
+have gone:
 
 ```bash
 trading-agent journal outcomes          # today
@@ -54,7 +56,7 @@ trading-agent journal outcomes --day YYYY-MM-DD
 ```
 
 Re-runnable by design: entries already marked are left alone, so this can run at
-every pre_close without double-counting. It skips entries whose reference price
+every wrap-up without double-counting. It skips entries whose reference price
 couldn't be captured rather than inventing one.
 
 To review:
@@ -94,7 +96,7 @@ and `propose-weights` read; skip this step and both keep working off stale (or
 empty) numbers no matter how much journal history piles up.
 
 It's cheap and re-runnable, so there's no harm running it every time you run
-`outcomes`, not just at pre_close.
+`outcomes`, not just at the post-close wrap-up.
 
 Don't over-read a small `n`. The command reports how many calls each hit rate
 is based on — say that number back to the user rather than just "62%", for the

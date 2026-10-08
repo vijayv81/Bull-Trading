@@ -214,9 +214,15 @@ def test_build_daily_summary_combines_portfolio_benchmark_and_journal(monkeypatc
         "trading_agent.data.alpaca_client.get_account",
         lambda: {"equity": "101000", "last_equity": "100000"},
     )
+    # "today" is the summary's day, so the live equity-vs-prior-close path applies,
+    # and the benchmark is that session's bar against the one before it.
+    monkeypatch.setattr(rb, "_today_et", lambda: "2026-09-24")
     monkeypatch.setattr(
         "trading_agent.data.alpaca_client.get_recent_bars",
-        lambda symbol, lookback_days=5: [{"close": 500.0}, {"close": 495.0}],
+        lambda symbol, lookback_days=5: [
+            {"close": 500.0, "timestamp": "2026-09-23T04:00:00Z"},
+            {"close": 495.0, "timestamp": "2026-09-24T04:00:00Z"},
+        ],
     )
     monkeypatch.setattr(
         "trading_agent.journal.load_entries",
@@ -1016,3 +1022,67 @@ def test_weekly_learning_review_leads_with_the_account_balance(monkeypatch, tmp_
     text = open(review["report_path"]).read()
     assert text.index("## Account balance") < text.index("## Trades over the lookback window")
     assert "- Net difference:" in text
+
+
+# --- the daily figures are the DAY's, not whatever bar happens to be latest ---
+
+
+def _spy_bars(*pairs):
+    return lambda symbol, lookback_days=5: [{"close": c, "timestamp": f"{d}T04:00:00Z"} for d, c in pairs]
+
+
+def test_benchmark_for_a_day_is_that_sessions_move_not_the_latest_bar(monkeypatch):
+    monkeypatch.setattr(rb, "_today_et", lambda: "2026-10-07")
+    # At 3:55pm today's bar isn't there yet: the latest bar is yesterday's.
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_recent_bars", _spy_bars(("2026-10-05", 100.0), ("2026-10-06", 102.0))
+    )
+    assert rb._benchmark_return_pct("SPY") == 2.0  # old, day-less behavior: yesterday's move
+    assert rb._benchmark_return_pct("SPY", day="2026-10-07") is None  # today's session isn't published: unavailable
+    assert rb._benchmark_return_pct("SPY", day="2026-10-06") == 2.0
+
+
+def test_benchmark_for_a_day_uses_that_days_bar_once_it_exists(monkeypatch):
+    monkeypatch.setattr(rb, "_today_et", lambda: "2026-10-07")
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_recent_bars",
+        _spy_bars(("2026-10-05", 100.0), ("2026-10-06", 102.0), ("2026-10-07", 101.0)),
+    )
+    assert rb._benchmark_return_pct("SPY", day="2026-10-07") == round((101.0 - 102.0) / 102.0 * 100, 2)
+
+
+def test_benchmark_for_a_day_with_no_prior_bar_is_unavailable(monkeypatch):
+    monkeypatch.setattr(rb, "_today_et", lambda: "2026-10-07")
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_recent_bars", _spy_bars(("2026-10-07", 101.0)))
+    assert rb._benchmark_return_pct("SPY", day="2026-10-07") is None
+
+
+def test_portfolio_return_for_an_earlier_day_comes_from_the_recorded_closes(monkeypatch):
+    monkeypatch.setattr(rb, "_today_et", lambda: "2026-10-08")
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_equity_by_close", lambda: {"2026-10-05": 94273.68, "2026-10-06": 95440.16}
+    )
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account", lambda: pytest.fail("a past day must not use live equity")
+    )
+    assert rb._portfolio_return_pct("2026-10-06") == 1.24
+
+
+def test_portfolio_return_for_today_is_live_equity_against_the_prior_close(monkeypatch):
+    monkeypatch.setattr(rb, "_today_et", lambda: "2026-10-07")
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account", lambda: {"equity": "102000", "last_equity": "100000"}
+    )
+    assert rb._portfolio_return_pct("2026-10-07") == 2.0
+
+
+def test_as_of_note_after_the_close():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    et = ZoneInfo("America/New_York")
+    after = rb._as_of_note(datetime(2026, 10, 7, 16, 30, tzinfo=et))
+    assert after == "Figures as of 16:30 ET, after the 4:00pm ET close"
+    assert "not final" not in after
+    assert "not final" in rb._as_of_note(datetime(2026, 10, 7, 15, 55, tzinfo=et))
+    assert rb._as_of_note(datetime(2026, 10, 10, 9, 0, tzinfo=et)) == "Figures as of 09:00 ET"  # weekend

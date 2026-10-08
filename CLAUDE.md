@@ -162,7 +162,7 @@ anything) reports exactly that, not a fabricated finding.
 **The daily proposal goes through a PR the user merges**, per user instruction
 2026-10-05 ("apply the daily learning recommendation ... and modify the daily
 email to include a clickable link to approve/merge the changes"). At
-`pre_close`, `trading-agent optimizations propose` turns the same per-signal
+the 4:30pm `post_close` wrap-up, `trading-agent optimizations propose` turns the same per-signal
 hit rates the email shows into a saved, applicable option (the scoring-weight
 shift only — the refusal and expiry options need the weekly review's 30-day
 evidence), with the same minimum-evidence bar as the weekly review. For each
@@ -171,7 +171,7 @@ option that needs one, the routine applies it **on its own branch**
 PR with `trading-agent optimizations record-pr <id> <url>`. `daily-summary`
 then shows, for every open option that has a recorded PR, the exact config
 change, why, the effect, and a button to that PR. Merging is the approval;
-closing the PR leaves the weights alone. The routine's `pre_close` snapshot
+closing the PR leaves the weights alone. The routine's end-of-day snapshot
 commit still self-merges as before; only this config-change PR waits for you.
 See `.claude/skills/trading-report/SKILL.md` for the exact commands.
 
@@ -233,22 +233,44 @@ establish a cost basis is listed but kept out of the total and counted; sells
 not yet filled are counted and excluded; an unreachable Alpaca says
 "unavailable", never $0.
 
-**"As of" note**, per the 2026-10-05 review: the summary is sent from the
-`pre_close` run, minutes before the 4:00pm ET close, so the portfolio-vs-SPY
-return (equity vs. prior close, live) and the marked outcomes are not
-final-close numbers. `_as_of_note()` puts "Figures as of HH:MM ET — before
-the 4:00pm ET close, so today's return and outcomes are not final" under the
-title in both renderings (no caveat on a weekend or after the close). A
-summary on final closing prices would need a separate after-close trigger.
+**The daily summary is generated after the close**, per user instruction
+2026-10-08 ("move the daily summary to be generated after market closes, so
+return and outcomes recorded are final for the day. Schedule it at 4.30 pm
+et"). It used to go out from the `pre_close` run (15:45, finishing ~15:55),
+five minutes before the close, so the day's return, the SPY comparison and the
+journal outcomes were all intraday. The whole end-of-day wrap-up — marking
+outcomes, the daily report, `optimizations propose`, `daily-summary`, the
+pending-approvals reminder, the Friday weekly report, and the snapshot commit —
+now runs in a separate **`post_close` routine at 16:30 ET** on weekdays
+(`routines/trading_checkpoints.md`); `pre_close` is a plain checkpoint. Making
+"final" true needed three code changes, not just a schedule:
+- **Outcomes are priced at the close.** `journal._measurement_price()` uses the
+  day's closing daily bar once the session is over (`price_basis: "close"` on
+  the outcome), because an after-hours quote can be stale or very wide on a thin
+  ticker; it falls back to the quote mid only with no bar (`"quote_mid"`).
+- **The SPY comparison is the same session.** `get_market_return_pct(day=...)`
+  returns that session's close against the previous one, and None if either bar
+  is missing. Before, "the latest bar" at 3:55pm could be the previous session's
+  move, set against today's portfolio return.
+- **The portfolio return is the day's.** For an earlier day it comes from the
+  recorded closes (`window_balances()`); for today, live equity vs. the prior
+  close, which after 4:00pm is the closing equity (Alpaca marks positions at the
+  last trade, so a thin name with extended-hours prints can differ slightly from
+  the official 8pm ET history point).
+`_as_of_note()` now says "Figures as of HH:MM ET, after the 4:00pm ET close"; a
+run before 16:00 (an ad hoc run) still says "before the 4:00pm ET close, so
+today's return and outcomes are not final". `post_close` starts from a fresh
+clone of `main`, so it sees what each checkpoint merged — if a checkpoint's
+persist PR failed, that checkpoint is missing from the summary.
 
 `trading-agent weekly-report` builds `reporting/report_builder.py`'s weekly
 markdown rollup (`reports/weekly/<year>-W<week>.md`) *and* emails/SMS it —
 `build_weekly_report()` itself only ever wrote the file; nothing sent it
 anywhere before `notify_weekly_report()`. No separate scheduled trigger for
-this: the `trading-report` skill runs it from `pre_close` on Fridays only
-(the last checkpoint of the trading week), reusing the existing Mon-Fri
-`pre_close` schedule rather than adding a new automation object for a
-once-a-week job. Its "Proposed model/config improvements" section lists
+this: the `trading-report` skill runs it from the `post_close` wrap-up on
+Fridays only (the last routine of the trading week, after the final close),
+reusing the existing Mon-Fri `post_close` schedule rather than adding a new
+automation object for a once-a-week job. Its "Proposed model/config improvements" section lists
 each still-open optimization option (`optimizations.open_options()`: not yet
 applied or dismissed, and still valid against today's config) with
 clickable Apply/Dismiss links to the Optimization Ticket page, per user
@@ -267,7 +289,7 @@ checkpoint itself doesn't run — see "Halted checkpoints" below):
    between "a recommendation needing a decision exists" and "a human is told."
 2. **Daily reminder for anything still undecided** — `trading-agent approvals
    remind` (`notify.approval_gateway.notify_pending_reminder()` /
-   `pending_approvals_today()`), run once from `pre_close`'s `trading-report`
+   `pending_approvals_today()`), run once from the `post_close` `trading-report`
    wrap-up. Sweeps all 4 checkpoints' recommendations for the day, not just
    `pre_close`'s own, and reports two groups: still within the approval
    window (genuinely actionable right now) and expired with no decision ever
@@ -327,7 +349,7 @@ Email should be sent out based on analysis, what recommendations were made
 and why. Set this job to run every Saturday 6am"): a fifth scheduled
 routine — see `routines/weekly_learning_review.md` for the full spec and
 how it's set up — distinct from the four weekday checkpoints and from the
-Friday `pre_close` weekly report, firing once a week on Saturday morning
+Friday `post_close` weekly report, firing once a week on Saturday morning
 when the market's closed.
 
 **Rolling 30-day analysis window**, per (the same day's) follow-up user

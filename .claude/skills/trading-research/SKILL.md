@@ -121,8 +121,9 @@ them, or to a later `trading-report` run — don't push without being asked.
 **No human is present (a scheduled routine, per its prompt saying so
 explicitly):** this is the only chance this checkpoint's output has to reach
 the repo — the session's local checkout is reclaimed once the run ends, and
-`pre_close`'s `trading-report` snapshot commit won't pick up an earlier
-checkpoint's files from a different, already-gone container. So, after
+the `post_close` wrap-up starts from a fresh clone of `main`, so it only sees
+what each checkpoint merged — it can't pick up an earlier checkpoint's files
+from a different, already-gone container. So, after
 reporting is otherwise ready: `git add data/recommendations/ data/approvals/
 data/trades/`, check `git status` before committing (same reasoning as
 `trading-report`'s snapshot commit — notice anything unexpected before it's

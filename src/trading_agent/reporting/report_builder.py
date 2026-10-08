@@ -416,12 +416,23 @@ def build_weekly_report(week_start: str | None = None) -> Path:
     return path
 
 
-def _portfolio_return_pct() -> float | None:
-    """Today's account return so far — same equity-vs-prior-close measure
+def _today_et() -> str:
+    from zoneinfo import ZoneInfo
+
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
+
+
+def _portfolio_return_pct(day: str | None = None) -> float | None:
+    """The account's return for `day` — same equity-vs-prior-close measure
     guardrails.daily_loss_reason() already uses, so this always agrees with
-    what would have halted the routine. None (not 0.0) when Alpaca can't be
-    reached, so a benchmark comparison never silently reports a flat day.
+    what would have halted the routine. For today (or no `day`) that is live
+    equity against the prior close; for an earlier session it is that session's
+    recorded close against the one before (window_balances()). None (not 0.0)
+    when Alpaca can't be reached, so a benchmark comparison never silently
+    reports a flat day.
     """
+    if day is not None and day < _today_et():
+        return window_balances(day, day)["net_pct"]
     try:
         from trading_agent.data.alpaca_client import get_account
 
@@ -435,29 +446,40 @@ def _portfolio_return_pct() -> float | None:
     return round((equity - last_equity) / last_equity * 100, 2)
 
 
-def _benchmark_return_pct(symbol: str = BENCHMARK_SYMBOL) -> float | None:
+def _benchmark_return_pct(symbol: str = BENCHMARK_SYMBOL, day: str | None = None) -> float | None:
     """Thin wrapper over data.alpaca_client.get_market_return_pct() — kept as
     its own name here since this module's callers/tests already refer to it,
-    but the actual "latest daily bar vs the one before it" logic is shared
-    with orchestrator.run_checkpoint()'s market-regime stop-loss dampening
-    (both want the same SPY-style benchmark read, not two copies of it).
+    but the actual daily-bar logic is shared with orchestrator.run_checkpoint()'s
+    market-regime stop-loss dampening (both want the same SPY-style benchmark
+    read, not two copies of it). With `day`, it is that session's move and
+    nothing else: None if that session's bar isn't there, rather than a
+    different day's move compared against this day's portfolio return.
     """
+    from datetime import date
+
     from trading_agent.data.alpaca_client import get_market_return_pct
 
-    return get_market_return_pct(symbol, lookback_days=5)
+    if day is None:
+        return get_market_return_pct(symbol, lookback_days=5)
+    age = (date.fromisoformat(_today_et()) - date.fromisoformat(day)).days
+    return get_market_return_pct(symbol, lookback_days=max(age, 0) + 8, day=day)
 
 
 def _as_of_note(now: datetime | None = None) -> str:
-    """When the figures were taken. The summary goes out from the pre_close
-    run, a few minutes before the 4:00pm ET close, so today's return and the
-    marked outcomes are not final-close numbers — say so rather than let
-    them read as end-of-day."""
+    """When the figures were taken. The summary is sent by the 4:30pm ET
+    post_close routine, after the close, so today's return and the marked
+    outcomes are the day's final ones. If it is ever run earlier (an ad hoc
+    run, or the older pre_close timing) it says so rather than let intraday
+    numbers read as end-of-day."""
     from zoneinfo import ZoneInfo
 
     et = (now or datetime.now(ZoneInfo("America/New_York"))).astimezone(ZoneInfo("America/New_York"))
     note = f"Figures as of {et:%H:%M} ET"
-    if et.weekday() < 5 and (et.hour, et.minute) < (16, 0):
-        note += " — before the 4:00pm ET close, so today's return and outcomes are not final"
+    if et.weekday() < 5:
+        if (et.hour, et.minute) < (16, 0):
+            note += " — before the 4:00pm ET close, so today's return and outcomes are not final"
+        else:
+            note += ", after the 4:00pm ET close"
     return note
 
 
@@ -503,8 +525,8 @@ def build_daily_summary(day: str | None = None) -> dict:
     marked_entries = [e for e in entries if e.get("outcome") is not None]
     signal_hit_rates = _signal_type_hit_rates()
 
-    portfolio_pct = _portfolio_return_pct()
-    benchmark_pct = _benchmark_return_pct()
+    portfolio_pct = _portfolio_return_pct(day)
+    benchmark_pct = _benchmark_return_pct(day=day)
     outperformance_pct = (
         round(portfolio_pct - benchmark_pct, 2) if portfolio_pct is not None and benchmark_pct is not None else None
     )
