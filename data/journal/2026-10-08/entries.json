@@ -1,0 +1,57 @@
+[
+  {
+    "ticker": "VCIG",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 66.7,
+    "reasoning": "Auto-applied: confidence 66.7 (technical=1.0, sentiment=None, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-20.27)",
+    "reference_price": 0.6707,
+    "recorded_at": "2026-10-08T12:50:15.184881+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "ABLVW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 46.5,
+    "reasoning": "Auto-applied: confidence 46.5 (technical=0.6539358136979617, sentiment=None, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.27)",
+    "reference_price": 0.01705,
+    "recorded_at": "2026-10-08T12:50:18.244303+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "INLF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 41.2,
+    "reasoning": "Auto-applied: confidence 41.2 (technical=0.0, sentiment=1.0, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-37.75)",
+    "reference_price": 3.445,
+    "recorded_at": "2026-10-08T12:50:21.507664+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "AIXI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 94.1,
+    "reasoning": "Auto-applied: confidence 94.1 (technical=1.0, sentiment=1.0, catalyst=1.0, fundamental=None)",
+    "reference_price": 2.09,
+    "recorded_at": "2026-10-08T12:55:04.475688+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "PFAI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 91.6,
+    "reasoning": "Auto-applied: confidence 91.6 (technical=0.9626868168488308, sentiment=1.0, catalyst=0.6666666666666666, fundamental=None)",
+    "reference_price": 5.055,
+    "recorded_at": "2026-10-08T12:55:11.604849+00:00",
+    "outcome": null
+  }
+]

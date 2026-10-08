@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "TSLA",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-08T12:50:09.091265+00:00"
+  },
+  {
+    "ticker": "VCIG",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1136.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-08T12:50:13.382466+00:00"
+  },
+  {
+    "ticker": "ABLVW",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 20506.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-08T12:50:16.549267+00:00"
+  },
+  {
+    "ticker": "INLF",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 211.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-08T12:50:19.729680+00:00"
+  },
+  {
+    "ticker": "AIXI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1554.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-08T12:54:53.702249+00:00"
+  },
+  {
+    "ticker": "PFAI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 449.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-08T12:55:05.483966+00:00"
+  }
+]
