@@ -1,0 +1,56 @@
+[
+  {
+    "ticker": "PFAI",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "TSLA",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "AIXI",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "APUS",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "HAE",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "PCRX",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "CCAQU",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "BIAF",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "HELE",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "market_open"
+  }
+]
