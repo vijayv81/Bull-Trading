@@ -1,0 +1,38 @@
+[
+  {
+    "ticker": "PFAI",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "TSLA",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "AIXI",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "APUS",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "FVNNU",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "RIBBU",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  }
+]
