@@ -466,28 +466,76 @@ def test_propose_daily_never_offers_the_weekly_only_options(sandbox):
     ]
 
 
-def test_propose_daily_skips_what_is_already_pending(sandbox):
-    assert len(opt.propose_daily("2026-10-05", DAILY_RATES)) == 1
-    assert opt.propose_daily("2026-10-06", DAILY_RATES) == []  # same change, still unmerged
+def test_an_identical_pending_option_with_a_pr_is_not_proposed_again(sandbox):
+    [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
+    opt.record_pr(option["id"], "https://github.com/x/y/pull/7")
+    assert opt.propose_daily("2026-10-06", DAILY_RATES) == []  # its PR is still waiting
+    # ...and that PR keeps being offered for review instead of vanishing from the email.
+    [waiting] = opt.options_awaiting_review("2026-10-06")
+    assert waiting["id"] == option["id"] and waiting["pr_url"] == "https://github.com/x/y/pull/7"
 
 
-def test_no_new_weight_shift_for_a_week_after_one_is_applied(sandbox):
+def test_an_identical_pending_option_without_a_pr_is_returned_for_one_not_duplicated(sandbox):
+    [first] = opt.propose_daily("2026-10-05", DAILY_RATES)  # the PR step then failed: nothing recorded
+    [again] = opt.propose_daily("2026-10-06", DAILY_RATES)
+    assert again["id"] == first["id"]
+    assert len(opt.pending_options()) == 1
+
+
+def test_a_weight_shift_right_after_another_is_still_proposed_with_a_caution(sandbox):
     [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
     opt.apply_option(option["id"], decided_by="daily-pr")
-    # The rolling hit rates barely move day to day; without a pause the next
-    # morning would propose catalyst 0.15 -> 0.10 on the same evidence.
-    assert opt.propose_daily("2026-10-06", DAILY_RATES) == []
-    # ...and it applies to the weekly review's weight option too.
-    review = _review(signal_hit_rates=DAILY_RATES)
-    assert opt.build_options(review) == []
+    # Next morning the rolling hit rates say the same thing about the new weights
+    # (catalyst 0.15, technical 0.35). It's still offered, so the email always has
+    # something to act on, but it says the weights were just changed.
+    [again] = opt.propose_daily("2026-10-06", DAILY_RATES)
+    assert "last changed on" in again["risk"] and "0 day(s) ago" in again["risk"]
+    assert option["title"] in again["risk"] and "consider waiting" in again["risk"]
+    assert again["changes"][0]["from"] == 0.15
+    # The weekly review's weight option gets the same caution.
+    [weekly] = opt.build_options(_review(signal_hit_rates=DAILY_RATES))
+    assert "last changed on" in weekly["risk"]
 
 
-def test_weight_cooldown_expires(sandbox, monkeypatch):
+def test_no_caution_when_weights_have_not_changed_recently(sandbox):
+    [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
+    assert "risk" not in option
+
+
+def test_the_recent_change_caution_expires(sandbox):
     [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
     opt.apply_option(option["id"], decided_by="daily-pr")
-    later = datetime.now(timezone.utc) + timedelta(days=opt.WEIGHT_COOLDOWN_DAYS + 1)
-    assert opt._weights_applied_within(opt.WEIGHT_COOLDOWN_DAYS, now=later) is False
-    assert opt._weights_applied_within(opt.WEIGHT_COOLDOWN_DAYS) is True
+    later = datetime.now(timezone.utc) + timedelta(days=opt.WEIGHT_CAUTION_DAYS + 1)
+    assert opt._last_weight_change(opt.WEIGHT_CAUTION_DAYS, now=later) is None
+    assert opt._recent_change_caution(now=later) is None
+    assert opt._last_weight_change(opt.WEIGHT_CAUTION_DAYS)["option_id"] == option["id"]
+
+
+def test_record_pr_replaces_an_earlier_url_and_refuses_unknown_options(sandbox):
+    [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
+    opt.record_pr(option["id"], "https://x/pull/1")
+    opt.record_pr(option["id"], "https://x/pull/2")
+    assert opt.pr_url_for(option["id"]) == "https://x/pull/2"
+    assert len(json.loads((opt.OPTIMIZATIONS_DIR / "2026-10-05" / "prs.json").read_text())) == 1
+    with pytest.raises(opt.OptimizationRefused):
+        opt.record_pr("no-such-option", "https://x/pull/3")
+    assert opt.pr_url_for("no-such-option") is None
+
+
+def test_options_awaiting_review_drop_out_when_merged_or_old(sandbox):
+    [option] = opt.propose_daily("2026-10-05", DAILY_RATES)
+    opt.record_pr(option["id"], "https://x/pull/1")
+    assert [o["id"] for o in opt.options_awaiting_review("2026-10-05")] == [option["id"]]
+    # too old to keep reminding about
+    assert opt.options_awaiting_review("2026-10-05"[:8] + "20") == []
+    # merged: the config moved, so it is no longer open
+    opt.apply_option(option["id"], decided_by="daily-pr")
+    assert opt.options_awaiting_review("2026-10-06") == []
+
+
+def test_options_without_a_recorded_pr_are_never_offered_for_review(sandbox):
+    opt.propose_daily("2026-10-05", DAILY_RATES)
+    assert opt.options_awaiting_review("2026-10-05") == []
 
 
 def test_add_options_keeps_what_the_weekly_review_already_saved_for_that_day(sandbox):
@@ -547,3 +595,30 @@ def test_daily_email_is_unchanged_without_a_pr(monkeypatch):
 def test_daily_email_ignores_a_pr_url_when_there_is_no_option(monkeypatch):
     subject, plain, html = _send_daily(monkeypatch, _daily_summary(), pr_url=DAILY_PR)
     assert DAILY_PR not in plain and DAILY_PR not in html
+
+
+def test_daily_email_links_each_options_own_pr_without_a_pr_url_argument(monkeypatch):
+    option = {
+        "id": "o", "title": "Shift 0.05 of scoring weight from sentiment to technical",
+        "why": "sentiment 29% over 14 vs technical 50% over 20.", "effect": "Leans on technical.",
+        "risk": "Scoring weights were last changed on 2026-10-05 (3 day(s) ago): x. Consider waiting.",
+        "changes": [{"file": "agent_config.yaml", "path": "scoring_weights.sentiment", "from": 0.25, "to": 0.2}],
+        "pr_url": "https://github.com/vijayv81/Bull-Trading/pull/61",
+    }
+    subject, plain, html = _send_daily(monkeypatch, _daily_summary(optimization_options=[option]))
+    assert "https://github.com/vijayv81/Bull-Trading/pull/61" in plain
+    assert "Heads-up: Scoring weights were last changed on 2026-10-05" in plain
+    assert 'href="https://github.com/vijayv81/Bull-Trading/pull/61"' in html and "Heads-up" in html
+    assert "change to approve" in subject
+
+
+def test_daily_email_says_when_a_proposal_has_no_pr(monkeypatch):
+    subject, plain, html = _send_daily(monkeypatch, _daily_summary())  # a proposal, but no option/PR
+    assert "No pull request is open for this proposal yet" in plain
+    assert "No pull request is open for this proposal yet" in html
+    assert "change to approve" not in subject
+
+
+def test_daily_email_has_no_missing_pr_line_when_there_is_no_proposal(monkeypatch):
+    subject, plain, html = _send_daily(monkeypatch, _daily_summary(optimization_proposals=[]))
+    assert "No pull request is open" not in plain and "No pull request is open" not in html

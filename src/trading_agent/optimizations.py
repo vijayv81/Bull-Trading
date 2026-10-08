@@ -60,12 +60,14 @@ EXPIRY_STEP_HOURS = 1
 MIN_LOGGED_REFUSALS = 10
 STALE_REFUSAL_SHARE = 0.5
 MIN_NEVER_DECIDED = 10
-# After a scoring-weight shift is applied, no new one is offered for this
-# long. The daily proposal re-reads the same rolling hit rates every day, so
-# without a pause a merged shift would be re-proposed the next morning (and
-# the one after) on evidence that hasn't materially changed, walking the
-# weights 0.05 a day.
-WEIGHT_COOLDOWN_DAYS = 7
+# A scoring-weight proposal made within this many days of the last applied
+# weight change carries a visible caution (never a block): the daily proposal
+# re-reads rolling hit rates that barely move day to day, so a shift right
+# after one is likely noise-chasing. The user decides; a hard block meant the
+# email printed "consider reducing X's weight" with no way to act on it.
+WEIGHT_CAUTION_DAYS = 7
+# How long an unmerged daily-proposal PR keeps appearing in the daily email.
+PR_REMINDER_DAYS = 7
 
 
 class OptimizationRefused(Exception):
@@ -94,19 +96,35 @@ def _change(path: str, current: Any, proposed: Any) -> dict[str, Any]:
     return {"file": CLICKABLE_SETTINGS[path][0], "path": path, "from": current, "to": proposed}
 
 
-def _weights_applied_within(days: int, now: datetime | None = None) -> bool:
-    """True if any applied option changed a scoring weight in the last `days`."""
+def _last_weight_change(days: int, now: datetime | None = None) -> dict[str, Any] | None:
+    """The most recent applied option that changed a scoring weight within the
+    last `days`, or None."""
     cutoff = (now or datetime.now(timezone.utc)).timestamp() - days * 86400
+    latest: dict[str, Any] | None = None
     for day in _option_days():
         for rec in load_json_list(OPTIMIZATIONS_DIR / day / "applied.json"):
             if not any(str(c.get("path", "")).startswith("scoring_weights.") for c in rec.get("changes", [])):
                 continue
             try:
-                if datetime.fromisoformat(rec["applied_at"]).timestamp() >= cutoff:
-                    return True
+                when = datetime.fromisoformat(rec["applied_at"])
             except (KeyError, ValueError):
                 continue
-    return False
+            if when.timestamp() >= cutoff and (latest is None or rec["applied_at"] > latest["applied_at"]):
+                latest = rec
+    return latest
+
+
+def _recent_change_caution(now: datetime | None = None) -> str | None:
+    recent = _last_weight_change(WEIGHT_CAUTION_DAYS, now)
+    if recent is None:
+        return None
+    now = now or datetime.now(timezone.utc)
+    age = max((now - datetime.fromisoformat(recent["applied_at"])).days, 0)
+    return (
+        f"Scoring weights were last changed on {recent['applied_at'][:10]} ({age} day(s) ago): "
+        f"{recent['title']}. The hit rates behind this proposal have had little time to change, "
+        "so consider waiting."
+    )
 
 
 def build_options(review: dict[str, Any]) -> list[dict[str, Any]]:
@@ -131,7 +149,6 @@ def build_options(review: dict[str, Any]) -> list[dict[str, Any]]:
             and best_path in CLICKABLE_SETTINGS
             and worst_w is not None
             and best_w is not None
-            and not _weights_applied_within(WEIGHT_COOLDOWN_DAYS)
             and worst_w - WEIGHT_STEP >= CLICKABLE_SETTINGS[worst_path][1]
             and best_w + WEIGHT_STEP <= CLICKABLE_SETTINGS[best_path][2]
         ):
@@ -152,6 +169,9 @@ def build_options(review: dict[str, Any]) -> list[dict[str, Any]]:
                     ],
                 }
             )
+            caution = _recent_change_caution()
+            if caution:
+                options[-1]["risk"] = caution
 
     breakdown = review.get("refusal_breakdown") or {}
     refused = sum(breakdown.values())
@@ -230,23 +250,72 @@ def add_options(options: list[dict[str, Any]], day: str) -> Path:
     return path
 
 
+def _changes_key(option: dict[str, Any]) -> str:
+    return json.dumps(option["changes"], sort_keys=True)
+
+
+def record_pr(option_id: str, pr_url: str) -> dict[str, Any]:
+    """Remember the PR opened for an option, so every later daily email can
+    keep linking it until it's merged or ages out. Without this a proposal
+    that was still unmerged the next day found itself "already pending" and
+    the email had no link at all."""
+    found = find_option(option_id)
+    if found is None:
+        raise OptimizationRefused(f"No saved option with id {option_id!r} in data/optimizations/.")
+    day, _ = found
+    path = OPTIMIZATIONS_DIR / day / "prs.json"
+    records = [r for r in load_json_list(path) if r.get("option_id") != option_id]
+    record = {"option_id": option_id, "pr_url": pr_url, "recorded_at": datetime.now(timezone.utc).isoformat()}
+    path.write_text(json.dumps(records + [record], indent=2))
+    return record
+
+
+def pr_url_for(option_id: str) -> str | None:
+    for day in _option_days():
+        for rec in load_json_list(OPTIMIZATIONS_DIR / day / "prs.json"):
+            if rec.get("option_id") == option_id:
+                return rec.get("pr_url")
+    return None
+
+
 def propose_daily(day: str, signal_hit_rates: dict[str, Any]) -> list[dict[str, Any]]:
     """The daily summary's learning proposal as a saved, applicable option.
 
     Only the scoring-weight shift: the refusal and expiry options are built
     from the weekly review's 30-day evidence and stay weekly. Same
-    minimum-evidence bar as the weekly review (build_options()), and nothing
-    is offered that an already-pending option already proposes. Returns the
-    newly saved options."""
-    pending = {json.dumps(o["changes"], sort_keys=True) for o in pending_options()}
-    fresh = [
-        o
-        for o in build_options({"window_end": day, "signal_hit_rates": signal_hit_rates})
-        if json.dumps(o["changes"], sort_keys=True) not in pending
-    ]
+    minimum-evidence bar as the weekly review (build_options()).
+
+    Returns the options that still NEED a PR opened for them: a new one, or an
+    identical pending option that never got a PR. An identical option that
+    already has a PR recorded is left alone — its PR keeps appearing in the
+    daily email (options_awaiting_review())."""
+    pending = {_changes_key(o): o for o in pending_options()}
+    needs_pr: list[dict[str, Any]] = []
+    fresh: list[dict[str, Any]] = []
+    for option in build_options({"window_end": day, "signal_hit_rates": signal_hit_rates}):
+        match = pending.get(_changes_key(option))
+        if match is None:
+            fresh.append(option)
+            needs_pr.append(option)
+        elif pr_url_for(match["id"]) is None:
+            needs_pr.append(match)
     if fresh:
         add_options(fresh, day)
-    return fresh
+    return needs_pr
+
+
+def options_awaiting_review(day: str) -> list[dict[str, Any]]:
+    """Open options with a recorded PR, proposed within PR_REMINDER_DAYS of
+    `day`, each carrying its `pr_url` — what the daily email links. A merged
+    PR drops out on its own (the config moved, so the option is no longer
+    open); an abandoned one stops appearing after PR_REMINDER_DAYS."""
+    cutoff = datetime.fromisoformat(day).timestamp() - PR_REMINDER_DAYS * 86400
+    out = []
+    for option in open_options():
+        url = pr_url_for(option["id"])
+        if url and datetime.fromisoformat(option["proposed_on"]).timestamp() >= cutoff:
+            out.append({**option, "pr_url": url})
+    return out
 
 
 def options_proposed_on(day: str) -> list[dict[str, Any]]:

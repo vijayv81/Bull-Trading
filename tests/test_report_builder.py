@@ -7,6 +7,18 @@ from trading_agent.reporting import report_builder as rb
 from trading_agent.utils import append_json, day_dir
 
 
+@pytest.fixture(autouse=True)
+def no_live_fill_history(monkeypatch):
+    """The reports read Alpaca's real fill history for sell results. Tests must
+    never reach it: by default it's unreachable, which sends realized P&L down
+    its trade-file fallback; tests that care supply fills themselves."""
+
+    def unreachable():
+        raise RuntimeError("no Alpaca in tests")
+
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_filled_orders", unreachable)
+
+
 def _order(symbol, side, filled_qty=None, filled_avg_price=None, submitted_at="2026-09-24T00:00:00+00:00"):
     return {
         "order": {
@@ -866,3 +878,76 @@ def test_day_halts_reads_the_halt_records_in_order(monkeypatch, tmp_path):
     assert [h["checkpoint"] for h in rb._day_halts(day)] == ["market_open", "midday"]
     assert rb._day_halts("2026-10-06") == []
     assert [r["ticker"] for r in rb._day_recs(day)] == ["X"]  # halt files never read as recommendations
+
+
+# --- sell-order results in the daily / weekly reports (2026-10-08) ------------
+
+_FILLS = [
+    {"id": "b1", "symbol": "TSLA", "side": "OrderSide.BUY", "filled_qty": "10", "filled_avg_price": "100.0",
+     "filled_at": "2026-09-21T14:00:00+00:00"},
+    {"id": "s1", "symbol": "TSLA", "side": "OrderSide.SELL", "filled_qty": "10", "filled_avg_price": "90.0",
+     "filled_at": "2026-09-23T14:00:00+00:00"},
+]
+
+
+def _with_fills(monkeypatch, fills=_FILLS):
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_filled_orders", lambda: fills)
+
+
+def test_daily_summary_carries_the_days_sell_results(monkeypatch, tmp_path):
+    _isolate_daily_summary_dirs(monkeypatch, tmp_path)
+    _with_fills(monkeypatch)
+    sr = rb.build_daily_summary("2026-09-23")["sell_results"]
+    assert sr["count"] == 1 and sr["total_net_usd"] == -100.0 and sr["by_symbol"] == {"TSLA": -100.0}
+    assert rb.build_daily_summary("2026-09-22")["sell_results"]["count"] == 0
+
+
+def test_daily_summary_sell_results_report_an_error_when_alpaca_is_unreachable(monkeypatch, tmp_path):
+    _isolate_daily_summary_dirs(monkeypatch, tmp_path)  # the autouse fixture makes the history unreachable
+    sr = rb.build_daily_summary("2026-09-23")["sell_results"]
+    assert sr["error"] == "no Alpaca in tests" and sr["total_net_usd"] is None
+
+
+def test_weekly_report_leads_realized_with_the_real_sell_fills(monkeypatch, tmp_path):
+    monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
+    monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
+    monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
+    monkeypatch.setattr(rb, "REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr("trading_agent.optimizations.OPTIMIZATIONS_DIR", tmp_path / "optimizations")
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_positions", lambda: [])
+    _with_fills(monkeypatch)
+    # The trade files only ever hold pending_new orders with no fill price.
+    append_json(
+        day_dir(rb.TRADES_DIR, "2026-09-23") / "orders_submitted.json",
+        {"order": {"id": "s1", "symbol": "TSLA", "side": "sell", "filled_qty": "0", "filled_avg_price": None},
+         "submitted_at": "2026-09-23T13:59:00+00:00", "source": "auto"},
+    )
+
+    text = rb.build_weekly_report("2026-09-21").read_text()
+
+    assert "Realized this week: $-100.00" in text and "TSLA: $-100.00" in text
+    assert "## Sell orders executed — net result" in text
+    assert "-$100.00 (-10.00% on cost) — net decrease" in text
+    assert "- TSLA: sold 10 @ $90.00 vs avg cost $100.00 → -$100.00 (-10.0%) [auto]" in text
+    assert "no confirmed fill" not in text
+
+
+def test_weekly_learning_review_realized_pnl_comes_from_the_sell_fills(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"bid_price": 1.0, "ask_price": 1.0})
+    _with_fills(monkeypatch)
+
+    review = rb.build_weekly_learning_review("2026-09-28", 14)
+
+    assert review["sell_results"]["total_net_usd"] == -100.0
+    assert review["realized_pnl"] == {"by_symbol": {"TSLA": -100.0}, "total": -100.0, "pending_fills": 0}
+    text = open(review["report_path"]).read()
+    assert "## Sell orders executed — net result" in text and "over the last 14 days" in text
+
+
+def test_weekly_learning_review_falls_back_to_trade_files_when_alpaca_is_down(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"bid_price": 1.0, "ask_price": 1.0})
+    review = rb.build_weekly_learning_review("2026-09-28", 14)  # history unreachable (autouse fixture)
+    assert review["sell_results"]["error"] and review["realized_pnl"]["total"] == 0.0
+    assert "unavailable" in open(review["report_path"]).read()

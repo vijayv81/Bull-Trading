@@ -923,3 +923,61 @@ def test_daily_summary_has_no_halt_section_when_nothing_halted(monkeypatch):
     monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
     gw.notify_daily_summary(_summary())
     assert "Halted checkpoints" not in calls[0][1] and "Halted checkpoints" not in calls[0][2]
+
+
+# --- net result on sell orders in the daily and learning emails ---------------
+
+_SELLS = {
+    "error": None, "count": 2, "total_net_usd": -312.5, "total_net_pct": -8.33, "unknown_basis": 0, "pending": 0,
+    "by_symbol": {"APUS": -371.9, "DAICW": 59.4},
+    "sells": [
+        {"ticker": "APUS", "qty": 180.0, "fill_price": 4.72, "avg_cost": 6.79, "net_usd": -371.9, "net_pct": -30.5, "source": "auto"},
+        {"ticker": "DAICW", "qty": 1000.0, "fill_price": 0.011, "avg_cost": 0.0084, "net_usd": 59.4, "net_pct": 30.9, "source": "auto"},
+    ],
+}
+
+
+def test_daily_summary_email_shows_the_net_result_on_sell_orders(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary(sell_results=_SELLS))
+    plain, html = calls[0][1], calls[0][2]
+
+    assert "Sell orders — net result:" in plain
+    assert "Net result on 2 sell order(s) executed today: -$312.50 (-8.33% on cost) — net decrease" in plain
+    assert "- APUS: sold 180 @ $4.72 vs avg cost $6.79 → -$371.90 (-30.5%) [auto]" in plain
+    assert "Sell orders &mdash; net result" in html and "APUS" in html and "net decrease" in html
+    assert "$312.50" in html
+
+
+def test_daily_summary_email_says_unavailable_not_zero_when_fills_cannot_be_read(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    err = {"error": "alpaca down", "sells": [], "count": 0, "total_net_usd": None, "total_net_pct": None,
+           "by_symbol": {}, "unknown_basis": 0, "pending": 0}
+    gw.notify_daily_summary(_summary(sell_results=err))
+    assert "Net result on sell orders: unavailable — alpaca down" in calls[0][1]
+    assert "unavailable" in calls[0][2] and "$0.00" not in calls[0][1]
+
+
+def test_daily_summary_email_says_so_when_no_sells_executed(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    none = {"error": None, "sells": [], "count": 0, "total_net_usd": 0.0, "total_net_pct": None,
+            "by_symbol": {}, "unknown_basis": 0, "pending": 0}
+    gw.notify_daily_summary(_summary(sell_results=none))
+    assert "No sell orders executed today." in calls[0][1]
+
+
+def test_learning_review_email_shows_the_net_result_over_its_window(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(_review(sell_results=_SELLS))
+    plain, html = calls[0][1], calls[0][2]
+    assert "Sell orders — net result:" in plain
+    assert "executed over the last 30 days: -$312.50" in plain and "net decrease" in plain
+    assert "Sell orders &mdash; net result" in html and "DAICW" in html

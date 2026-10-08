@@ -56,6 +56,35 @@ def get_positions() -> list[dict[str, Any]]:
     return [p.model_dump(mode="json") for p in trading_client().get_all_positions()]
 
 
+def get_filled_orders(since: datetime | None = None) -> list[dict[str, Any]]:
+    """Every order that filled (even partly) since `since` — default: all of
+    the account's history — oldest first, with Alpaca's own fill price/qty and
+    fill time. data/trades/ records an order the instant it's submitted, as
+    `pending_new` with no fill price, and nothing polls it afterwards, so those
+    files can't say what a SELL actually netted; this can. Read-only."""
+    from alpaca.common.enums import Sort
+    from alpaca.trading.enums import QueryOrderStatus
+    from alpaca.trading.requests import GetOrdersRequest
+
+    client = trading_client()
+    after = since or datetime(2020, 1, 1, tzinfo=timezone.utc)
+    seen: set[str] = set()
+    filled: list[dict[str, Any]] = []
+    while True:
+        page = client.get_orders(
+            GetOrdersRequest(status=QueryOrderStatus.CLOSED, limit=500, direction=Sort.ASC, after=after)
+        )
+        fresh = [o for o in page if str(o.id) not in seen]
+        for order in fresh:
+            seen.add(str(order.id))
+            if order.filled_qty and float(order.filled_qty) > 0 and order.filled_at:
+                filled.append(order.model_dump(mode="json"))
+        if len(page) < 500 or not fresh:
+            break
+        after = page[-1].submitted_at
+    return sorted(filled, key=lambda o: (o["filled_at"], o["id"]))
+
+
 def get_latest_quote(ticker: str) -> dict[str, Any]:
     request = StockLatestQuoteRequest(symbol_or_symbols=ticker)
     quotes = data_client().get_stock_latest_quote(request)

@@ -312,6 +312,13 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
     else:
         lines.append("No trades executed today.")
 
+    if summary.get("sell_results") is not None:
+        from trading_agent.reporting.sell_results import sell_result_lines
+
+        lines.append("")
+        lines.append("Sell orders — net result:")
+        lines.extend(sell_result_lines(summary["sell_results"], "today"))
+
     halts = summary.get("halted_checkpoints") or []
     if halts:
         lines.append("")
@@ -345,14 +352,19 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
 
     lines.append("")
     lines.append("Learning & optimization:")
-    options = summary.get("optimization_options") or []
-    if pr_url and options:
-        lines.append("Review & approve today's proposed change (merge the PR):")
-        lines.append(f"  {pr_url}")
-        lines.extend(f"  {line}" for line in _daily_pr_lines(options))
+    reviews = _reviews(summary, pr_url)
+    for option, url in reviews:
+        lines.append("Review & approve the proposed change (merge the PR):")
+        lines.append(f"  {url}")
+        lines.extend(f"  {line}" for line in _option_detail_lines(option))
+        lines.append("")
+    if reviews:
+        lines.append(f"  {_MERGE_NOTE}")
         lines.append("")
     for p in summary.get("optimization_proposals") or []:
         lines.append(f"- {p}")
+    if summary.get("optimization_proposals") and not reviews:
+        lines.append("  No pull request is open for this proposal yet, so there is nothing to merge.")
     signal_hit_rates = summary.get("signal_hit_rates") or {}
     if signal_hit_rates:
         rates = ", ".join(f"{sig} {stats.get('hit_rate', 0):.0%}" for sig, stats in sorted(signal_hit_rates.items()))
@@ -364,7 +376,7 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
     if weights:
         weight_str = ", ".join(f"{k} {v:g}" for k, v in weights.items())
         lines.append(f"  Weights currently in effect: {weight_str}")
-    if pr_url and options:
+    if reviews:
         lines.append(
             "  Nothing changes until you merge the PR above — proposals are never applied automatically."
         )
@@ -375,7 +387,7 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
         )
 
     subject = f"[Bull-Trading] Daily summary — {summary['day']}"
-    if pr_url and options:
+    if reviews:
         subject += " — change to approve"
     body = "\n".join(lines)
     html_body = _daily_summary_html(summary, pr_url)
@@ -474,6 +486,10 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
     else:
         inner += h.muted("No trades executed today.")
 
+    if summary.get("sell_results") is not None:
+        inner += h.section_heading("Sell orders &mdash; net result")
+        inner += _sell_results_html(summary["sell_results"], "today")
+
     halts = summary.get("halted_checkpoints") or []
     if halts:
         inner += h.section_heading("Halted checkpoints")
@@ -513,16 +529,18 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
         inner += h.muted("No journaled decisions today.")
 
     inner += h.section_heading("Learning &amp; Optimization")
-    pr_options = summary.get("optimization_options") or []
-    if pr_url and pr_options:
-        inner += h.section_heading("Review &amp; approve today's change")
-        inner += _daily_pr_html(pr_options, pr_url)
+    reviews = _reviews(summary, pr_url)
+    if reviews:
+        inner += h.section_heading("Review &amp; approve the proposed change")
+        inner += _daily_pr_html(reviews)
     proposals = summary.get("optimization_proposals") or []
     if proposals:
         for p in proposals:
             inner += f'<div style="padding:6px 0;font-size:14px;">{h.chip("PROPOSAL", "neutral")} {p}</div>'
     else:
         inner += h.muted("No weight-adjustment proposal yet — not enough journaled history.")
+    if proposals and not reviews:
+        inner += h.muted("No pull request is open for this proposal yet, so there is nothing to merge.")
 
     signal_hit_rates = summary.get("signal_hit_rates") or {}
     if signal_hit_rates:
@@ -541,7 +559,7 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
         weight_str = ", ".join(f"{k} {v:g}" for k, v in weights.items())
         inner += h.muted(f"Weights currently in effect: {weight_str}")
 
-    if pr_url and pr_options:
+    if reviews:
         inner += h.muted("Nothing changes until you merge the PR above — proposals are never applied automatically.")
     else:
         inner += h.muted(
@@ -700,6 +718,39 @@ def _optimization_options_html(review: dict[str, Any]) -> str:
     )
 
 
+def _sell_results_html(sr: dict[str, Any], scope: str) -> str:
+    """The sell-orders section shared by the daily summary and the weekly
+    learning review: the net total as a colored card, then one row per SELL."""
+    from html import escape
+
+    from trading_agent.notify import html as h
+    from trading_agent.reporting.sell_results import _px, _usd, sell_result_lines
+
+    border = h.COLORS["border"]
+    muted = h.COLORS["muted"]
+    if sr.get("error") or not sr["sells"]:
+        return "".join(h.muted(escape(line)) for line in sell_result_lines(sr, scope))
+
+    total = sr["total_net_usd"]
+    kind = "net increase" if total > 0 else ("net decrease" if total < 0 else "no net change")
+    pct = f" ({sr['total_net_pct']:+.2f}% on cost)" if sr["total_net_pct"] is not None else ""
+    out = h.stat_card(f"Net result, {sr['count']} sell order(s) {escape(scope)}", h.signed_dollar(total) + escape(f"{pct} — {kind}"))
+    for s in sr["sells"]:
+        origin = f" [{escape(str(s['source']))}]" if s.get("source") else ""
+        if s["net_usd"] is None:
+            detail = f"cost basis unavailable, not counted"
+        else:
+            detail = f"vs avg cost {_px(s['avg_cost'])} &rarr; {h.signed_dollar(s['net_usd'])} ({s['net_pct']:+.1f}%)"
+        out += (
+            f'<div style="padding:8px 0;font-size:14px;border-bottom:1px solid {border};">'
+            f"<b>{escape(s['ticker'])}</b> sold {s['qty']:g} @ {_px(s['fill_price'])} "
+            f'<span style="color:{muted};">{detail}{origin}</span></div>'
+        )
+    for line in sell_result_lines(sr, scope)[1 + len(sr["sells"]):]:
+        out += h.muted(escape(line.strip()))
+    return out
+
+
 def _attempt_rows(attempts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Daily-summary rows for the auto-apply attempts. "capped" ones (daily
     order cap reached, see auto_pilot._record_capped()) can be a dozen a
@@ -725,32 +776,41 @@ def _attempt_rows(attempts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rows
 
 
-def _daily_pr_lines(options: list[dict[str, Any]]) -> list[str]:
-    """What the daily email's PR changes and what merging does — shared by the
-    plain-text and HTML renderings so they can't drift apart."""
-    lines: list[str] = []
-    for option in options:
-        lines.append(option["title"])
-        for c in option["changes"]:
-            lines.append(f"  {c['path']}: {c['from']} -> {c['to']}")
-        lines.append(f"  Why: {option['why']}")
-        lines.append(f"  Effect: {option['effect']}")
-    lines.append(
-        "Merging applies the change to main, and the next checkpoint uses it. Closing the PR "
-        "without merging leaves the weights as they are."
-    )
+_MERGE_NOTE = (
+    "Merging applies the change to main, and the next checkpoint uses it. Closing the PR "
+    "without merging leaves the weights as they are."
+)
+
+
+def _reviews(summary: dict[str, Any], pr_url: str | None) -> list[tuple[dict[str, Any], str]]:
+    """(option, PR url) for each proposed change the daily email can link:
+    the option's own recorded PR, else the --pr-url given for this send."""
+    return [(o, o.get("pr_url") or pr_url) for o in (summary.get("optimization_options") or []) if o.get("pr_url") or pr_url]
+
+
+def _option_detail_lines(option: dict[str, Any]) -> list[str]:
+    lines = [option["title"]]
+    for c in option["changes"]:
+        lines.append(f"  {c['path']}: {c['from']} -> {c['to']}")
+    lines.append(f"  Why: {option['why']}")
+    lines.append(f"  Effect: {option['effect']}")
+    if option.get("risk"):
+        lines.append(f"  Heads-up: {option['risk']}")
     return lines
 
 
-def _daily_pr_html(options: list[dict[str, Any]], pr_url: str) -> str:
+def _daily_pr_html(reviews: list[tuple[dict[str, Any], str]]) -> str:
     from html import escape
 
     from trading_agent.notify import html as h
 
-    body = "".join(
-        f'<div style="font-size:14px;padding:2px 0;">{escape(line)}</div>' for line in _daily_pr_lines(options)
-    )
-    return body + h.button("Review and merge the change", pr_url)
+    out = ""
+    for option, url in reviews:
+        out += "".join(
+            f'<div style="font-size:14px;padding:2px 0;">{escape(line)}</div>' for line in _option_detail_lines(option)
+        )
+        out += h.button("Review and merge the change", url)
+    return out + h.muted(escape(_MERGE_NOTE))
 
 
 def _report_pr_summary(review: dict[str, Any]) -> list[str]:
@@ -798,6 +858,10 @@ def _weekly_learning_review_html(review: dict[str, Any], pr_url: str | None = No
         inner += _report_pr_html(review, pr_url)
 
     inner += _optimization_options_html(review)
+
+    if review.get("sell_results") is not None:
+        inner += h.section_heading("Sell orders &mdash; net result")
+        inner += _sell_results_html(review["sell_results"], f"over the last {review['lookback_days']} days")
 
     inner += h.section_heading("Portfolio status")
     status = review["portfolio_status"]
@@ -986,6 +1050,13 @@ def notify_weekly_learning_review(review: dict[str, Any], pr_url: str | None = N
         lines.append(f"Unrealized (live positions): unavailable — {review['unrealized_pnl']['error']}")
     else:
         lines.append(f"Unrealized (live, open positions right now): ${review['unrealized_pnl']['total']:,.2f}")
+
+    if review.get("sell_results") is not None:
+        from trading_agent.reporting.sell_results import sell_result_lines
+
+        lines.append("")
+        lines.append("Sell orders — net result:")
+        lines.extend(sell_result_lines(review["sell_results"], f"over the last {review['lookback_days']} days"))
 
     status = review["portfolio_status"]
     lines.append("")
