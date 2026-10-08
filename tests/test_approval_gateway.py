@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -825,3 +826,100 @@ def test_daily_summary_states_when_the_figures_were_taken(monkeypatch):
     monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
     gw.notify_daily_summary(_summary(as_of_note=note))
     assert note in calls[0][1] and "Figures as of 15:55 ET" in calls[0][2]
+
+
+# --- notify_checkpoint_halted -------------------------------------------------
+
+HALT_REASON = "Daily loss 2.4% is past the 2.0% cap."
+
+
+def _halt_env(monkeypatch, tmp_path, notifications):
+    monkeypatch.setattr(gw, "RECOMMENDATIONS_DIR", tmp_path / "recs")
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": notifications})
+    emails, texts = [], []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: emails.append(a))
+    monkeypatch.setattr("trading_agent.notify.senders.send_sms", lambda *a, **k: texts.append(a))
+    return emails, texts
+
+
+def _halt_records(tmp_path):
+    from trading_agent.utils import today
+
+    path = tmp_path / "recs" / today() / "halt_market_open.json"
+    return json.loads(path.read_text()) if path.exists() else []
+
+
+def test_halt_emails_that_the_checkpoint_did_not_run_and_records_it(monkeypatch, tmp_path):
+    emails, _ = _halt_env(monkeypatch, tmp_path, {"channel": ["email"]})
+    gw.notify_checkpoint_halted("market_open", HALT_REASON)
+
+    subject, plain, html = emails[0]
+    assert "market open HALTED" in subject and "no recommendations this run" in subject
+    assert HALT_REASON in plain and "did not run" in plain and "no orders were placed" in plain
+    assert HALT_REASON in html and "Market Open checkpoint halted" in html
+    [record] = _halt_records(tmp_path)
+    assert record["checkpoint"] == "market_open" and record["reason"] == HALT_REASON and record["halted_at"]
+
+
+def test_halt_email_escapes_the_reason(monkeypatch, tmp_path):
+    emails, _ = _halt_env(monkeypatch, tmp_path, {"channel": ["email"]})
+    gw.notify_checkpoint_halted("midday", "Cannot verify (<bad> & worse)")
+    assert "&lt;bad&gt; &amp; worse" in emails[0][2]
+
+
+def test_halt_email_can_be_turned_off_but_is_still_recorded(monkeypatch, tmp_path):
+    emails, texts = _halt_env(monkeypatch, tmp_path, {"channel": ["email", "sms"], "checkpoint_halt_enabled": False})
+    gw.notify_checkpoint_halted("market_open", HALT_REASON)
+    assert emails == [] and texts == []
+    assert len(_halt_records(tmp_path)) == 1
+
+
+def test_halt_without_an_email_or_sms_channel_still_records(monkeypatch, tmp_path):
+    emails, texts = _halt_env(monkeypatch, tmp_path, {"channel": ["console"]})
+    gw.notify_checkpoint_halted("market_open", HALT_REASON)
+    assert emails == [] and texts == []
+    assert len(_halt_records(tmp_path)) == 1
+
+
+def test_halt_sms_is_one_short_line(monkeypatch, tmp_path):
+    _, texts = _halt_env(monkeypatch, tmp_path, {"channel": ["sms"]})
+    gw.notify_checkpoint_halted("market_open", HALT_REASON)
+    assert texts[0][0] == f"Bull-Trading market open HALTED: {HALT_REASON}"
+
+
+def test_halt_send_failure_does_not_raise(monkeypatch, tmp_path):
+    _halt_env(monkeypatch, tmp_path, {"channel": ["email"]})
+
+    def boom(*a, **k):
+        raise RuntimeError("resend is down")
+
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", boom)
+    gw.notify_checkpoint_halted("market_open", HALT_REASON)  # must not raise
+    assert len(_halt_records(tmp_path)) == 1
+
+
+def test_a_failed_halt_record_write_does_not_stop_the_email(monkeypatch, tmp_path):
+    emails, _ = _halt_env(monkeypatch, tmp_path, {"channel": ["email"]})
+    monkeypatch.setattr(gw, "record_checkpoint_halt", lambda *a: (_ for _ in ()).throw(OSError("disk full")))
+    gw.notify_checkpoint_halted("market_open", HALT_REASON)
+    assert len(emails) == 1
+
+
+def test_daily_summary_lists_the_checkpoints_that_halted(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(
+        _summary(halted_checkpoints=[{"checkpoint": "market_open", "reason": HALT_REASON, "halted_at": "x"}])
+    )
+    plain, html = calls[0][1], calls[0][2]
+    assert "Halted checkpoints (did not run):" in plain and f"- market_open: {HALT_REASON}" in plain
+    assert "market_open did not run" in html
+
+
+def test_daily_summary_has_no_halt_section_when_nothing_halted(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary())
+    assert "Halted checkpoints" not in calls[0][1] and "Halted checkpoints" not in calls[0][2]

@@ -641,3 +641,45 @@ def test_reference_price_falls_back_to_daily_close_without_a_quote(monkeypatch):
 
     assert seen["GOOD"]["reference_price"] == 10.0
     assert {r["reference_price_source"] for r in results} == {"daily_close"}
+
+
+# --- a halted checkpoint says so (2026-10-05 review) ---------------------------
+
+
+def test_halt_announces_itself_and_still_raises(monkeypatch):
+    from trading_agent.guardrails import RoutineHalted
+
+    reason = "Daily loss 2.4% is past the 2.0% cap."
+    monkeypatch.setattr(orch, "daily_loss_reason", lambda: reason)
+    announced = []
+    monkeypatch.setattr(orch, "notify_checkpoint_halted", lambda cp, why: announced.append((cp, why)))
+    monkeypatch.setattr(orch, "research_ticker", lambda *a, **k: pytest.fail("a halt must not research anything"))
+
+    with pytest.raises(RoutineHalted, match="Daily loss 2.4%"):
+        orch.run_checkpoint("market_open")
+
+    assert announced == [("market_open", reason)]
+
+
+def test_a_broken_halt_notification_never_masks_the_halt(monkeypatch):
+    from trading_agent.guardrails import RoutineHalted
+
+    monkeypatch.setattr(orch, "daily_loss_reason", lambda: "Cannot verify the 2.0% daily loss cap (boom).")
+
+    def boom(cp, why):
+        raise RuntimeError("resend is down")
+
+    monkeypatch.setattr(orch, "notify_checkpoint_halted", boom)
+
+    with pytest.raises(RoutineHalted, match="Cannot verify"):
+        orch.run_checkpoint("pre_open")
+
+
+def test_no_halt_notification_when_the_checkpoint_runs(monkeypatch):
+    monkeypatch.setattr(orch, "notify_checkpoint_halted", lambda *a: pytest.fail("not halted"))
+    monkeypatch.setattr(
+        orch, "research_ticker",
+        lambda ticker, checkpoint: {"confidence_of_extraction": 0.8, "headline_summary": "ok", "sources": []},
+    )
+    _capture_digest(monkeypatch)
+    orch.run_checkpoint("pre_open")

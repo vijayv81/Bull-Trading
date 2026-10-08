@@ -84,6 +84,15 @@ notifications:
   # Still gated by `channel` including email/sms above.
   weekly_learning_review_enabled: true
 
+  # Email/SMS when a checkpoint HALTS before researching anything (the daily
+  # loss cap, or "cannot verify" because Alpaca couldn't be read) — see
+  # notify/approval_gateway.py:notify_checkpoint_halted(). Every other
+  # notification stays silent on a quiet run, so without this a halted
+  # checkpoint looked exactly like "nothing actionable". false is a one-line
+  # revert; the halt record in data/recommendations/<day>/halt_<checkpoint>.json
+  # is written either way. Still gated by `channel` including email/sms above.
+  checkpoint_halt_enabled: true
+
   # URL of the published Claude Artifact "Approval Ticket" page email links
   # point to (its own small database holds the click-through decision until
   # it's synced into data/approvals/ — see .claude/skills/trading-trade

@@ -30,7 +30,7 @@ from trading_agent.data.alpaca_client import (
 )
 from trading_agent.execute.auto_pilot import auto_apply
 from trading_agent.guardrails import RoutineHalted, daily_loss_reason, is_option_symbol
-from trading_agent.notify.approval_gateway import notify_digest, save_recommendation
+from trading_agent.notify.approval_gateway import notify_checkpoint_halted, notify_digest, save_recommendation
 from trading_agent.research.perplexity_client import research_ticker
 from trading_agent.scoring.recommendation_engine import (
     MIN_BARS_FOR_TECHNICAL,
@@ -210,6 +210,13 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     # nothing this checkpoint should be proposing.
     halt = daily_loss_reason()
     if halt:
+        # A halt used to be silent: nothing researched, nothing saved, no email.
+        # Tell the user the run didn't happen — and never let that notification
+        # mask the halt itself.
+        try:
+            notify_checkpoint_halted(checkpoint, halt)
+        except Exception as exc:  # noqa: BLE001
+            print(f"Could not announce the {checkpoint} halt: {exc}")
         raise RoutineHalted(halt)
 
     positions = _held_position_pnl_pct()
