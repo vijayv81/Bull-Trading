@@ -193,6 +193,25 @@ open). An identical pending option that never got a PR is handed back for one
 rather than duplicated. When the email shows a proposal but no PR exists, it
 says "No pull request is open for this proposal yet" instead of staying silent.
 
+**Opening balance, closing balance and net difference come first**, per user
+instruction 2026-10-08 ("on the daily and weekly summary, include opening
+trading balance, closing balance and net difference at the very top").
+`reporting/balances.py:window_balances()` gives them for a window of ET days:
+"balance" is account equity (cash + positions at market), the same measure the
+daily-loss guardrail and the portfolio return use. Opening is the equity at the
+close of the last session before the window; closing is the equity at the
+window's last close, or the live equity when the window includes today,
+labelled "as of HH:MM ET" (a summary sent before the 4:00pm close isn't final).
+The block heads the daily summary, the Friday weekly report and the Saturday
+learning review — ahead of the portfolio-vs-SPY return and, in the learning
+email, ahead of the PR link. History comes from Alpaca's daily equity series
+(`alpaca_client.get_equity_by_close()`), whose points are stamped 00:00 UTC —
+8pm ET the evening *before* the stamped date, so the point stamped 10-07 is
+Tuesday 10-06's close — and are re-dated by ET session. A window that starts
+before the account existed (the 30-day review) opens at the account's first
+recorded balance and says so; an unreachable Alpaca reports "unavailable",
+never $0.
+
 **Net result on every executed SELL**, per user instruction 2026-10-08 ("the
 summary email (both daily and weekly) must include the net increase or
 decrease for all sell orders executed"). `reporting/sell_results.py` walks

@@ -981,3 +981,53 @@ def test_learning_review_email_shows_the_net_result_over_its_window(monkeypatch)
     assert "Sell orders — net result:" in plain
     assert "executed over the last 30 days: -$312.50" in plain and "net decrease" in plain
     assert "Sell orders &mdash; net result" in html and "DAICW" in html
+
+
+# --- opening / closing balance leads the daily and learning emails ------------
+
+_BAL = {
+    "error": None, "opening": 95440.16, "opening_note": "close of 2026-10-06",
+    "closing": 95312.6, "closing_note": "as of 20:47 ET", "net_usd": -127.56, "net_pct": -0.13,
+}
+
+
+def test_daily_summary_leads_with_the_balance_block(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(_summary(balances=_BAL, as_of_note="Figures as of 20:47 ET"))
+    plain, html = calls[0][1], calls[0][2]
+
+    lines = plain.splitlines()
+    assert lines[0].startswith("Bull-Trading daily summary") and lines[1] == "Figures as of 20:47 ET"
+    assert lines[3] == "Opening balance: $95,440.16 (close of 2026-10-06)"
+    assert lines[4] == "Closing balance: $95,312.60 (as of 20:47 ET)"
+    assert lines[5] == "Net difference: -$127.56 (-0.13%) — net decrease"
+    assert plain.index("Opening balance") < plain.index("Recommendations:")
+    # in the HTML the balance cards come before the portfolio-return card
+    assert html.index("Opening balance") < html.index("Portfolio return")
+    assert html.index("Closing balance") < html.index("Portfolio return")
+    assert html.index("Net difference") < html.index("Portfolio return")
+
+
+def test_daily_summary_balance_unavailable_never_shows_zero(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    err = {"error": "alpaca down", "opening": None, "opening_note": None, "closing": None,
+           "closing_note": None, "net_usd": None, "net_pct": None}
+    gw.notify_daily_summary(_summary(balances=err))
+    assert "Account balance: unavailable — alpaca down" in calls[0][1]
+    assert "unavailable" in calls[0][2] and "Opening balance" not in calls[0][1]
+
+
+def test_learning_review_balance_comes_before_the_pr_link(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_weekly_learning_review(_review(balances=_BAL), pr_url="https://github.com/x/y/pull/9")
+    plain, html = calls[0][1], calls[0][2]
+    assert plain.index("Opening balance") < plain.index("Closing balance") < plain.index("Net difference")
+    assert plain.index("Net difference") < plain.index("https://github.com/x/y/pull/9")
+    assert html.index("Opening balance") < html.index("Trades executed")
+    assert html.index("Net difference") < html.index("Review the report PR")

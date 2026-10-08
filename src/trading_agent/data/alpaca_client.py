@@ -85,6 +85,28 @@ def get_filled_orders(since: datetime | None = None) -> list[dict[str, Any]]:
     return sorted(filled, key=lambda o: (o["filled_at"], o["id"]))
 
 
+def get_equity_by_close() -> dict[str, float]:
+    """Account equity at the close of each past trading day, keyed by that
+    session's ET date (YYYY-MM-DD). Alpaca stamps each daily point 00:00 UTC,
+    which is 8pm ET the evening BEFORE the stamped date — so the point stamped
+    2026-10-07 is Tuesday 10-06's close, and converting to ET dates it
+    correctly (it equals the account's `last_equity` on 10-07). Days before the
+    account existed (equity 0) are dropped. Today's session appears here only
+    after it closes and the day rolls over; callers use get_account() for
+    "now". Read-only."""
+    from zoneinfo import ZoneInfo
+
+    from alpaca.trading.requests import GetPortfolioHistoryRequest
+
+    history = trading_client().get_portfolio_history(GetPortfolioHistoryRequest(period="1A", timeframe="1D"))
+    et = ZoneInfo("America/New_York")
+    return {
+        datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(et).strftime("%Y-%m-%d"): float(equity)
+        for ts, equity in zip(history.timestamp, history.equity)
+        if equity and equity > 0
+    }
+
+
 def get_latest_quote(ticker: str) -> dict[str, Any]:
     request = StockLatestQuoteRequest(symbol_or_symbols=ticker)
     quotes = data_client().get_stock_latest_quote(request)

@@ -9,14 +9,16 @@ from trading_agent.utils import append_json, day_dir
 
 @pytest.fixture(autouse=True)
 def no_live_fill_history(monkeypatch):
-    """The reports read Alpaca's real fill history for sell results. Tests must
-    never reach it: by default it's unreachable, which sends realized P&L down
-    its trade-file fallback; tests that care supply fills themselves."""
+    """The reports read Alpaca's real fill and equity history (sell results,
+    opening/closing balance). Tests must never reach it: by default both are
+    unreachable, which sends realized P&L down its trade-file fallback and
+    reports the balance as unavailable; tests that care supply their own."""
 
     def unreachable():
         raise RuntimeError("no Alpaca in tests")
 
     monkeypatch.setattr("trading_agent.data.alpaca_client.get_filled_orders", unreachable)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_equity_by_close", unreachable)
 
 
 def _order(symbol, side, filled_qty=None, filled_avg_price=None, submitted_at="2026-09-24T00:00:00+00:00"):
@@ -951,3 +953,66 @@ def test_weekly_learning_review_falls_back_to_trade_files_when_alpaca_is_down(mo
     review = rb.build_weekly_learning_review("2026-09-28", 14)  # history unreachable (autouse fixture)
     assert review["sell_results"]["error"] and review["realized_pnl"]["total"] == 0.0
     assert "unavailable" in open(review["report_path"]).read()
+
+
+# --- opening / closing balance at the top of the reports (2026-10-08) ---------
+
+_EQUITY = {
+    "2026-09-17": 100000.0, "2026-09-25": 101021.36, "2026-10-02": 95458.93,
+    "2026-10-05": 94273.68, "2026-10-06": 94000.0,
+}
+
+
+def _with_equity(monkeypatch, equity="94000"):
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_equity_by_close", lambda: dict(_EQUITY))
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_account",
+        lambda: {"equity": equity, "last_equity": "94273.68", "cash": "50000", "buying_power": "50000"},
+    )
+
+
+def test_daily_summary_carries_the_opening_closing_and_net_difference(monkeypatch, tmp_path):
+    _isolate_daily_summary_dirs(monkeypatch, tmp_path)
+    _with_equity(monkeypatch)
+    b = rb.build_daily_summary("2026-10-06")["balances"]
+    assert (b["opening"], b["closing"]) == (94273.68, 94000.0)
+    assert b["opening_note"] == "close of 2026-10-05" and b["closing_note"] == "close of 2026-10-06"
+    assert b["net_usd"] == -273.68
+
+
+def test_daily_summary_reports_balance_unavailable_when_alpaca_is_down(monkeypatch, tmp_path):
+    _isolate_daily_summary_dirs(monkeypatch, tmp_path)  # equity history unreachable (autouse fixture)
+    b = rb.build_daily_summary("2026-10-06")["balances"]
+    assert b["error"] == "no Alpaca in tests" and b["net_usd"] is None
+
+
+def test_weekly_report_opens_with_the_account_balance_before_everything_else(monkeypatch, tmp_path):
+    monkeypatch.setattr(rb, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
+    monkeypatch.setattr(rb, "APPROVALS_DIR", tmp_path / "approvals")
+    monkeypatch.setattr(rb, "TRADES_DIR", tmp_path / "trades")
+    monkeypatch.setattr(rb, "REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr("trading_agent.optimizations.OPTIMIZATIONS_DIR", tmp_path / "optimizations")
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_positions", lambda: [])
+    _with_equity(monkeypatch)
+
+    lines = rb.build_weekly_report("2026-09-28").read_text().splitlines()  # a finished week: Mon-Sun
+
+    assert lines[0] == "# Weekly Report — week of 2026-09-28"
+    assert lines[2] == "## Account balance"
+    assert lines[3] == "- Opening balance: $101,021.36 (close of 2026-09-25)"
+    assert lines[4].startswith("- Closing balance: $") and lines[5].startswith("- Net difference: ")
+    assert lines.index("## Account balance") < lines.index("## Summary")
+
+
+def test_weekly_learning_review_leads_with_the_account_balance(monkeypatch, tmp_path):
+    _isolate_weekly_learning_review_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"bid_price": 1.0, "ask_price": 1.0})
+    _with_equity(monkeypatch)
+
+    review = rb.build_weekly_learning_review("2026-10-06", 30)
+
+    assert review["balances"]["error"] is None and review["balances"]["closing"] == 94000.0
+    assert review["balances"]["opening"] == 100000.0  # window starts before the account existed
+    text = open(review["report_path"]).read()
+    assert text.index("## Account balance") < text.index("## Trades over the lookback window")
+    assert "- Net difference:" in text

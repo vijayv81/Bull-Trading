@@ -20,6 +20,7 @@ from trading_agent.config import (
     load_agent_config,
     load_risk_limits,
 )
+from trading_agent.reporting.balances import balance_lines, window_balances
 from trading_agent.reporting.sell_results import sell_result_lines, window_sell_results
 from trading_agent.utils import load_json_list, today
 
@@ -377,6 +378,9 @@ def build_weekly_report(week_start: str | None = None) -> Path:
     lines = [
         f"# Weekly Report — week of {days[0]}",
         "",
+        "## Account balance",
+        *[f"- {line}" for line in balance_lines(window_balances(days[0], days[-1]))],
+        "",
         "## Summary",
         f"- Total recommendations: {total_recs}",
         f"- Approved: {total_approved} | Rejected: {total_rejected} | Expired: {total_expired}",
@@ -537,6 +541,8 @@ def build_daily_summary(day: str | None = None) -> dict:
         "optimization_options": options_awaiting_review(day),
         "as_of_note": _as_of_note(),
         "halted_checkpoints": _day_halts(day),
+        # Opening balance (prior close), closing balance, and the net difference.
+        "balances": window_balances(day, day),
         # Net result of every SELL that filled that day (Alpaca fills, average cost).
         "sell_results": window_sell_results(day, day, trades),
     }
@@ -785,6 +791,9 @@ def _write_learning_review_markdown(review: dict[str, Any]) -> Path:
     lines = [
         f"# Weekly Learning Review — last {review['lookback_days']} days "
         f"({review['window_start']} to {review['window_end']})",
+        "",
+        "## Account balance",
+        *[f"- {line}" for line in balance_lines(review["balances"])],
         "",
         "## Trades over the lookback window",
         f"- Trades executed: {review['trades_count']}",
@@ -1048,6 +1057,7 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
         "window_end": days[-1],
         "lookback_days": lookback_days,
         "trades_count": len(window_trades),
+        "balances": window_balances(days[0], days[-1]),
         "realized_pnl": _realized_from_sells(sell_results, window_trades),
         "sell_results": sell_results,
         "unrealized_pnl": _unrealized_pnl(),

@@ -271,6 +271,11 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
     if summary.get("as_of_note"):
         lines.append(summary["as_of_note"])
     lines.append("")
+    if summary.get("balances") is not None:
+        from trading_agent.reporting.balances import balance_lines
+
+        lines.extend(balance_lines(summary["balances"]))
+        lines.append("")
     portfolio_pct = summary["portfolio_return_pct"]
     benchmark_pct = summary["benchmark_return_pct"]
     if portfolio_pct is not None:
@@ -426,6 +431,8 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
     muted = h.COLORS["muted"]
 
     inner = ""
+    if summary.get("balances") is not None:
+        inner += _balances_html(summary["balances"])
     inner += h.stat_card("Portfolio return", h.signed_pct(portfolio_pct))
     inner += h.stat_card(f"{summary['benchmark_symbol']} return", h.signed_pct(benchmark_pct))
     if outperformance_pct is not None:
@@ -718,6 +725,28 @@ def _optimization_options_html(review: dict[str, Any]) -> str:
     )
 
 
+def _balances_html(b: dict[str, Any]) -> str:
+    """Opening / closing / net difference as the first cards of a summary."""
+    from html import escape
+
+    from trading_agent.notify import html as h
+    from trading_agent.reporting.balances import balance_lines
+
+    if b.get("error") and b.get("opening") is None:
+        return h.muted(escape(balance_lines(b)[0]))
+
+    def note(text: str) -> str:
+        return f'<div style="font-size:12px;color:{h.COLORS["muted"]};">{escape(text)}</div>'
+
+    out = h.stat_card("Opening balance", f"${b['opening']:,.2f}" + note(b["opening_note"]))
+    if b.get("error"):
+        return out + h.muted(escape(f"Closing balance: unavailable — {b['error']}"))
+    out += h.stat_card("Closing balance", f"${b['closing']:,.2f}" + note(b["closing_note"]))
+    kind = "net increase" if b["net_usd"] > 0 else ("net decrease" if b["net_usd"] < 0 else "no net change")
+    pct = f" ({b['net_pct']:+.2f}%)" if b["net_pct"] is not None else ""
+    return out + h.stat_card("Net difference", h.signed_dollar(b["net_usd"]) + escape(pct) + note(kind))
+
+
 def _sell_results_html(sr: dict[str, Any], scope: str) -> str:
     """The sell-orders section shared by the daily summary and the weekly
     learning review: the net total as a colored card, then one row per SELL."""
@@ -847,6 +876,8 @@ def _weekly_learning_review_html(review: dict[str, Any], pr_url: str | None = No
     muted = h.COLORS["muted"]
 
     inner = ""
+    if review.get("balances") is not None:
+        inner += _balances_html(review["balances"])
     inner += h.stat_card("Trades executed", str(review["trades_count"]))
     inner += h.stat_card("Realized P&L (this week)", h.signed_dollar(review["realized_pnl"]["total"]))
     if review["unrealized_pnl"]["error"]:
@@ -1006,6 +1037,11 @@ def notify_weekly_learning_review(review: dict[str, Any], pr_url: str | None = N
         f"({review['window_start']} to {review['window_end']})",
         "",
     ]
+    if review.get("balances") is not None:
+        from trading_agent.reporting.balances import balance_lines
+
+        lines.extend(balance_lines(review["balances"]))
+        lines.append("")
 
     if pr_url:
         lines.append("Review & approve this report (merge the PR):")
