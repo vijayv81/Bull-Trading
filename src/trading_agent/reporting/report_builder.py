@@ -20,6 +20,8 @@ from trading_agent.config import (
     load_agent_config,
     load_risk_limits,
 )
+from trading_agent.reporting.balances import balance_lines, window_balances
+from trading_agent.reporting.sell_results import sell_result_lines, window_sell_results
 from trading_agent.utils import load_json_list, today
 
 BENCHMARK_SYMBOL = "SPY"
@@ -227,6 +229,21 @@ def _realized_pnl(trades: list[dict]) -> dict:
     }
 
 
+def _realized_from_sells(sell_results: dict, fallback_trades: list[dict]) -> dict:
+    """The realized-P&L dict (same shape as _realized_pnl()) from the window's
+    actual SELL fills. data/trades/ never carries fill prices (an order is
+    recorded as `pending_new` the instant it's submitted), so _realized_pnl()
+    on those files reported $0.00 with every order "pending" — it remains the
+    fallback only when Alpaca can't be read."""
+    if sell_results.get("error"):
+        return _realized_pnl(fallback_trades)
+    return {
+        "by_symbol": sell_results["by_symbol"],
+        "total": sell_results["total_net_usd"],
+        "pending_fills": sell_results["pending"],
+    }
+
+
 def build_daily_report(day: str | None = None) -> Path:
     day = day or today()
     recs = _day_recs(day)
@@ -335,7 +352,8 @@ def build_weekly_report(week_start: str | None = None) -> Path:
                 f"{rejected} rejected, {expired} expired, {len(trades)} trades"
             )
 
-    realized = _realized_pnl(week_trades)
+    sell_results = window_sell_results(days[0], days[-1], week_trades)
+    realized = _realized_from_sells(sell_results, week_trades)
     unrealized = _unrealized_pnl()
 
     pnl_lines = [f"- Realized this week: ${realized['total']:,.2f}"]
@@ -343,7 +361,7 @@ def build_weekly_report(week_start: str | None = None) -> Path:
         pnl_lines += [f"  - {sym}: ${amt:,.2f}" for sym, amt in sorted(realized["by_symbol"].items())]
     if realized["pending_fills"]:
         pnl_lines.append(
-            f"  - {realized['pending_fills']} order(s) with no confirmed fill yet, excluded from the total"
+            f"  - {realized['pending_fills']} sell order(s) not filled yet, excluded from the total"
         )
 
     if unrealized["error"]:
@@ -360,6 +378,9 @@ def build_weekly_report(week_start: str | None = None) -> Path:
     lines = [
         f"# Weekly Report — week of {days[0]}",
         "",
+        "## Account balance",
+        *[f"- {line}" for line in balance_lines(window_balances(days[0], days[-1]))],
+        "",
         "## Summary",
         f"- Total recommendations: {total_recs}",
         f"- Approved: {total_approved} | Rejected: {total_rejected} | Expired: {total_expired}",
@@ -368,6 +389,9 @@ def build_weekly_report(week_start: str | None = None) -> Path:
         "## P&L",
         *pnl_lines,
         "",
+        "## Sell orders executed — net result",
+        *sell_result_lines(sell_results, "this week"),
+        "",
         "## Daily breakdown",
         *(per_day_lines or ["_No activity this week._"]),
         "",
@@ -375,10 +399,11 @@ def build_weekly_report(week_start: str | None = None) -> Path:
         *_open_option_lines(),
         "",
         "## Notes",
-        "Realized P&L only counts orders with a confirmed fill "
-        "(`filled_qty`/`filled_avg_price`) — this project doesn't yet poll Alpaca "
-        "for fill confirmation after submission, so a market order recorded before "
-        "it fills is excluded and counted under pending fills above, not guessed at. "
+        "Realized P&L and the sell-order results come from Alpaca's filled orders "
+        "(average-cost basis per symbol over the account's whole fill history), not from "
+        "data/trades/ — those records are written at submission, before any fill. A sell "
+        "that hasn't filled yet is excluded and counted above, and one with no known cost "
+        "basis is listed but kept out of the total, not guessed at. "
         "Unrealized P&L is a live snapshot as of report generation, not as of any "
         "particular day in the week.",
     ]
@@ -467,7 +492,7 @@ def build_daily_summary(day: str | None = None) -> dict:
     say anything, same threshold propose_weight_adjustments() itself uses.
     """
     from trading_agent.journal import load_entries
-    from trading_agent.optimizations import options_proposed_on
+    from trading_agent.optimizations import options_awaiting_review
     from trading_agent.scoring.recommendation_engine import propose_weight_adjustments
 
     day = day or today()
@@ -510,11 +535,16 @@ def build_daily_summary(day: str | None = None) -> dict:
         "scoring_weights": load_agent_config().get("scoring_weights", {}),
         "signal_hit_rates": signal_hit_rates,
         "learning_outcome": _learning_outcome_note(signal_hit_rates),
-        # Today's proposal as a saved, applicable option (optimizations.
-        # propose_daily()) — what the email's "review & approve" PR carries.
-        "optimization_options": options_proposed_on(day),
+        # Proposed changes with an open PR (optimizations.propose_daily() +
+        # record_pr()), each carrying its pr_url — what the email's "review &
+        # approve" section links. Includes an earlier day's still-unmerged PR.
+        "optimization_options": options_awaiting_review(day),
         "as_of_note": _as_of_note(),
         "halted_checkpoints": _day_halts(day),
+        # Opening balance (prior close), closing balance, and the net difference.
+        "balances": window_balances(day, day),
+        # Net result of every SELL that filled that day (Alpaca fills, average cost).
+        "sell_results": window_sell_results(day, day, trades),
     }
 
 
@@ -762,16 +792,25 @@ def _write_learning_review_markdown(review: dict[str, Any]) -> Path:
         f"# Weekly Learning Review — last {review['lookback_days']} days "
         f"({review['window_start']} to {review['window_end']})",
         "",
+        "## Account balance",
+        *[f"- {line}" for line in balance_lines(review["balances"])],
+        "",
         "## Trades over the lookback window",
         f"- Trades executed: {review['trades_count']}",
         f"- Realized P&L: ${review['realized_pnl']['total']:,.2f}",
     ]
     if review["realized_pnl"]["pending_fills"]:
-        lines.append(f"  - {review['realized_pnl']['pending_fills']} order(s) with no confirmed fill yet")
+        lines.append(f"  - {review['realized_pnl']['pending_fills']} sell order(s) not filled yet")
     if review["unrealized_pnl"]["error"]:
         lines.append(f"- Unrealized (live positions): unavailable — {review['unrealized_pnl']['error']}")
     else:
         lines.append(f"- Unrealized (live, open positions right now): ${review['unrealized_pnl']['total']:,.2f}")
+
+    lines += [
+        "",
+        "## Sell orders executed — net result",
+        *sell_result_lines(review["sell_results"], f"over the last {review['lookback_days']} days"),
+    ]
 
     lines += ["", "## Portfolio status (live snapshot)"]
     status = review["portfolio_status"]
@@ -1011,12 +1050,16 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
 
     signal_hit_rates = _signal_type_hit_rates()
 
+    sell_results = window_sell_results(days[0], days[-1], window_trades)
+
     review: dict[str, Any] = {
         "window_start": days[0],
         "window_end": days[-1],
         "lookback_days": lookback_days,
         "trades_count": len(window_trades),
-        "realized_pnl": _realized_pnl(window_trades),
+        "balances": window_balances(days[0], days[-1]),
+        "realized_pnl": _realized_from_sells(sell_results, window_trades),
+        "sell_results": sell_results,
         "unrealized_pnl": _unrealized_pnl(),
         "portfolio_status": _portfolio_status_snapshot(),
         "actionable_count": len(actionable_keys),

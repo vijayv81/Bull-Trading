@@ -305,19 +305,36 @@ def cmd_optimizations_list(args: argparse.Namespace) -> None:
 
 
 def cmd_optimizations_propose(args: argparse.Namespace) -> None:
-    from trading_agent.optimizations import propose_daily
+    from trading_agent.optimizations import options_awaiting_review, propose_daily
     from trading_agent.reporting.report_builder import _signal_type_hit_rates
     from trading_agent.utils import today
 
     day = args.day or today()
-    fresh = propose_daily(day, _signal_type_hit_rates())
-    if not fresh:
-        print("No new daily option (not enough evidence, a shift applied recently, or already pending).")
-        return
-    for option in fresh:
+    needs_pr = propose_daily(day, _signal_type_hit_rates())
+    waiting = options_awaiting_review(day)
+    for option in needs_pr:
         print(f"{option['id']}  {option['title']}")
         for c in option["changes"]:
             print(f"    {c['file']}: {c['path']} {c['from']} -> {c['to']}")
+        if option.get("risk"):
+            print(f"    Heads-up: {option['risk']}")
+    needs_ids = {o["id"] for o in needs_pr}
+    for option in waiting:
+        if option["id"] not in needs_ids:
+            print(f"Already awaiting review: {option['id']}  {option['pr_url']}")
+    if not needs_pr and not waiting:
+        print("No new daily option (not enough evidence for a weight shift).")
+
+
+def cmd_optimizations_record_pr(args: argparse.Namespace) -> None:
+    from trading_agent.optimizations import OptimizationRefused, record_pr
+
+    try:
+        record = record_pr(args.option_id, args.pr_url)
+    except OptimizationRefused as exc:
+        print(f"Refused: {exc}")
+        raise SystemExit(1) from exc
+    print(f"Recorded {record['pr_url']} for {record['option_id']}")
 
 
 def cmd_optimizations_decide(args: argparse.Namespace) -> None:
@@ -545,6 +562,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     propose.add_argument("--day", help="YYYY-MM-DD, defaults to today.")
     propose.set_defaults(func=cmd_optimizations_propose)
+    record_pr_cmd = optimizations_sub.add_parser(
+        "record-pr",
+        help="Remember the PR opened for an option, so the daily email keeps linking it until it's merged.",
+    )
+    record_pr_cmd.add_argument("option_id")
+    record_pr_cmd.add_argument("pr_url")
+    record_pr_cmd.set_defaults(func=cmd_optimizations_record_pr)
     for decision in ("apply", "dismiss"):
         decide = optimizations_sub.add_parser(decision)
         decide.add_argument("option_id")

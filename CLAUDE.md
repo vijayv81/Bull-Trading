@@ -165,22 +165,73 @@ email to include a clickable link to approve/merge the changes"). At
 `pre_close`, `trading-agent optimizations propose` turns the same per-signal
 hit rates the email shows into a saved, applicable option (the scoring-weight
 shift only — the refusal and expiry options need the weekly review's 30-day
-evidence), with the same minimum-evidence bar as the weekly review. If it
-produces one, the routine applies it **on its own branch**
-(`optimization/<id>`), pushes, and opens a PR it **never merges**, then runs
-`trading-agent daily-summary --pr-url <url>`: the email's "Review & approve
-today's change" section shows the exact config change, why, and the effect,
-with a button to the PR. Merging is the approval; closing the PR leaves the
-weights alone. The routine's `pre_close` snapshot commit still self-merges as
-before; only this config-change PR waits for you. Without a PR URL (or
-without a proposal) the email is unchanged. See
-`.claude/skills/trading-report/SKILL.md` for the exact commands.
+evidence), with the same minimum-evidence bar as the weekly review. For each
+option that needs one, the routine applies it **on its own branch**
+(`optimization/<id>`), pushes, opens a PR it **never merges**, and records the
+PR with `trading-agent optimizations record-pr <id> <url>`. `daily-summary`
+then shows, for every open option that has a recorded PR, the exact config
+change, why, the effect, and a button to that PR. Merging is the approval;
+closing the PR leaves the weights alone. The routine's `pre_close` snapshot
+commit still self-merges as before; only this config-change PR waits for you.
+See `.claude/skills/trading-report/SKILL.md` for the exact commands.
 
-Two limits keep a daily cadence from walking the weights: no new weight shift
-is proposed for `WEIGHT_COOLDOWN_DAYS` (7) after one is applied (the rolling
-hit rates barely move day to day, so the next morning would re-propose the
-same shift), and nothing is proposed that an already-pending option already
-proposes.
+**The link must not go missing** (2026-10-08: the day's recommendation was to
+cut `sentiment`'s weight, and the email printed "consider reducing its weight"
+with no PR). Two causes, both fixed. (1) A 7-day cooldown after the 10-05
+weight change silently stopped the option being created, so there was nothing
+to open a PR for while the email still showed the advice. It is now a
+**caution, not a block**: a weight proposal within `WEIGHT_CAUTION_DAYS` (7) of
+the last applied weight change is still offered, carrying a "Heads-up: weights
+were last changed on <date> ..." line in the PR/email (and the weekly review's
+`Risk:` line) for the user to weigh. (2) A proposal identical to one still
+awaiting review was skipped, with no link, even though that earlier PR was
+still open. PR URLs are now remembered per option
+(`data/optimizations/<day>/prs.json`, `record_pr()`), so the email keeps
+linking an unmerged PR for `PR_REMINDER_DAYS` (7) after it was proposed; a
+merged one drops out on its own (the config moved, so the option is no longer
+open). An identical pending option that never got a PR is handed back for one
+rather than duplicated. When the email shows a proposal but no PR exists, it
+says "No pull request is open for this proposal yet" instead of staying silent.
+
+**Opening balance, closing balance and net difference come first**, per user
+instruction 2026-10-08 ("on the daily and weekly summary, include opening
+trading balance, closing balance and net difference at the very top").
+`reporting/balances.py:window_balances()` gives them for a window of ET days:
+"balance" is account equity (cash + positions at market), the same measure the
+daily-loss guardrail and the portfolio return use. Opening is the equity at the
+close of the last session before the window; closing is the equity at the
+window's last close, or the live equity when the window includes today,
+labelled "as of HH:MM ET" (a summary sent before the 4:00pm close isn't final).
+The block heads the daily summary, the Friday weekly report and the Saturday
+learning review — ahead of the portfolio-vs-SPY return and, in the learning
+email, ahead of the PR link. History comes from Alpaca's daily equity series
+(`alpaca_client.get_equity_by_close()`), whose points are stamped 00:00 UTC —
+8pm ET the evening *before* the stamped date, so the point stamped 10-07 is
+Tuesday 10-06's close — and are re-dated by ET session. A window that starts
+before the account existed (the 30-day review) opens at the account's first
+recorded balance and says so; an unreachable Alpaca reports "unavailable",
+never $0.
+
+**Net result on every executed SELL**, per user instruction 2026-10-08 ("the
+summary email (both daily and weekly) must include the net increase or
+decrease for all sell orders executed"). `reporting/sell_results.py` walks
+Alpaca's filled orders (`alpaca_client.get_filled_orders()`, the account's
+whole fill history) oldest first with an average-cost basis per symbol — a BUY
+updates the running average, a SELL realizes (fill price − average cost) ×
+qty — and the daily summary, the Friday weekly report and the Saturday
+learning review each list every SELL that filled in their window (ET calendar
+days) with its fill price, average cost, net $ and %, auto/human source, and a
+total labelled "net increase"/"net decrease". It deliberately does **not** use
+`data/trades/` for fills: those records are written at submission as
+`pending_new` with no fill price and never updated, which is why the weekly
+"Realized P&L" read $0.00 with every order "pending" until now (the walk was
+checked against Alpaca's own open positions: quantities and average costs
+match). The weekly report's and review's `realized_pnl` now comes from the
+same fills, with the old trade-file calculation kept only as the fallback when
+Alpaca can't be read. "Exclude, don't fake": a SELL with no earlier fill to
+establish a cost basis is listed but kept out of the total and counted; sells
+not yet filled are counted and excluded; an unreachable Alpaca says
+"unavailable", never $0.
 
 **"As of" note**, per the 2026-10-05 review: the summary is sent from the
 `pre_close` run, minutes before the 4:00pm ET close, so the portfolio-vs-SPY

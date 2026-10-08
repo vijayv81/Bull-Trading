@@ -36,19 +36,27 @@ trading-agent daily-summary --day YYYY-MM-DD
 ```
 
 **Before sending it, propose the day's learning as a PR (pre_close, daily).**
-The email's learning section can carry a clickable "review & merge" link, which
-means the PR has to exist first:
+The email's learning section links a "review & merge" PR for the day's
+recommendation, so the PR has to exist first:
 
 ```bash
 trading-agent optimizations propose
 ```
 
-If it prints `No new daily option ...`, skip to the plain `daily-summary` above:
-not enough evidence, a weight shift applied in the last 7 days, or the same
-change is already pending in an earlier, unmerged PR. If it prints an option
-id (it starts with the date, `<day>`), open a PR for it. **Never merge this
-PR** — the user's merge is the approval, and this is the one PR the routine
-does not self-merge:
+It prints one of three things per option:
+
+- `<id>  <title>` plus the config change — **open a PR for it** (below). This is
+  either a new option or an earlier one whose PR step never completed.
+- `Already awaiting review: <id>  <url>` — its PR is already open and unmerged;
+  nothing to do, the email links it.
+- `No new daily option ...` — not enough evidence for a weight shift; skip to
+  `daily-summary` below.
+
+A recommendation right after another weight change is still proposed, with a
+`Heads-up:` line saying the weights were changed on a given date — that is for
+the user to weigh, not a reason to skip the PR. Never merge the PR — the user's
+merge is the approval, and this is the one PR the routine does not self-merge.
+For each `<id>` that needs one (`<day>` is the id's date prefix):
 
 ```bash
 git switch -c optimization/<id>                 # takes the uncommitted options file along
@@ -56,16 +64,21 @@ trading-agent optimizations apply <id> --decided-by daily-pr
 git add config/ data/optimizations/
 git commit -m "Apply <id> (daily learning proposal)"
 git push -u origin optimization/<id>
-# open a PR against main from optimization/<id>; body = the option's title, why, effect and each config change
+# open a PR against main from optimization/<id>; body = the option's title, why, effect, heads-up and each config change
 git switch <the branch you were on>             # config goes back to main's values
 git checkout optimization/<id> -- data/optimizations/<day>/options.json
-trading-agent daily-summary --pr-url <the PR's URL>
+trading-agent optimizations record-pr <id> <the PR's URL>
+trading-agent daily-summary
 ```
 
-Restore only `options.json`, not the whole directory: the email describes the
-change from that file, and `applied.json` would make it look already applied.
-If the apply is refused, or the push or PR fails, say so plainly and send the
-plain `daily-summary` instead — the email must go out either way.
+`record-pr` is what makes the email link the PR — today and on every later day
+until it's merged — so don't skip it. Restore only `options.json`, not the whole
+directory: `applied.json` would make the option look already applied. The
+snapshot commit below includes `data/optimizations/` so the options and the
+recorded PR URLs reach `main`. If the apply is refused, or the push or PR
+fails, say so plainly and send the plain `daily-summary` instead — the email
+then states that no PR is open for the proposal, and the next day's `propose`
+offers it again.
 
 `daily-summary` is separate from `report daily` above — it's the "learnings + how we did
 vs. SPY today" email, not a markdown file. It's gated by
@@ -196,7 +209,7 @@ The report and the data behind it should land in the same commit, so a report in
 git history can always be traced to the records that produced it (plan §7).
 
 ```bash
-git add reports/ data/recommendations/ data/approvals/ data/trades/ data/journal/
+git add reports/ data/recommendations/ data/approvals/ data/trades/ data/journal/ data/optimizations/
 git status                                    # confirm before committing
 git commit -m "Daily snapshot <date>: <n> recommendations, <n> approved"
 ```
