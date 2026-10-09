@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 92.2 (technical=1.0, sentiment=1.0, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-16.51)",
     "reference_price": 1.885,
     "recorded_at": "2026-10-09T12:49:00.843819+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1.885,
+      "price_at_measurement": 2.085,
+      "price_basis": "quote_mid",
+      "pct_change": 10.61,
+      "directionally_correct": false,
+      "measured_at": "2026-10-09T19:46:33.502976+00:00"
+    }
   },
   {
     "ticker": "APUS",
@@ -19,7 +26,14 @@
     "reasoning": "Auto-applied: confidence 56.3 (technical=0.6788101520291488, sentiment=None, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.26)",
     "reference_price": 5.494999999999999,
     "recorded_at": "2026-10-09T12:49:03.839449+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 5.494999999999999,
+      "price_at_measurement": 4.470000000000001,
+      "price_basis": "quote_mid",
+      "pct_change": -18.65,
+      "directionally_correct": true,
+      "measured_at": "2026-10-09T19:46:33.985645+00:00"
+    }
   },
   {
     "ticker": "ALISU",
@@ -30,7 +44,14 @@
     "reasoning": "Auto-applied: confidence 100.0 (technical=1.0, sentiment=None, catalyst=1.0, fundamental=None)",
     "reference_price": 47.575,
     "recorded_at": "2026-10-09T12:53:18.609089+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 47.575,
+      "price_at_measurement": 25.46,
+      "price_basis": "quote_mid",
+      "pct_change": -46.48,
+      "directionally_correct": false,
+      "measured_at": "2026-10-09T19:46:34.441443+00:00"
+    }
   },
   {
     "ticker": "FVNNU",
@@ -41,6 +62,13 @@
     "reasoning": "Auto-applied: confidence 90.0 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None)",
     "reference_price": 16.14,
     "recorded_at": "2026-10-09T12:53:25.786552+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 16.14,
+      "price_at_measurement": 16.14,
+      "price_basis": "quote_mid",
+      "pct_change": 0.0,
+      "directionally_correct": false,
+      "measured_at": "2026-10-09T19:46:34.834864+00:00"
+    }
   }
 ]
