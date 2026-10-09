@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "AIXI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1554.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-09T12:48:59.037697+00:00"
+  },
+  {
+    "ticker": "APUS",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 105.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-09T12:49:02.143942+00:00"
+  },
+  {
+    "ticker": "ALISU",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 64.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-09T12:53:09.838418+00:00"
+  },
+  {
+    "ticker": "FVNNU",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 136.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-09T12:53:19.650954+00:00"
+  }
+]
