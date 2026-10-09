@@ -53,6 +53,36 @@ def _reference_price(ticker: str) -> float | None:
         return None
 
 
+def _session_closed(day: str) -> bool:
+    """True once `day`'s regular session is over: an earlier date, or today
+    after 4:00pm ET on a weekday."""
+    from zoneinfo import ZoneInfo
+
+    now = datetime.now(ZoneInfo("America/New_York"))
+    today_et = now.strftime("%Y-%m-%d")
+    if day < today_et:
+        return True
+    return day == today_et and now.weekday() < 5 and (now.hour, now.minute) >= (16, 0)
+
+
+def _measurement_price(ticker: str, day: str) -> tuple[float | None, str]:
+    """(price, basis) for measuring an outcome on `day`. Once the session is
+    over it is that session's CLOSE — the day's final number. After hours the
+    latest quote can be stale or very wide on a thin ticker, which is no basis
+    for a "final" outcome — falling back to the quote mid only when there is no
+    daily bar (not a trading day, or not published yet)."""
+    if _session_closed(day):
+        try:
+            from trading_agent.data.alpaca_client import get_closing_price
+
+            close = get_closing_price(ticker, day)
+        except Exception:  # noqa: BLE001
+            close = None
+        if close:
+            return close, "close"
+    return _reference_price(ticker), "quote_mid"
+
+
 def record_entry(
     ticker: str,
     checkpoint: str,
@@ -97,8 +127,9 @@ def _directionally_correct(action: str | None, pct_change: float) -> bool | None
 def mark_outcomes(day: str | None = None) -> list[dict[str, Any]]:
     """Fill in the outcome for entries that have a reference price but no result yet.
 
-    Re-runnable: entries already marked are left alone, so this can run at every
-    pre_close without double-counting or overwriting an earlier measurement.
+    Re-runnable: entries already marked are left alone, so a repeat run never
+    double-counts or overwrites an earlier measurement. Run after the close
+    (the 4:30pm post_close routine) the measurement is the day's closing price.
     """
     day = day or today()
     entries = load_entries(day)
@@ -111,7 +142,7 @@ def mark_outcomes(day: str | None = None) -> list[dict[str, Any]]:
         if not reference:
             continue
 
-        current = _reference_price(entry["ticker"])
+        current, basis = _measurement_price(entry["ticker"], day)
         if not current:
             continue
 
@@ -119,6 +150,7 @@ def mark_outcomes(day: str | None = None) -> list[dict[str, Any]]:
         entry["outcome"] = {
             "price_at_decision": reference,
             "price_at_measurement": current,
+            "price_basis": basis,
             "pct_change": round(pct_change, 2),
             "directionally_correct": _directionally_correct(entry.get("action"), pct_change),
             "measured_at": datetime.now(timezone.utc).isoformat(),

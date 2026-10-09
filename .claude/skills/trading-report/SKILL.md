@@ -1,6 +1,6 @@
 ---
 name: trading-report
-description: Builds the daily and weekly markdown reports, the Saturday weekly learning review (trades, portfolio status, orders not placed, missed opportunities), surfaces proposed scoring-weight changes, and commits the day's audit snapshot to git. Use this at pre_close, on the Saturday weekly-learning-review routine, whenever the user asks for a daily or weekly summary, when they ask how the week went, when they want the strategy weights reviewed, or when they ask you to commit the day's data. Use it even for loose phrasings like "wrap up the day" or "what happened this week?"
+description: Builds the daily and weekly markdown reports, the Saturday weekly learning review (trades, portfolio status, orders not placed, missed opportunities), surfaces proposed scoring-weight changes, and commits the day's audit snapshot to git. Use this in the 4:30pm post_close wrap-up, on the Saturday weekly-learning-review routine, whenever the user asks for a daily or weekly summary, when they ask how the week went, when they want the strategy weights reviewed, or when they ask you to commit the day's data. Use it even for loose phrasings like "wrap up the day" or "what happened this week?"
 ---
 
 # Daily and weekly reporting
@@ -27,7 +27,9 @@ Daily lands in `reports/daily/<date>.md`, weekly in
 
 ## Send the daily summary
 
-At `pre_close`, after `trading-journal` has marked outcomes and aggregated
+In the 4:30pm `post_close` routine (after the close, so the day's return, the
+closing balance and the marked outcomes are final), after `trading-journal` has
+marked outcomes and aggregated
 performance, also send the end-of-day email/SMS:
 
 ```bash
@@ -35,7 +37,7 @@ trading-agent daily-summary                   # today
 trading-agent daily-summary --day YYYY-MM-DD
 ```
 
-**Before sending it, propose the day's learning as a PR (pre_close, daily).**
+**Before sending it, propose the day's learning as a PR (post_close, daily).**
 The email's learning section links a "review & merge" PR for the day's
 recommendation, so the PR has to exist first:
 
@@ -87,7 +89,7 @@ it is a silent no-op, so check the config before telling them it didn't send.
 
 ## Send the pending-approvals reminder
 
-Also at `pre_close`, after the daily summary: nudge for anything still
+Also in `post_close`, after the daily summary: nudge for anything still
 lacking a human decision.
 
 ```bash
@@ -104,9 +106,10 @@ approval window vs. expired with no decision ever recorded.
 
 ## Send the weekly report (Fridays only)
 
-Also at `pre_close`, after the pending-approvals reminder: if today (US/Eastern)
-is a Friday, also build and send the weekly report — `pre_close` is the last
-checkpoint of the trading week, so this is the natural point to close it out.
+Also in `post_close`, after the pending-approvals reminder: if today (US/Eastern)
+is a Friday, also build and send the weekly report — `post_close` is the last
+routine of the trading week, after the final close, so the week's closing balance
+and sell results are final.
 On any other weekday, skip this step entirely; there's no separate weekly
 trigger, this is the only place it runs.
 
@@ -155,7 +158,7 @@ anything yet.
 
 Separate from everything above: `routines/weekly_learning_review.md`
 describes a fifth scheduled routine, distinct from the four weekday
-checkpoints and from the Friday `pre_close` weekly report, that fires once
+checkpoints and from the Friday `post_close` weekly report, that fires once
 a week on Saturday morning when the market's closed.
 
 ```bash
@@ -185,7 +188,7 @@ If you're invoked specifically for this Saturday routine, follow
 first, `--no-send`, commit/push, open a PR, then email with `--send-saved
 --pr-url` — **never merge it**: the PR link in the email is how the user
 reviews and approves it) rather than treating it as an extra step tacked
-onto a weekday `pre_close` run — it's its own routine with its own
+onto a weekday `post_close` run — it's its own routine with its own
 schedule. This is the one routine that does NOT self-merge, unlike the
 snapshot commits below.
 

@@ -15,6 +15,9 @@ def isolated_journal(monkeypatch, tmp_path):
     monkeypatch.setattr(j, "JOURNAL_DIR", tmp_path / "journal")
     monkeypatch.setattr(j, "RECOMMENDATIONS_DIR", tmp_path / "recommendations")
     monkeypatch.setattr(j, "PERFORMANCE_DIR", tmp_path / "performance")
+    # Whether the session has "closed" depends on the wall clock; with no daily
+    # bar the measurement falls back to the quote, which the tests control.
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_closing_price", lambda symbol, day: None)
 
 
 @pytest.fixture
@@ -200,3 +203,69 @@ def test_aggregate_is_a_full_recompute_not_incremental(price):
     first = j.aggregate_performance()
     second = j.aggregate_performance()
     assert first["by_ticker"] == second["by_ticker"]
+
+
+# --- outcomes are measured at the close once the session is over -------------
+
+
+def _freeze_et(monkeypatch, year, month, day, hour, minute):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(year, month, day, hour, minute, tzinfo=ZoneInfo("America/New_York")).astimezone(tz)
+
+    monkeypatch.setattr(j, "datetime", FrozenDatetime)
+
+
+def test_session_closed_only_after_4pm_on_a_weekday_or_for_an_earlier_day(monkeypatch):
+    _freeze_et(monkeypatch, 2026, 10, 7, 15, 55)  # Wednesday, before the close
+    assert j._session_closed("2026-10-07") is False
+    assert j._session_closed("2026-10-06") is True
+    _freeze_et(monkeypatch, 2026, 10, 7, 16, 30)  # Wednesday, after the close
+    assert j._session_closed("2026-10-07") is True
+    _freeze_et(monkeypatch, 2026, 10, 10, 10, 0)  # Saturday morning: no session today
+    assert j._session_closed("2026-10-10") is False
+
+
+def _entry_for(day, reference_price=250.0):
+    entry = {
+        "ticker": "TSLA", "checkpoint": "midday", "decision": "approve", "reasoning": "x",
+        "action": "BUY", "confidence": 80, "reference_price": reference_price, "outcome": None,
+    }
+    j._entries_path(day).write_text(json.dumps([entry]))
+
+
+def test_after_the_close_an_outcome_is_measured_at_the_closing_price_not_a_stale_quote(monkeypatch):
+    _freeze_et(monkeypatch, 2026, 10, 7, 16, 30)
+    _entry_for("2026-10-07")
+    monkeypatch.setattr(j, "_reference_price", lambda ticker: 999.0)  # a wide after-hours quote: must NOT be used
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_closing_price", lambda symbol, day: 275.0)
+
+    [updated] = j.mark_outcomes("2026-10-07")
+
+    assert updated["outcome"]["price_at_measurement"] == 275.0
+    assert updated["outcome"]["price_basis"] == "close"
+    assert updated["outcome"]["pct_change"] == 10.0 and updated["outcome"]["directionally_correct"] is True
+
+
+def test_before_the_close_the_quote_mid_is_used(monkeypatch):
+    _freeze_et(monkeypatch, 2026, 10, 7, 15, 55)
+    _entry_for("2026-10-07")
+    monkeypatch.setattr(j, "_reference_price", lambda ticker: 260.0)
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_closing_price", lambda s, d: pytest.fail("session still open")
+    )
+    [updated] = j.mark_outcomes("2026-10-07")
+    assert updated["outcome"]["price_at_measurement"] == 260.0 and updated["outcome"]["price_basis"] == "quote_mid"
+
+
+def test_after_the_close_with_no_daily_bar_falls_back_to_the_quote_mid(monkeypatch):
+    _freeze_et(monkeypatch, 2026, 10, 7, 16, 30)
+    _entry_for("2026-10-07")
+    monkeypatch.setattr(j, "_reference_price", lambda ticker: 262.0)
+    # the autouse fixture makes get_closing_price return None: no bar published yet
+    [updated] = j.mark_outcomes("2026-10-07")
+    assert updated["outcome"]["price_at_measurement"] == 262.0 and updated["outcome"]["price_basis"] == "quote_mid"

@@ -995,7 +995,7 @@ def notify_weekly_learning_review(review: dict[str, Any], pr_url: str | None = N
     reporting.report_builder.build_weekly_learning_review()'s return.
 
     Distinct from notify_weekly_report() (P&L + activity counts only, sent
-    from the Friday pre_close trading-report routine, strict calendar week)
+    from the Friday post_close trading-report routine, strict calendar week)
     — this is a separate Saturday-morning routine (see
     routines/weekly_learning_review.md) that looks specifically at what
     DIDN'T happen over a rolling `review['lookback_days']`-day window
@@ -1266,7 +1266,7 @@ def pending_approvals_today() -> list[dict[str, Any]]:
     Each item carries an added "expired" bool (via is_expired() on the rec's
     own timestamp) so callers can separate "still within the approval window"
     from "past it, no longer approvable" without a second lookup. Expired
-    ones are still returned, not dropped: by the time this runs (pre_close),
+    ones are still returned, not dropped: by the time this runs (post_close),
     a pre_open recommendation is routinely already past the default 2-hour
     window, and silently excluding it would make the daily reminder blind to
     the morning's misses — a human should see what they missed, not have it
@@ -1367,7 +1367,7 @@ def notify_pending_reminder() -> None:
     notify_digest()'s job (called once per checkpoint from
     orchestrator.run_checkpoint()); this is the follow-up for anything that
     immediate email didn't get a response to. Meant to be called once a day,
-    from pre_close (trading-report's daily wrap-up), after all 4 checkpoints
+    from the post_close routine (trading-report's daily wrap-up), after all 4 checkpoints
     have had their chance.
 
     Silent when nothing is pending — this is a nudge for outstanding action,
