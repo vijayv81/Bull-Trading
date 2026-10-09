@@ -1,0 +1,46 @@
+[
+  {
+    "ticker": "AIXI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 92.2,
+    "reasoning": "Auto-applied: confidence 92.2 (technical=1.0, sentiment=1.0, catalyst=1.0, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-16.51)",
+    "reference_price": 1.885,
+    "recorded_at": "2026-10-09T12:49:00.843819+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "APUS",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 56.3,
+    "reasoning": "Auto-applied: confidence 56.3 (technical=0.6788101520291488, sentiment=None, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-18.26)",
+    "reference_price": 5.494999999999999,
+    "recorded_at": "2026-10-09T12:49:03.839449+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "ALISU",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 100.0,
+    "reasoning": "Auto-applied: confidence 100.0 (technical=1.0, sentiment=None, catalyst=1.0, fundamental=None)",
+    "reference_price": 47.575,
+    "recorded_at": "2026-10-09T12:53:18.609089+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "FVNNU",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 90.0,
+    "reasoning": "Auto-applied: confidence 90.0 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None)",
+    "reference_price": 16.14,
+    "recorded_at": "2026-10-09T12:53:25.786552+00:00",
+    "outcome": null
+  }
+]
