@@ -505,7 +505,7 @@ def test_build_weekly_learning_review_partitions_unexecuted_recs(monkeypatch, tm
     assert [r["ticker"] for r in review["never_decided"]] == ["NEVER"]
     assert [r["ticker"] for r in review["approved_not_executed"]] == ["APPROVED"]
     assert [r["ticker"] for r in review["rejected"]] == ["REJECTED"]
-    assert review["auto_apply_attempts_by_status"] == {"submitted": 0, "refused": 1, "skipped": 0, "error": 0, "capped": 0}
+    assert review["auto_apply_attempts_by_status"] == {"submitted": 0, "refused": 1, "skipped": 0, "error": 0, "capped": 0, "deferred": 0}
     assert review["refusal_breakdown"] == {"kill switch off": 1}
 
 

@@ -497,3 +497,19 @@ def test_cap_reached_partway_logs_only_the_untried_candidates(monkeypatch, tmp_p
         ("SECOND", "capped"), ("THIRD", "capped")
     ]
     assert "1 of 1 orders today" in logged[-1]["reason"]
+
+
+def test_timing_wait_is_deferred_logged_and_not_submitted(monkeypatch):
+    monkeypatch.setattr(ap, "load_risk_limits", _enabled())
+    submitted = []
+    monkeypatch.setattr(ap, "record_decision", lambda *a, **k: None)
+    monkeypatch.setattr(ap, "submit_approved_order", lambda rec, qty, source: submitted.append(rec["ticker"]) or {})
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_account", lambda: {"equity": "100000"})
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_latest_quote", lambda t: {"ask_price": "100"})
+    waiting = {**_rec("HIGH", confidence=95), "timing": {"verdict": "wait", "reason": "near the month high"}}
+    fine = {**_rec("OK", confidence=80), "timing": {"verdict": "proceed", "reason": "ok"}}
+    results = ap.auto_apply([waiting, fine], "pre_open")
+    assert submitted == ["OK"]
+    assert {r["ticker"]: r["status"] for r in results} == {"HIGH": "deferred", "OK": "submitted"}
+    persisted = json.loads((ap.TRADES_DIR / ap.today() / "auto_apply_attempts_pre_open.json").read_text())
+    assert any(a["ticker"] == "HIGH" and a["status"] == "deferred" for a in persisted)

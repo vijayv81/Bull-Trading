@@ -137,6 +137,7 @@ def notify_digest(
 
     lines = [
         f"{r['action']} {r['ticker']} (confidence {r['confidence']}) — {r.get('rationale', '')[:120]}"
+        + _timing_note(r)
         for r in actionable
     ]
     subject = f"[Bull-Trading] {checkpoint}: {len(actionable)} recommendation(s)"
@@ -201,7 +202,10 @@ def _digest_html(
 
     if actionable:
         inner += "".join(
-            h.rec_row(r["ticker"], r["action"], r["confidence"], (r.get("rationale") or "")[:160])
+            h.rec_row(
+                r["ticker"], r["action"], r["confidence"],
+                (r.get("rationale") or "")[:160] + _timing_note(r),
+            )
             for r in actionable
         )
         if max_proposals and total_actionable > len(actionable):
@@ -229,6 +233,13 @@ def _digest_html(
     subtitle = checkpoint.replace("_", " ").title()
     title = "Data Quality Alert" if data_quality_alert else f"{len(actionable)} Actionable"
     return h.wrap(title, subtitle, inner)
+
+
+def _timing_note(rec: dict[str, Any]) -> str:
+    """' | WAIT: ...' when the 1-week/1-month timing check says a better price
+    is plausible (scoring/timing.py); empty otherwise."""
+    timing = rec.get("timing") or {}
+    return f" | WAIT: {timing['reason']}" if timing.get("verdict") == "wait" else ""
 
 
 def _auto_result_line(result: dict[str, Any]) -> str:

@@ -1052,6 +1052,14 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
     refused_candidates: list[dict[str, Any]] = []
     refusal_breakdown: dict[str, int] = {}
     for a in window_attempts:
+        if a.get("status") == "deferred":
+            # The timing check chose to wait: not a guardrail refusal, but an
+            # unexecuted call, so it gets the same hindsight check — the way
+            # to learn whether waiting actually paid.
+            rec = rec_index.get((a["_day"], a.get("checkpoint"), a.get("ticker")))
+            if rec is not None:
+                refused_candidates.append({**rec, "_category": "auto-deferred: timing check (wait for a better price)"})
+            continue
         if a.get("status") == "capped":
             # Not a guardrail refusal (so not in refusal_breakdown), but still
             # an unexecuted call worth the hindsight check.
@@ -1093,7 +1101,7 @@ def build_weekly_learning_review(as_of: str | None = None, lookback_days: int | 
         "attempt_log_days": attempt_log_days,
         "auto_apply_attempts_by_status": {
             status: sum(1 for a in window_attempts if a.get("status") == status)
-            for status in ("submitted", "refused", "skipped", "error", "capped")
+            for status in ("submitted", "refused", "skipped", "error", "capped", "deferred")
         },
         "refusal_breakdown": refusal_breakdown,
         "missed_opportunities": missed_opportunities,
