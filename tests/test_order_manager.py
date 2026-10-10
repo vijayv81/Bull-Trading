@@ -26,11 +26,12 @@ def guardrails_satisfied(monkeypatch):
     monkeypatch.setattr(om, "daily_loss_reason", lambda: None)
     monkeypatch.setattr(om, "daily_trade_count_reason", lambda: None)
     monkeypatch.setattr(om, "min_confidence_reason", lambda ticker, side, confidence: None)
-    monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty: None)
+    monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty, price=None: None)
     monkeypatch.setattr(om, "position_count_reason", lambda ticker, side: None)
     monkeypatch.setattr(om, "sector_concentration_reason", lambda ticker, side, qty: None)
     monkeypatch.setattr(om, "short_sale_reason", lambda ticker, side, qty: None)
     monkeypatch.setattr(om, "stale_recommendation_reason", lambda rec: None)
+    monkeypatch.setattr(om, "entry_limit_price", lambda ticker, side: (None, None))
 
 
 def _approved(qty=10):
@@ -211,7 +212,7 @@ def test_position_size_breach_refuses(monkeypatch):
     monkeypatch.setattr(om, "get_decision", _approved(qty=10))
     monkeypatch.setattr(om, "is_expired", lambda ts: False)
     monkeypatch.setattr(
-        om, "position_size_reason", lambda ticker, side, qty: "TSLA would reach 9.10% ... over the 5.0% cap"
+        om, "position_size_reason", lambda ticker, side, qty, price=None: "TSLA would reach 9.10% ... over the 5.0% cap"
     )
     monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
 
@@ -287,3 +288,36 @@ def test_short_sale_breach_refuses(monkeypatch):
 
     with pytest.raises(om.OrderRefused, match="never opens short positions"):
         om.submit_approved_order(sell_rec, qty=10)
+
+
+def test_limit_price_routes_to_limit_order_and_sizes_at_the_limit(monkeypatch, tmp_path):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(om, "entry_limit_price", lambda ticker, side: (None, 16.3))
+    seen = {}
+    monkeypatch.setattr(
+        om, "position_size_reason",
+        lambda ticker, side, qty, price=None: seen.setdefault("price", price) and None,
+    )
+    monkeypatch.setattr(
+        om, "submit_limit_order",
+        lambda t, s, q, p: {"id": "lim", "symbol": t, "qty": q, "limit_price": p},
+    )
+    monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must be a limit"))
+    monkeypatch.setattr(om, "TRADES_DIR", tmp_path)
+
+    order = om.submit_approved_order(REC, qty=10)
+    assert order["limit_price"] == 16.3
+    assert seen["price"] == 16.3
+
+
+def test_limit_refusal_blocks_submission(monkeypatch):
+    monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
+    monkeypatch.setattr(om, "get_decision", _approved(qty=10))
+    monkeypatch.setattr(om, "is_expired", lambda ts: False)
+    monkeypatch.setattr(om, "entry_limit_price", lambda ticker, side: ("spread too wide", None))
+    monkeypatch.setattr(om, "submit_limit_order", lambda *a: pytest.fail("must not submit"))
+    monkeypatch.setattr(om, "submit_market_order", lambda *a: pytest.fail("must not submit"))
+    with pytest.raises(om.OrderRefused, match="spread too wide"):
+        om.submit_approved_order(REC, qty=10)

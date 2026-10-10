@@ -174,13 +174,70 @@ def short_sale_reason(symbol: str, side: str, qty: float) -> str | None:
     return None
 
 
-def position_size_reason(symbol: str, side: str, qty: float) -> str | None:
+def entry_limit_price(symbol: str, side: str) -> tuple[str | None, float | None]:
+    """(refusal reason, limit price) for the order about to be sent.
+
+    `(None, None)` means "send a market order" (`execution.order_type: market`,
+    or a SELL while `limit_orders_for_sells` is false). Otherwise a DAY limit
+    bounds the fill: a market order submitted before the open sits until the
+    open and fills at whatever the first print is — FVNNU 2026-10-09 was sent
+    at 8:53am ET against a ~$16 quote and filled at $149.96 (-$17k).
+
+    A BUY also refuses outright on a one-sided quote or a spread wider than
+    `execution.max_spread_pct`: a wide or missing side means the quote isn't
+    a price anyone can rely on. Fails closed when the quote can't be read.
+    BUY limit = ask * (1 + limit_slippage_pct/100); SELL limit = bid * (1 -
+    limit_slippage_pct/100).
+    """
+    cfg = load_risk_limits().get("execution", {}) or {}
+    is_buy = side.upper() == "BUY"
+    if cfg.get("order_type", "limit") != "limit":
+        return None, None
+    if not is_buy and not cfg.get("limit_orders_for_sells", False):
+        return None, None
+
+    try:
+        from trading_agent.data.alpaca_client import get_latest_quote
+
+        quote = get_latest_quote(symbol)
+        bid = float(quote.get("bid_price") or 0.0)
+        ask = float(quote.get("ask_price") or 0.0)
+    except Exception as exc:
+        return f"Cannot price a limit order for {symbol} ({exc}) — refusing to proceed blind.", None
+
+    slip = float(cfg.get("limit_slippage_pct", 1.0)) / 100
+    if is_buy:
+        if bid <= 0 or ask <= 0:
+            return f"{symbol} has a one-sided quote (bid {bid}, ask {ask}) — refusing to buy against it.", None
+        max_spread = float(cfg.get("max_spread_pct", 5.0) or 0)
+        spread_pct = (ask - bid) / ((ask + bid) / 2) * 100
+        if max_spread and spread_pct > max_spread:
+            return (
+                f"{symbol} bid/ask spread is {spread_pct:.1f}% (bid {bid}, ask {ask}), "
+                f"over the {max_spread}% cap — too thin to buy safely.",
+                None,
+            )
+        price = ask * (1 + slip)
+    else:
+        if bid <= 0:
+            return f"{symbol} has no bid — cannot price a sell limit.", None
+        price = bid * (1 - slip)
+    return None, round(price, 2 if price >= 1 else 4)
+
+
+def position_size_reason(
+    symbol: str, side: str, qty: float, price: float | None = None
+) -> str | None:
     """Breach reason when a BUY would push the position past the per-position cap.
 
     Counts any existing position in the same symbol, so repeated partial buys
     cannot stack past the cap one approval at a time. Short-sale exposure is
     guarded separately by short_sale_reason() — a SELL never reaches this cap
     check at all.
+
+    `price` is the order's limit price when it has one: that is the worst
+    case the fill can cost, so the cap is checked against it rather than the
+    quote.
     """
     if side.upper() != "BUY":
         return None
@@ -188,7 +245,7 @@ def position_size_reason(symbol: str, side: str, qty: float) -> str | None:
     cap = load_risk_limits()["position"]["max_position_pct_of_portfolio"]
     try:
         equity = float(_account()["equity"])
-        price = _reference_price(symbol)
+        price = price or _reference_price(symbol)
         existing = _existing_position_value(symbol)
     except Exception as exc:
         return f"Cannot verify the {cap}% per-position cap ({exc}) — refusing to proceed blind."

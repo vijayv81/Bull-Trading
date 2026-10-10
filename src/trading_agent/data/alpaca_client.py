@@ -20,7 +20,7 @@ from alpaca.data.requests import StockBarsRequest, StockLatestQuoteRequest
 from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
-from alpaca.trading.requests import MarketOrderRequest
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
 
 from trading_agent.config import load_risk_limits, require_env
 from trading_agent.guardrails import is_option_symbol
@@ -246,6 +246,33 @@ def submit_market_order(ticker: str, side: str, qty: float) -> dict[str, Any]:
         symbol=ticker,
         qty=qty,
         side=order_side,
+        time_in_force=TimeInForce.DAY,
+    )
+    return trading_client().submit_order(request).model_dump(mode="json")
+
+
+def submit_limit_order(ticker: str, side: str, qty: float, limit_price: float) -> dict[str, Any]:
+    """Submit a paper DAY limit order. No approval check here — see module docstring.
+
+    Same options ban as submit_market_order(). A limit bounds the fill price,
+    which a market order queued before the open does not: FVNNU 2026-10-09
+    was submitted pre-market against a ~$16 quote and filled at the open at
+    $149.96.
+    """
+    if is_option_symbol(ticker):
+        raise ValueError(
+            f"Refusing to submit an order for options contract {ticker} — "
+            "this project never trades options."
+        )
+    if not limit_price or limit_price <= 0:
+        raise ValueError(f"Refusing a limit order for {ticker} with limit price {limit_price}.")
+
+    order_side = OrderSide.BUY if side.upper() == "BUY" else OrderSide.SELL
+    request = LimitOrderRequest(
+        symbol=ticker,
+        qty=qty,
+        side=order_side,
+        limit_price=limit_price,
         time_in_force=TimeInForce.DAY,
     )
     return trading_client().submit_order(request).model_dump(mode="json")

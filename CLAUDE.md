@@ -516,6 +516,24 @@ path to an Alpaca order in this codebase. It refuses unless, in order:
 3. That approval hasn't expired (`approval_expiry_hours`).
 4. The requested qty matches the approved qty within 1%.
 
+**Orders are DAY limit orders, not market orders**, per user instruction
+2026-10-10 (after FVNNU, 2026-10-09: auto-apply sized 136 shares off a ~$16.14
+pre-market midpoint at 8:53am ET; the market order sat until the 9:30 open and
+filled at **$149.96**, about -$17k, a -19.6% day that tripped the 2% loss halt
+for the rest of the day). `guardrails.entry_limit_price()` runs in
+`submit_approved_order()` just before the size cap: a BUY's limit is
+`ask * (1 + execution.limit_slippage_pct/100)` (1%), so the fill can never cost
+more than that, and the 5% position cap is evaluated at the limit price. A BUY
+is also refused on a one-sided quote or a bid/ask spread wider than
+`execution.max_spread_pct` (5%), and fails closed when the quote can't be read.
+Consequence to know about: a gap above the limit means the order simply doesn't
+fill (it expires at the close) rather than filling at any price. SELLs stay
+market orders (`limit_orders_for_sells: false`) because an exit that doesn't
+fill leaves the loss open. `execution.order_type: market` is the one-line
+revert. Not covered: the quote used for sizing and the spread check can itself
+be stale pre-market; the limit bounds the damage, it doesn't make that quote
+good.
+
 `allow_live_trading` in the same file is a second, independent guard —
 `data/alpaca_client.py:trading_client()` refuses to even construct a client
 if it's `true`; flipping it is deliberately not sufficient on its own.
