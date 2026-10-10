@@ -17,6 +17,7 @@ from trading_agent.guardrails import (
     daily_loss_reason,
     daily_trade_count_reason,
     entry_limit_price,
+    instrument_reason,
     min_confidence_reason,
     options_reason,
     position_count_reason,
@@ -97,6 +98,10 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
     # Limit price (and the spread check) before the size cap: the cap is
     # evaluated at the limit, the most the fill can cost.
     breach, limit_price = entry_limit_price(rec["ticker"], rec["action"])
+    if breach:
+        raise OrderRefused(breach)
+
+    breach = instrument_reason(rec["ticker"], rec["action"], limit_price)
     if breach:
         raise OrderRefused(breach)
 

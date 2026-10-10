@@ -39,6 +39,26 @@ scoring_weights:
   catalyst: 0.15
   historical_hitrate: 0.10
 
+# Fundamental score for OPERATING companies (scoring/fundamentals.py), from
+# yfinance's own figures — free and keyless like the sector/news lookups. Each
+# reading is scaled linearly between [floor -> 0, ceiling -> 1] (reversed for
+# debt_to_equity, in yfinance's percent units, and pe, where lower is better) and
+# averaged. No score (component dropped, weights renormalised) for a company
+# under min_revenue / min_market_cap or with fewer than min_metrics readings —
+# shells and new listings report junk figures. enabled: false reverts to no
+# fundamental at all.
+fundamentals:
+  enabled: true
+  min_metrics: 2
+  min_revenue: 1000000
+  min_market_cap: 10000000
+  ranges:
+    profit_margin: [-0.20, 0.20]
+    revenue_growth: [-0.20, 0.40]
+    return_on_equity: [-0.20, 0.30]
+    debt_to_equity: [0, 200]
+    pe: [15, 60]
+
 # plan §12 open decision — intraday | swing | longer_horizon. Currently informational
 # (used in reports/rationale text); wire it into stop/target sizing in
 # scoring/recommendation_engine.py if you want it to change position math.

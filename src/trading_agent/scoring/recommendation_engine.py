@@ -127,6 +127,11 @@ def technical_score(bars: pd.DataFrame, fast: int = 20, slow: int = MIN_BARS_FOR
     return max(0.0, min(1.0, score))
 
 
+# A per-ticker hit rate over 1-2 trades is 0, 0.5 or 1.0 — noise carrying a 10%
+# weight. Below this many measured outcomes the component is excluded.
+HITRATE_MIN_OUTCOMES = 5
+
+
 def historical_hitrate(ticker: str) -> float | None:
     """Rolling per-ticker accuracy from data/performance/strategy_metrics.json.
 
@@ -141,7 +146,9 @@ def historical_hitrate(ticker: str) -> float | None:
         return None
     metrics = json.loads(path.read_text())
     entry = metrics.get("by_ticker", {}).get(ticker)
-    return entry.get("hit_rate") if entry else None
+    if not entry or entry.get("n", 0) < HITRATE_MIN_OUTCOMES:
+        return None
+    return entry.get("hit_rate")
 
 
 def position_sell_pressure(pnl_pct: float, stop_loss_pct: float, take_profit_pct: float) -> float:

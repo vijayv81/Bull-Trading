@@ -100,3 +100,25 @@ def get_sector(ticker: str) -> str | None:
         except Exception:
             _SECTOR_CACHE[ticker] = None
     return _SECTOR_CACHE[ticker]
+
+
+_FUNDAMENTALS_CACHE: dict[str, dict | None] = {}
+
+
+def get_fundamentals(ticker: str) -> dict | None:
+    """The yfinance .info figures scoring/fundamentals.py reads (free, keyless,
+    same policy reasoning as get_sector()/fetch_news_headlines()). None on any
+    lookup failure. Cached in-process: fundamentals move quarterly, and one
+    checkpoint can score the same ticker in two passes."""
+    ticker = ticker.upper()
+    if ticker not in _FUNDAMENTALS_CACHE:
+        try:
+            info = yf.Ticker(ticker).info or {}
+            keep = (
+                "profitMargins", "revenueGrowth", "returnOnEquity", "debtToEquity",
+                "forwardPE", "trailingPE", "totalRevenue", "marketCap",
+            )
+            _FUNDAMENTALS_CACHE[ticker] = {k: info.get(k) for k in keep}
+        except Exception:
+            _FUNDAMENTALS_CACHE[ticker] = None
+    return _FUNDAMENTALS_CACHE[ticker]
