@@ -672,6 +672,55 @@ sourced ... what protection can be used for blank check units"). Before this,
   value is a flat $10, not the SPAC's actual per-share trust; the common shares
   of a SPAC (4-letter symbols) are not recognised, only the unit/warrant/right.
 
+## Exits are never held back; entries a stop-loss cannot protect are refused
+
+Per user instruction 2026-10-10, after the week of 2026-10-05 realized **-$5.9k**
+on 18 sells. The sells were not the loss; they closed it late. Seven names bought
+9/25-9/28 (sub-$3 stocks and warrants: GRMLW, DAICW, ABLVW, SOAR, INLF, APUS,
+AIFF) had stop-loss SELLs recommended from 9/28-9/29. Until 10/5 the stale-price
+check refused them (fixed by #42), and from 10/6 to 10/8 the 5-orders-a-day cap
+queued them a day at a time, so they sold at -17% to -48% against a 4% stop. At
+the first signal the same names would have lost roughly $1.9k instead of $4.9k.
+Three changes, each a one-line revert in `risk_limits.yaml`:
+
+1. **Exits are exempt from the order caps** (`portfolio.exits_exempt_from_daily_trade_cap`,
+   default `true`). A SELL only ever reduces a long (`short_sale_reason()`), and the
+   caps limit new risk. `daily_trade_count_reason(side)` returns None for a SELL
+   and counts only entries; `auto_apply()` tries exits first, never caps them, and
+   does not count them toward `max_trades_per_day`. BUYs still stop at the cap and
+   the rest are logged `capped`.
+2. **The daily-loss halt stops entries, not exits** (`portfolio.halt_allows_exits`,
+   default `true`). Past the 2% cap `run_checkpoint()` no longer raises
+   `RoutineHalted`: it announces the halt (the email says "exits only"), scores
+   only the positions already held (a BUY signal on one is reported `HOLD` with
+   `halted_no_new_buys`), and runs auto-apply so a stop-loss SELL can still go out.
+   `submit_approved_order()` skips `daily_loss_reason()` for a SELL only; a BUY is
+   still refused. On 2026-10-09 three checkpoints did nothing while FVNNU kept
+   falling. `false` restores the full stop and the `RoutineHalted`.
+3. **Entry quality** (`scoring/entry_quality.py`, `risk_limits.yaml -> entry_quality`,
+   `enabled: false` is the revert). A 4% stop only protects a name that moves less
+   than 4% between checks; these moved 10-67% a day and gapped 4-20% overnight.
+   Measured on the bars already fetched (20-day average of (high-low)/close):
+   - a BUY is refused under **$2**, or when the average daily range is over **8%**;
+   - a name priced under **$5** or with under **200** daily bars needs confidence
+     **92**, not 85;
+   - the rest are sized so a normal day's move costs at most **0.30%** of the
+     portfolio (`size% <= 0.30 * 100 / range%`; a 7.5% range caps the size at 4%).
+   At scoring a failing BUY becomes `HOLD` with `blocked_entry`; the same rule runs
+   again at order submission (`guardrails.entry_quality_reason()`, from the
+   `reference_price`, `avg_daily_range_pct` and `history_bars` on the
+   recommendation; a record without those fields skips the rule, so scoring is the
+   main enforcement). SELLs are never blocked. `avg_daily_range_pct` and
+   `history_bars` are on every recommendation.
+
+   Replay on the BUYs on record since 9/25: 8 of 10 blocked (DAICW, INLF, SOAR, AIXI,
+   VCIG, PFAI, ALISU, FVNNU); MGLD and TSLA, both currently in profit, pass.
+   **Limits, stated plainly:** exits still fill as market orders at the open, so an
+   overnight gap is still taken at the gap; the thresholds come from one bad week
+   and one set of names, so they are a judgment, not a fit; the 92 bar is only as
+   good as the confidence score, whose technical and sentiment components hit 45%
+   and 28% over the outcomes recorded so far.
+
 ## Timing check: is now the right price, or better to wait? (scoring/timing.py)
 
 Per user instruction 2026-10-10 ("before deciding to BUY or SELL ... review the
@@ -707,11 +756,13 @@ it can never place.
    before any BUY. Counts the existing position in the same symbol, so
    repeated partial buys can't stack past the cap one approval at a time.
    Cap: `risk_limits.yaml -> position.max_position_pct_of_portfolio`.
-2. **2% daily loss halts the routine** — `daily_loss_reason()`, measured as
+2. **2% daily loss halts the routine's NEW risk** — `daily_loss_reason()`, measured as
    Alpaca `equity` vs. `last_equity` (prior close), so it resets each trading
    day with no state on disk. Past the cap, `run_checkpoint()` halts *before*
-   spending research budget, and order submission refuses for the rest of the
-   day. Cap: `risk_limits.yaml -> portfolio.max_daily_drawdown_pct`.
+   spending research budget, and order submission refuses every BUY for the
+   rest of the day. **Exits are exempt** (`portfolio.halt_allows_exits`, see
+   "Exits are never held back" below): a halted checkpoint still scores what is
+   held and may SELL it. Cap: `risk_limits.yaml -> portfolio.max_daily_drawdown_pct`.
 3. **No options, ever** — `is_option_symbol()` matches OCC contract symbols
    (`AAPL240119C00150000`). There is deliberately **no config key** for this:
    like `allow_live_trading`, lifting it takes a reviewed code change. Enforced
@@ -738,7 +789,9 @@ it can never place.
    position.max_concurrent_positions`; unset/zero means no cap (fails open on
    a config that was never set, not on missing account data — see below).
 6. **Max daily trade count, every source combined** — `daily_trade_count_reason()`,
-   checked before any order (BUY or SELL, human or auto). Counts
+   checked before any order. A SELL is exempt, neither counted nor refused
+   (`portfolio.exits_exempt_from_daily_trade_cap`, see "Exits are never held
+   back" below). Counts
    `data/trades/<today>/orders_submitted.json`, which every submitted order
    is already appended to, so there's nothing extra to keep in sync. Distinct
    from `operational.auto_apply.max_trades_per_day` (below): that one only

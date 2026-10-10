@@ -338,9 +338,15 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
     halts = summary.get("halted_checkpoints") or []
     if halts:
         lines.append("")
-        lines.append("Halted checkpoints (did not run):")
+        any_exits_only = any(hlt.get("exits_only") for hlt in halts)
+        lines.append(
+            "Halted checkpoints (new entries stopped; exits-only where noted):"
+            if any_exits_only
+            else "Halted checkpoints (did not run):"
+        )
         for hlt in halts:
-            lines.append(f"- {hlt['checkpoint']}: {hlt['reason'][:160]}")
+            note = " [exits only: held positions still monitored]" if hlt.get("exits_only") else ""
+            lines.append(f"- {hlt['checkpoint']}{note}: {hlt['reason'][:160]}")
 
     attempts = summary.get("auto_apply_attempts") or []
     if attempts:
@@ -514,7 +520,8 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
         for hlt in halts:
             from html import escape as _esc
 
-            inner += h.alert_banner(f"{_esc(hlt['checkpoint'])} did not run: {_esc(hlt['reason'][:160])}")
+            status = "halted for new entries (exits only)" if hlt.get("exits_only") else "did not run"
+            inner += h.alert_banner(f"{_esc(hlt['checkpoint'])} {status}: {_esc(hlt['reason'][:160])}")
 
     attempts = summary.get("auto_apply_attempts") or []
     if attempts:
@@ -1294,18 +1301,23 @@ def pending_approvals_today() -> list[dict[str, Any]]:
     return pending
 
 
-def record_checkpoint_halt(checkpoint: str, reason: str) -> None:
+def record_checkpoint_halt(checkpoint: str, reason: str, exits_only: bool = False) -> None:
     """Persist that `checkpoint` halted, next to the day's recommendations so
     the snapshot commit picks it up. Without it a halted run left nothing at
     all: no recs file, no commit, no email — on 2026-10-05 `market_open` ended
     after about a minute and the only trace was a gap in the day's checkpoints."""
     append_json(
         day_dir(RECOMMENDATIONS_DIR) / f"halt_{checkpoint}.json",
-        {"checkpoint": checkpoint, "reason": reason, "halted_at": datetime.now(timezone.utc).isoformat()},
+        {
+            "checkpoint": checkpoint,
+            "reason": reason,
+            "halted_at": datetime.now(timezone.utc).isoformat(),
+            "exits_only": exits_only,
+        },
     )
 
 
-def notify_checkpoint_halted(checkpoint: str, reason: str) -> None:
+def notify_checkpoint_halted(checkpoint: str, reason: str, exits_only: bool = False) -> None:
     """Email/SMS when a checkpoint halts before researching anything
     (orchestrator.run_checkpoint() raising RoutineHalted — today only
     guardrails.daily_loss_reason(), whose "Cannot verify ..." variant also
@@ -1315,12 +1327,14 @@ def notify_checkpoint_halted(checkpoint: str, reason: str) -> None:
     halted checkpoint indistinguishable from "nothing actionable": no
     recommendations, no email. This is the one that says the run did not
     happen. Gated by notifications.checkpoint_halt_enabled (default true) —
-    false is the one-line revert. The record is written regardless of the
+    false is the one-line revert. `exits_only` (portfolio.halt_allows_exits)
+    says the checkpoint still monitors held positions and may sell them, only
+    new entries are halted. The record is written regardless of the
     gate or the channels: it's the audit trail, not a notification. A send
     failure is reported, not raised, like every other notify_* function.
     """
     try:
-        record_checkpoint_halt(checkpoint, reason)
+        record_checkpoint_halt(checkpoint, reason, exits_only)
     except Exception as exc:  # noqa: BLE001 - a failed audit write must not mask the halt
         print(f"Could not record the {checkpoint} halt: {exc}")
 
@@ -1331,16 +1345,33 @@ def notify_checkpoint_halted(checkpoint: str, reason: str) -> None:
         return
 
     label = checkpoint.replace("_", " ")
-    lines = [
-        f"Bull-Trading: the {label} checkpoint HALTED and did not run.",
-        "",
-        f"Reason: {reason}",
-        "",
-        "What that means: nothing was researched or scored, no recommendations were made, and no "
-        "orders were placed by this checkpoint. Each later checkpoint re-checks the same guardrail "
-        "on its own, so the next one may run normally once the condition clears.",
-    ]
-    subject = f"[Bull-Trading] {label} HALTED — no recommendations this run"
+    if exits_only:
+        headline = f"Bull-Trading: the {label} checkpoint is HALTED for new entries."
+        meaning = (
+            "What that means: nothing new was researched and nothing was bought. Positions you hold "
+            "were still scored and a stop-loss or take-profit SELL could still go out, because the "
+            "halt limits new risk, not exits (risk_limits.yaml -> portfolio.halt_allows_exits). "
+            "Each later checkpoint re-checks the same guardrail on its own."
+        )
+        subject = f"[Bull-Trading] {label} HALTED for new entries — exits only"
+        banner_text = (
+            "Nothing new was researched or bought. Held positions were still scored and could be sold."
+        )
+        title = f"{label.title()} checkpoint: exits only"
+    else:
+        headline = f"Bull-Trading: the {label} checkpoint HALTED and did not run."
+        meaning = (
+            "What that means: nothing was researched or scored, no recommendations were made, and no "
+            "orders were placed by this checkpoint. Each later checkpoint re-checks the same guardrail "
+            "on its own, so the next one may run normally once the condition clears."
+        )
+        subject = f"[Bull-Trading] {label} HALTED — no recommendations this run"
+        banner_text = (
+            "Nothing was researched or scored, no recommendations were made, and no orders were placed "
+            "by this checkpoint."
+        )
+        title = f"{label.title()} checkpoint halted"
+    lines = [headline, "", f"Reason: {reason}", "", meaning]
     body = "\n".join(lines)
 
     if "email" in channels:
@@ -1351,15 +1382,12 @@ def notify_checkpoint_halted(checkpoint: str, reason: str) -> None:
             from trading_agent.notify.senders import send_email
 
             inner = h.alert_banner(escape(reason))
-            inner += (
-                '<div style="font-size:14px;padding:4px 0;">Nothing was researched or scored, no '
-                "recommendations were made, and no orders were placed by this checkpoint.</div>"
-            )
+            inner += f'<div style="font-size:14px;padding:4px 0;">{escape(banner_text)}</div>'
             inner += h.muted(
                 "Each later checkpoint re-checks the same guardrail on its own, so the next one may "
                 "run normally once the condition clears."
             )
-            send_email(subject, body, h.wrap(f"{label.title()} checkpoint halted", "", inner))
+            send_email(subject, body, h.wrap(title, "", inner))
         except Exception as exc:  # noqa: BLE001 - a broken channel must not mask the halt
             print(f"NOTIFY (checkpoint halt email) failed: {exc}")
 

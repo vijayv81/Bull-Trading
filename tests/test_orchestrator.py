@@ -12,6 +12,9 @@ from trading_agent import orchestrator as orch
 @pytest.fixture(autouse=True)
 def isolated(monkeypatch):
     monkeypatch.setattr(orch, "daily_loss_reason", lambda: None)
+    # Entry quality is off here (tests/test_entry_quality.py covers it): these
+    # tests use empty bars, which would otherwise count as a thin record.
+    monkeypatch.setattr(orch, "assess_entry", lambda *a, **k: None)
     monkeypatch.setattr(orch, "load_watchlist", lambda: ["GOOD", "BAD"])
     monkeypatch.setattr(orch, "get_market_movers", lambda: {"gainers": []})
     monkeypatch.setattr(orch, "get_positions", lambda: [])
@@ -652,8 +655,9 @@ def test_halt_announces_itself_and_still_raises(monkeypatch):
 
     reason = "Daily loss 2.4% is past the 2.0% cap."
     monkeypatch.setattr(orch, "daily_loss_reason", lambda: reason)
+    monkeypatch.setattr(orch, "halt_allows_exits", lambda: False)
     announced = []
-    monkeypatch.setattr(orch, "notify_checkpoint_halted", lambda cp, why: announced.append((cp, why)))
+    monkeypatch.setattr(orch, "notify_checkpoint_halted", lambda cp, why, exits_only=False: announced.append((cp, why)))
     monkeypatch.setattr(orch, "research_ticker", lambda *a, **k: pytest.fail("a halt must not research anything"))
 
     with pytest.raises(RoutineHalted, match="Daily loss 2.4%"):
@@ -666,8 +670,9 @@ def test_a_broken_halt_notification_never_masks_the_halt(monkeypatch):
     from trading_agent.guardrails import RoutineHalted
 
     monkeypatch.setattr(orch, "daily_loss_reason", lambda: "Cannot verify the 2.0% daily loss cap (boom).")
+    monkeypatch.setattr(orch, "halt_allows_exits", lambda: False)
 
-    def boom(cp, why):
+    def boom(cp, why, exits_only=False):
         raise RuntimeError("resend is down")
 
     monkeypatch.setattr(orch, "notify_checkpoint_halted", boom)
@@ -700,3 +705,105 @@ def test_warrant_buy_is_downgraded_to_hold_and_unit_sized_under_its_cap(monkeypa
     assert out["GRMLW"]["action"] == "HOLD" and "warrant" in out["GRMLW"]["blocked_instrument"]
     assert out["FVNNU"]["action"] == "BUY" and out["FVNNU"]["suggested_size_pct_of_portfolio"] == 1.0
     assert out["FVNNU"]["instrument_class"] == "blank_check_unit"
+
+
+# --- entry quality and the exits-only halt (2026-10-10) -----------------------
+
+
+def _wild_bars(n, close, range_pct):
+    half = close * range_pct / 200
+    return [{"open": close, "high": close + half, "low": close - half, "close": close, "volume": 1e6}] * n
+
+
+def _use_real_entry_quality(monkeypatch, **overrides):
+    from trading_agent.scoring import entry_quality as eq
+
+    cfg = {**eq.DEFAULTS, **overrides}
+    monkeypatch.setattr(eq, "load_risk_limits", lambda: {"entry_quality": cfg})
+    monkeypatch.setattr(orch, "assess_entry", eq.assess_entry)
+
+
+def _buy_scorer(monkeypatch, confidence=95, size=5.0):
+    monkeypatch.setattr(
+        orch, "score_candidate",
+        lambda **kw: {"ticker": kw["ticker"], "checkpoint": kw["checkpoint"], "action": "BUY",
+                      "confidence": confidence, "suggested_size_pct_of_portfolio": size,
+                      "position_pnl_pct": kw.get("position_pnl_pct")},
+    )
+    monkeypatch.setattr(orch, "research_ticker", lambda t, c: {"headline_summary": "x", "sources": ["s"]})
+    _capture_digest(monkeypatch)
+
+
+def test_a_wild_buy_becomes_hold_with_the_reason_recorded(monkeypatch):
+    _use_real_entry_quality(monkeypatch)
+    _buy_scorer(monkeypatch)
+    monkeypatch.setattr(orch, "load_watchlist", lambda: ["WILD"])
+    monkeypatch.setattr(orch, "get_recent_bars", lambda t, **k: _wild_bars(250, 20.0, 15.0))
+    rec = orch.run_checkpoint("pre_open")[0]
+    assert rec["action"] == "HOLD"
+    assert "a day on average" in rec["blocked_entry"]
+    assert rec["avg_daily_range_pct"] == pytest.approx(15.0)
+
+
+def test_a_calm_buy_passes_and_is_sized_to_its_range(monkeypatch):
+    _use_real_entry_quality(monkeypatch)
+    _buy_scorer(monkeypatch, size=5.0)
+    monkeypatch.setattr(orch, "load_watchlist", lambda: ["CALM"])
+    monkeypatch.setattr(orch, "get_recent_bars", lambda t, **k: _wild_bars(250, 40.0, 7.5))
+    rec = orch.run_checkpoint("pre_open")[0]
+    assert rec["action"] == "BUY" and "blocked_entry" not in rec
+    assert rec["suggested_size_pct_of_portfolio"] == pytest.approx(4.0)  # 0.30% / 7.5% day
+
+
+def test_a_sell_is_never_blocked_by_entry_quality(monkeypatch):
+    _use_real_entry_quality(monkeypatch)
+    monkeypatch.setattr(
+        orch, "score_candidate",
+        lambda **kw: {"ticker": kw["ticker"], "checkpoint": kw["checkpoint"], "action": "SELL",
+                      "confidence": 60, "suggested_size_pct_of_portfolio": 5.0},
+    )
+    monkeypatch.setattr(orch, "research_ticker", lambda t, c: {"headline_summary": "x", "sources": ["s"]})
+    monkeypatch.setattr(orch, "load_watchlist", lambda: ["WILD"])
+    monkeypatch.setattr(orch, "get_recent_bars", lambda t, **k: _wild_bars(250, 0.3, 40.0))
+    _capture_digest(monkeypatch)
+    assert orch.run_checkpoint("pre_open")[0]["action"] == "SELL"
+
+
+def test_a_halt_still_monitors_held_positions_for_exits_but_buys_nothing(monkeypatch):
+    reason = "Daily loss 19.6% is past the 2.0% cap."
+    monkeypatch.setattr(orch, "daily_loss_reason", lambda: reason)
+    monkeypatch.setattr(orch, "halt_allows_exits", lambda: True)
+    announced = []
+    monkeypatch.setattr(orch, "notify_checkpoint_halted",
+                        lambda cp, why, exits_only=False: announced.append((cp, why, exits_only)))
+    monkeypatch.setattr(orch, "get_positions", lambda: [{"symbol": "HELD", "unrealized_plpc": -0.2}])
+    monkeypatch.setattr(orch, "load_watchlist", lambda: ["AAA", "BBB"])
+    researched = []
+    monkeypatch.setattr(orch, "research_ticker",
+                        lambda t, c: researched.append(t) or {"headline_summary": "x", "sources": ["s"]})
+    monkeypatch.setattr(
+        orch, "score_candidate",
+        lambda **kw: {"ticker": kw["ticker"], "checkpoint": kw["checkpoint"],
+                      "action": "BUY" if kw["ticker"] == "ADD" else "SELL",
+                      "confidence": 90, "suggested_size_pct_of_portfolio": 3.0},
+    )
+    auto_calls = []
+    monkeypatch.setattr(orch, "auto_apply", lambda recs, cp: auto_calls.append(recs) or [])
+    _capture_digest(monkeypatch)
+
+    results = orch.run_checkpoint("midday")  # does not raise
+
+    assert researched == ["HELD"]  # nothing new is researched
+    assert [r["action"] for r in results] == ["SELL"]
+    assert announced == [("midday", reason, True)]
+    assert len(auto_calls) == 1 and auto_calls[0][0]["ticker"] == "HELD"
+
+
+def test_a_held_buy_signal_during_a_halt_is_reported_hold(monkeypatch):
+    monkeypatch.setattr(orch, "daily_loss_reason", lambda: "past the cap")
+    monkeypatch.setattr(orch, "halt_allows_exits", lambda: True)
+    monkeypatch.setattr(orch, "notify_checkpoint_halted", lambda *a, **k: None)
+    monkeypatch.setattr(orch, "get_positions", lambda: [{"symbol": "ADD", "unrealized_plpc": 0.05}])
+    _buy_scorer(monkeypatch)
+    rec = orch.run_checkpoint("midday")[0]
+    assert rec["action"] == "HOLD" and rec["halted_no_new_buys"] is True

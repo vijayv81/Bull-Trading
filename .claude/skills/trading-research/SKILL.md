@@ -82,6 +82,15 @@ arguments, do not research the watchlist manually, and do not suggest editing
 guardrail that exists to protect them, that should be a deliberate decision they
 reach on their own, not one you nudge them toward mid-run.
 
+Since 2026-10-10 the halt stops **new risk only** (`portfolio.halt_allows_exits`):
+the run prints `HALTED for new entries ... Monitoring held positions for exits
+only`, researches and scores just the positions already held, and any
+stop-loss/take-profit SELL still goes out through auto-apply. Nothing new is
+researched or bought. The email then reads "HALTED for new entries — exits
+only". Report it as a halt of new entries, and report any exits that went out.
+This is the same system working; the rules above (no re-running with different
+arguments, no suggesting config edits to get past it) still apply.
+
 A halt reading `Cannot verify ... refusing to proceed blind` means Alpaca was
 unreachable, not that money was lost. Say so plainly, since the remedy is
 completely different — check credentials and connectivity, then re-run.

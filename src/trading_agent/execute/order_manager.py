@@ -16,6 +16,8 @@ from trading_agent.data.alpaca_client import submit_limit_order, submit_market_o
 from trading_agent.guardrails import (
     daily_loss_reason,
     daily_trade_count_reason,
+    entry_quality_reason,
+    halt_allows_exits,
     entry_limit_price,
     instrument_reason,
     min_confidence_reason,
@@ -60,7 +62,11 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
         raise OrderRefused(breach)
 
     # Local file read, no network — cheap enough to check this early too.
-    breach = daily_trade_count_reason()
+    breach = entry_quality_reason(rec)
+    if breach:
+        raise OrderRefused(breach)
+
+    breach = daily_trade_count_reason(rec["action"])
     if breach:
         raise OrderRefused(breach)
 
@@ -91,9 +97,14 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
     if breach:
         raise OrderRefused(breach)
 
-    breach = daily_loss_reason()
-    if breach:
-        raise OrderRefused(breach)
+    # The daily-loss halt stops new risk. A SELL only reduces an existing long
+    # (short_sale_reason() below guarantees that), and on 2026-10-09 the halt
+    # kept every checkpoint from selling while FVNNU fell further. A SELL is
+    # exempt when portfolio.halt_allows_exits is on; a BUY never is.
+    if not (rec["action"].upper() == "SELL" and halt_allows_exits()):
+        breach = daily_loss_reason()
+        if breach:
+            raise OrderRefused(breach)
 
     # Limit price (and the spread check) before the size cap: the cap is
     # evaluated at the limit, the most the fill can cost.

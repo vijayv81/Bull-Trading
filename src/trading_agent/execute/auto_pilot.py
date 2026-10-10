@@ -25,13 +25,21 @@ from typing import Any
 
 from trading_agent.config import TRADES_DIR, load_risk_limits
 from trading_agent.execute.order_manager import OrderRefused, submit_approved_order
+from trading_agent.guardrails import exits_exempt_from_trade_cap, is_exit_order
 from trading_agent.notify.approval_gateway import record_decision
 from trading_agent.utils import append_json, day_dir, load_json_list, today
 
 
 def _todays_auto_trade_count(day: str | None = None) -> int:
+    """Auto-applied orders today that count against max_trades_per_day: with
+    portfolio.exits_exempt_from_daily_trade_cap on, SELLs are not counted."""
     path = TRADES_DIR / (day or today()) / "orders_submitted.json"
-    return sum(1 for t in load_json_list(path) if t.get("source") == "auto")
+    exempt = exits_exempt_from_trade_cap()
+    return sum(
+        1
+        for t in load_json_list(path)
+        if t.get("source") == "auto" and not (exempt and is_exit_order(t))
+    )
 
 
 def _persist_attempt(result: dict[str, Any], checkpoint: str) -> None:
@@ -212,7 +220,11 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
     daily_cap = auto_cfg.get("max_trades_per_day", 5)
     ordered_today = _todays_auto_trade_count()
     remaining = daily_cap - ordered_today
-    if remaining <= 0:
+    # Exits are not held back by the cap (portfolio.exits_exempt_from_daily_trade_cap):
+    # the cap limits new risk, and on 2026-10-06/07/08 it queued stop-loss SELLs a
+    # day at a time while the positions kept falling.
+    exits_exempt = exits_exempt_from_trade_cap()
+    if remaining <= 0 and not exits_exempt:
         _record_capped(recs, checkpoint, daily_cap, ordered_today)
         return deferred_results
 
@@ -220,6 +232,8 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
     # share; it was refused every checkpoint (MGLD/AIFF, 7 times in the week
     # to 2026-10-02). Dropped before any attempt rather than retried.
     at_cap = _symbols_at_position_cap()
+    # Exits first when they are exempt, then by confidence: a stop-loss SELL gets
+    # the freshest price check and is never queued behind a BUY.
     candidates = sorted(
         (
             r
@@ -227,22 +241,22 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
             if r.get("action") in ("BUY", "SELL")
             and not (r["action"] == "BUY" and str(r["ticker"]).upper() in at_cap)
         ),
-        key=lambda r: r["confidence"],
-        reverse=True,
+        key=lambda r: (not (exits_exempt and r["action"] == "SELL"), -r["confidence"]),
     )
 
-    # Walk the whole confidence-ranked list until `remaining` orders are
-    # placed. Only submissions count against the cap, so a refused or
-    # skipped candidate no longer uses up a slot a lower-ranked one could
-    # have filled — previously only the top `remaining` were ever tried.
+    # Walk the whole ranked list until `remaining` capped orders are placed.
+    # Only submissions count against the cap, so a refused or skipped
+    # candidate no longer uses up a slot a lower-ranked one could have
+    # filled. An exempt exit is never capped and never counts.
     results = list(deferred_results)
     submitted = 0
-    for index, rec in enumerate(candidates):
-        if submitted >= remaining:
-            # The cap was reached partway through the ranked list; the rest
-            # were never tried.
-            _record_capped(candidates[index:], checkpoint, daily_cap, ordered_today + submitted)
-            break
+    capped: list[dict[str, Any]] = []
+    for rec in candidates:
+        is_exit = exits_exempt and rec["action"] == "SELL"
+        if not is_exit and submitted >= remaining:
+            # The cap is reached; this entry is logged, not tried.
+            capped.append(rec)
+            continue
         try:
             from trading_agent.data.alpaca_client import get_account, get_latest_quote
 
@@ -262,7 +276,8 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
             result = {"ticker": rec["ticker"], "status": "submitted", "qty": qty, "order": order}
             results.append(result)
             _persist_attempt(result, checkpoint)
-            submitted += 1
+            if not is_exit:
+                submitted += 1
         except OrderRefused as exc:
             result = {"ticker": rec["ticker"], "status": "refused", "reason": str(exc)}
             results.append(result)
@@ -272,4 +287,6 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
             results.append(result)
             _persist_attempt(result, checkpoint)
 
+    if capped:
+        _record_capped(capped, checkpoint, daily_cap, ordered_today + submitted)
     return results

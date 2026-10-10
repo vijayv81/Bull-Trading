@@ -1,0 +1,14 @@
+[
+  {
+    "option_id": "2026-10-10-max-price-drift-5",
+    "title": "Raise the stale-price limit from 4% to 5%",
+    "decided_by": "cli",
+    "dismissed_at": "2026-10-10T13:35:15.417888+00:00"
+  },
+  {
+    "option_id": "2026-10-10-approval-expiry-3h",
+    "title": "Keep recommendations approvable for 3h instead of 2h",
+    "decided_by": "cli",
+    "dismissed_at": "2026-10-10T13:35:16.082870+00:00"
+  }
+]

@@ -117,6 +117,19 @@ portfolio:
   # ceiling on the day's order count.
   max_daily_trades: 5
 
+  # Per user instruction 2026-10-10 (week of 10-05: stop-loss SELLs sat behind
+  # the 5-orders-a-day cap on 10-06/07/08 and the daily-loss halt, so positions
+  # were closed days after the stop at -17% to -48% instead of -4% to -15%).
+  # Both caps exist to limit NEW risk. A SELL only ever reduces an existing
+  # long (short_sale_reason() guarantees that), so:
+  #   exits_exempt_from_daily_trade_cap: a SELL neither counts against
+  #     max_daily_trades / auto_apply.max_trades_per_day nor is refused by it.
+  #   halt_allows_exits: past the daily-loss cap a checkpoint still scores the
+  #     positions you hold and may SELL them; it researches nothing else and
+  #     BUYs nothing. false restores the old full stop.
+  exits_exempt_from_daily_trade_cap: true
+  halt_allows_exits: true
+
 operational:
   # Kill switch: order_manager.submit_approved_order() checks this FIRST, before
   # anything else — for BOTH a human's approval and an auto_apply one. Flip to
@@ -221,3 +234,25 @@ blank_check:
   # Per-position cap for units, replacing position.max_position_pct_of_portfolio.
   max_position_pct_of_portfolio: 1.0
   block_warrants_and_rights: true
+
+# Entry quality (scoring/entry_quality.py), per user instruction 2026-10-10.
+# The week of 2026-10-05 realized -$5.9k, almost all on sub-$3 names whose daily
+# range (10-67%) and overnight gaps (4-20%) made the 4% stop-loss meaningless:
+# GRMLW was sold at -48%, DAICW at -43%. A stop-loss only protects a position
+# that moves less than the stop between checks. Enforced at scoring (a failing
+# BUY becomes HOLD with `blocked_entry`) and again at order submission
+# (guardrails.entry_quality_reason(), from the fields on the recommendation).
+# BUY only: a SELL is never blocked. Measured over the last 20 daily bars.
+entry_quality:
+  enabled: true
+  min_price: 2.0 # refuse a BUY priced under this
+  max_avg_daily_range_pct: 8.0 # refuse when the 20-day average (high-low)/close exceeds this
+  range_lookback_bars: 20
+  # Size so a normal day's move costs at most this % of the portfolio:
+  # size% <= max_daily_move_risk_pct_of_portfolio * 100 / avg_daily_range_pct.
+  max_daily_move_risk_pct_of_portfolio: 0.30
+  # A higher confidence bar for names with a thin record: priced under
+  # risky_price_below, or fewer than risky_min_history_bars daily bars.
+  risky_price_below: 5.0
+  risky_min_history_bars: 200
+  risky_min_confidence_to_buy: 92

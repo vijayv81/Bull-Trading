@@ -1031,3 +1031,28 @@ def test_learning_review_balance_comes_before_the_pr_link(monkeypatch):
     assert plain.index("Net difference") < plain.index("https://github.com/x/y/pull/9")
     assert html.index("Opening balance") < html.index("Trades executed")
     assert html.index("Net difference") < html.index("Review the report PR")
+
+
+def test_daily_summary_says_an_exits_only_halt_still_monitored_positions(monkeypatch):
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    calls = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: calls.append(a))
+    gw.notify_daily_summary(
+        _summary(halted_checkpoints=[
+            {"checkpoint": "midday", "reason": HALT_REASON, "halted_at": "x", "exits_only": True}
+        ])
+    )
+    plain, html = calls[0][1], calls[0][2]
+    assert "exits only: held positions still monitored" in plain
+    assert "midday halted for new entries (exits only)" in html
+
+
+def test_exits_only_halt_email_says_held_positions_were_still_monitored(monkeypatch, tmp_path):
+    monkeypatch.setattr(gw, "RECOMMENDATIONS_DIR", tmp_path)
+    monkeypatch.setattr(gw, "load_agent_config", lambda: {"notifications": {"channel": ["email"]}})
+    sent = []
+    monkeypatch.setattr("trading_agent.notify.senders.send_email", lambda *a, **k: sent.append(a))
+    gw.notify_checkpoint_halted("midday", HALT_REASON, exits_only=True)
+    subject, body = sent[0][0], sent[0][1]
+    assert "exits only" in subject and "still scored" in body
+    assert "did not run" not in body
