@@ -3,7 +3,7 @@ record whose terms match exactly (plan §8, hard requirement).
 
 submit_approved_order() is the ONLY sanctioned path from a recommendation to
 a live Alpaca call in this project. Nothing else in the codebase should call
-data.alpaca_client.submit_market_order() directly.
+data.alpaca_client.submit_market_order()/submit_limit_order() directly.
 """
 
 from __future__ import annotations
@@ -12,10 +12,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from trading_agent.config import TRADES_DIR, load_risk_limits
-from trading_agent.data.alpaca_client import submit_market_order
+from trading_agent.data.alpaca_client import submit_limit_order, submit_market_order
 from trading_agent.guardrails import (
     daily_loss_reason,
     daily_trade_count_reason,
+    entry_limit_price,
     min_confidence_reason,
     options_reason,
     position_count_reason,
@@ -93,7 +94,13 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
     if breach:
         raise OrderRefused(breach)
 
-    breach = position_size_reason(rec["ticker"], rec["action"], qty)
+    # Limit price (and the spread check) before the size cap: the cap is
+    # evaluated at the limit, the most the fill can cost.
+    breach, limit_price = entry_limit_price(rec["ticker"], rec["action"])
+    if breach:
+        raise OrderRefused(breach)
+
+    breach = position_size_reason(rec["ticker"], rec["action"], qty, price=limit_price)
     if breach:
         raise OrderRefused(breach)
 
@@ -109,7 +116,10 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
     if breach:
         raise OrderRefused(breach)
 
-    order = submit_market_order(rec["ticker"], rec["action"], qty)
+    if limit_price:
+        order = submit_limit_order(rec["ticker"], rec["action"], qty, limit_price)
+    else:
+        order = submit_market_order(rec["ticker"], rec["action"], qty)
 
     path = day_dir(TRADES_DIR) / "orders_submitted.json"
     append_json(

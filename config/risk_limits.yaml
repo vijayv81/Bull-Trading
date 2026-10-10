@@ -171,6 +171,21 @@ execution:
   # account's worst losers were refused by these checks, every checkpoint.
   # BUYs are still checked. false is the one-line revert.
   exempt_exits_from_stale_check: true
+  # Orders go out as DAY limit orders, not market orders (2026-10-09: FVNNU,
+  # a ~$16 unit, was sent as a market order at 8:53am ET, waited for the
+  # open, and filled at $149.96 — about -$17k, which tripped the 2% loss
+  # halt for the rest of the day). A BUY limit is ask * (1 + limit_slippage_pct/100)
+  # and the 5% position cap is checked at that price. `market` is the
+  # one-line revert.
+  order_type: limit
+  limit_slippage_pct: 1.0
+  # A BUY refuses on a one-sided quote or a bid/ask spread wider than this %
+  # of the midpoint. Unset/zero skips the width check (a missing side still refuses).
+  max_spread_pct: 5.0
+  # SELLs stay market orders by default: an exit that doesn't fill leaves the
+  # loss open, which is the opposite of what a stop-loss is for. true sends
+  # them as bid * (1 - limit_slippage_pct/100) limits.
+  limit_orders_for_sells: false
 
 # Equities only — there is deliberately no `allow_options` key here. The ban is
 # code-level (guardrails.is_option_symbol, enforced in both order_manager and
