@@ -225,6 +225,44 @@ def entry_limit_price(symbol: str, side: str) -> tuple[str | None, float | None]
     return None, round(price, 2 if price >= 1 else 4)
 
 
+def instrument_reason(symbol: str, side: str, price: float | None = None) -> str | None:
+    """Breach reason for a BUY of a blank-check unit or a warrant/right
+    (scoring/instruments.py). Warrants and rights are option-like and are not
+    bought (`blank_check.block_warrants_and_rights`); a unit priced more than
+    `blank_check.max_premium_to_trust_pct` over its trust value is priced on a
+    deal that may not happen. SELLs are never blocked: they only reduce what
+    is held. `price` is the order's limit price or the scoring reference
+    price; absent, the live midpoint is read, and an unreadable one refuses
+    (fails closed)."""
+    if side.upper() != "BUY":
+        return None
+    from trading_agent.scoring.instruments import (
+        BLANK_CHECK_UNIT,
+        WARRANT_OR_RIGHT,
+        blank_check_cfg,
+        instrument_class,
+        trust_premium_pct,
+    )
+
+    kind = instrument_class(symbol)
+    cfg = blank_check_cfg()
+    if kind == WARRANT_OR_RIGHT and cfg["block_warrants_and_rights"]:
+        return f"{symbol} is a warrant/right — option-like, and this project does not buy those."
+    if kind == BLANK_CHECK_UNIT:
+        try:
+            px = price or _mid_price(symbol)
+        except Exception as exc:
+            return f"Cannot verify {symbol}'s price against its trust value ({exc}) — refusing to proceed blind."
+        premium = trust_premium_pct(px, cfg)
+        if premium > cfg["max_premium_to_trust_pct"]:
+            return (
+                f"{symbol} is a blank-check unit at ${px:.2f}, {premium:.0f}% over its "
+                f"${cfg['trust_value']:.2f} trust value (cap {cfg['max_premium_to_trust_pct']:.0f}%) — "
+                "priced on a deal that may not happen."
+            )
+    return None
+
+
 def position_size_reason(
     symbol: str, side: str, qty: float, price: float | None = None
 ) -> str | None:
@@ -243,6 +281,10 @@ def position_size_reason(
         return None
 
     cap = load_risk_limits()["position"]["max_position_pct_of_portfolio"]
+    from trading_agent.scoring.instruments import OPERATING, blank_check_cfg, instrument_class
+
+    if instrument_class(symbol) != OPERATING:  # units/warrants get their own, lower cap
+        cap = min(cap, blank_check_cfg()["max_position_pct_of_portfolio"])
     try:
         equity = float(_account()["equity"])
         price = price or _reference_price(symbol)

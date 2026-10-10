@@ -39,6 +39,10 @@ from trading_agent.scoring.recommendation_engine import (
     score_candidate,
     technical_score,
 )
+from trading_agent.data.market_data import get_fundamentals
+from trading_agent.guardrails import instrument_reason
+from trading_agent.scoring.fundamentals import fundamental_score
+from trading_agent.scoring.instruments import OPERATING, blank_check_cfg, blank_check_score, instrument_class
 from trading_agent.scoring.timing import timing_check
 from trading_agent.scoring.text_signals import catalyst_score, sentiment_score
 
@@ -172,6 +176,19 @@ def _score_tickers(
             # long_term_trend() handles that itself, no extra guard needed here.
             trend = long_term_trend(bars)
 
+            # Fundamentals: an operating company is scored from yfinance's
+            # figures; a blank-check unit has none, so its price against the
+            # trust value stands in; a warrant/right gets none (and is not
+            # bought, below). Missing -> None, dropped from the blend.
+            iclass = instrument_class(ticker)
+            if iclass == OPERATING:
+                try:
+                    fundamental = fundamental_score(get_fundamentals(ticker))
+                except Exception:  # noqa: BLE001 - a fundamentals outage must not skip the ticker
+                    fundamental = None
+            else:
+                fundamental = blank_check_score(reference_price) if iclass == "blank_check_unit" else None
+
             headline_text = research.get("headline_summary") or ""
             rec = score_candidate(
                 ticker=ticker,
@@ -182,7 +199,7 @@ def _score_tickers(
                 # the text has no detectable sentiment/catalyst language.
                 sentiment=sentiment_score(headline_text),
                 technical=tech,
-                fundamental=None,  # no fundamentals vendor wired up yet — excluded from the score, not neutral
+                fundamental=fundamental,  # None (excluded, not neutral) when there is nothing real to score
                 catalyst=catalyst_score(headline_text),
                 position_pnl_pct=held_pnl.get(ticker),
                 reference_price=reference_price,
@@ -191,6 +208,18 @@ def _score_tickers(
                 held=(ticker in held_pnl) if positions_known else None,
             )
             rec["reference_price_source"] = reference_price_source
+            rec["instrument_class"] = iclass
+            if iclass != OPERATING:
+                # Units/warrants: size under their own, lower cap, and never
+                # propose a BUY the execution guardrail would refuse anyway.
+                rec["suggested_size_pct_of_portfolio"] = min(
+                    rec.get("suggested_size_pct_of_portfolio") or 0.0,
+                    blank_check_cfg()["max_position_pct_of_portfolio"],
+                )
+                blocked = instrument_reason(ticker, rec["action"], reference_price) if rec["action"] == "BUY" else None
+                if blocked:
+                    rec["action"] = "HOLD"
+                    rec["blocked_instrument"] = blocked
             # Is now a good price, or would waiting do better? (scoring/timing.py)
             # Advisory on the rec; auto_apply() defers a "wait", a human can still override.
             rec["timing"] = timing_check(

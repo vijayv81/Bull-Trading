@@ -32,6 +32,7 @@ def guardrails_satisfied(monkeypatch):
     monkeypatch.setattr(om, "short_sale_reason", lambda ticker, side, qty: None)
     monkeypatch.setattr(om, "stale_recommendation_reason", lambda rec: None)
     monkeypatch.setattr(om, "entry_limit_price", lambda ticker, side: (None, None))
+    monkeypatch.setattr(om, "instrument_reason", lambda ticker, side, price=None: None)
 
 
 def _approved(qty=10):

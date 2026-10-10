@@ -634,6 +634,44 @@ into the top sliver of the range. `false` reverts to the original flat
 behavior: always exactly the cap for any actionable recommendation,
 confidence-blind.
 
+## Fundamentals, blank-check units and warrants (scoring/fundamentals.py, instruments.py)
+
+Per user instruction 2026-10-10 ("fundamental and hit rate ... should be
+sourced ... what protection can be used for blank check units"). Before this,
+`fundamental` was hard-wired to `None` for every ticker.
+
+- **Operating companies:** `fundamental_score()` scales yfinance's profit margin,
+  revenue growth, ROE, debt/equity and P/E linearly between the floors/ceilings
+  in `agent_config.yaml -> fundamentals.ranges` and averages them. `None` (the
+  component is dropped and the weights renormalised) under `min_revenue` /
+  `min_market_cap` or with fewer than `min_metrics` readings: yfinance reports
+  junk on shells (a 390% ROE on a blank check). `get_fundamentals()` is keyless,
+  cached in-process, and a lookup failure never skips the ticker.
+- **Hit rate:** `historical_hitrate()` now needs `HITRATE_MIN_OUTCOMES` (5)
+  measured outcomes for that ticker. It used to return the rate from 1-2 trades
+  (0, 0.5 or 1.0) at a 10% weight. It is the project's own track record, not
+  something sourced online, so it stays blank for tickers it has not traded.
+- **Instrument class** comes from the symbol alone (`instrument_class()`): a
+  5-letter symbol ending U is a blank-check unit, W or R a warrant/right.
+  `position.instrument_overrides: {SYM: operating}` fixes a misclassification.
+- **Blank-check units** have no operations, so their "fundamental" is the price
+  against the trust value (`blank_check.trust_value`, $10): 0.65 at or below the
+  trust, sliding to 0.10 at `max_premium_to_trust_pct` (15%) over it.
+- **Protections** (`risk_limits.yaml -> blank_check`), at scoring *and* at order
+  submission (`guardrails.instrument_reason()`, with `entry_limit_price()` and
+  the position cap): a BUY of a **warrant/right** is refused (option-like; this
+  project bans options); a BUY of a unit more than 15% over its trust value is
+  refused; units size under their own 1% cap instead of 5%. At scoring such a BUY
+  becomes `HOLD` with `blocked_instrument` set. SELLs are never blocked, so an
+  existing holding can always be exited. Fails closed if a unit's price is
+  unreadable. `instrument_class` is recorded on every recommendation.
+- **Replay of 2026-10-09 pre_open:** both BUYs (FVNNU, ALISU) are blocked and
+  would have scored 72 and 79, under the 85 bar.
+- **Limits, stated plainly:** a legitimately announced deal can put a unit well
+  above $10 (raise `max_premium_to_trust_pct` or override the symbol); the trust
+  value is a flat $10, not the SPAC's actual per-share trust; the common shares
+  of a SPAC (4-letter symbols) are not recognised, only the unit/warrant/right.
+
 ## Timing check: is now the right price, or better to wait? (scoring/timing.py)
 
 Per user instruction 2026-10-10 ("before deciding to BUY or SELL ... review the
@@ -1077,9 +1115,7 @@ re-reads `data/trades/` fresh, so nothing double-counts.
   domain (see the credential policy section above). `trading-agent
   notify-test` fires a one-off message through whatever's configured. Slack
   and push are still just the docstring's aspiration, not built.
-- **A secondary fundamentals/screening vendor** — Alpaca's own coverage is
-  limited (plan §5); `fundamental` score currently defaults to neutral (0.5)
-  in `orchestrator.py`.
+- ~~A fundamentals source~~ — built 2026-10-10, see "Fundamentals, blank-check units and warrants" above.
 
 ## Running
 

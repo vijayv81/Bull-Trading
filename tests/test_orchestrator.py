@@ -15,6 +15,7 @@ def isolated(monkeypatch):
     monkeypatch.setattr(orch, "load_watchlist", lambda: ["GOOD", "BAD"])
     monkeypatch.setattr(orch, "get_market_movers", lambda: {"gainers": []})
     monkeypatch.setattr(orch, "get_positions", lambda: [])
+    monkeypatch.setattr(orch, "get_fundamentals", lambda ticker: None)
     monkeypatch.setattr(orch, "get_recent_bars", lambda ticker, **kwargs: [])
     monkeypatch.setattr(orch, "get_mid_price", lambda ticker: None)
     monkeypatch.setattr(orch, "get_market_return_pct", lambda symbol: None)
@@ -683,3 +684,19 @@ def test_no_halt_notification_when_the_checkpoint_runs(monkeypatch):
     )
     _capture_digest(monkeypatch)
     orch.run_checkpoint("pre_open")
+
+
+def test_warrant_buy_is_downgraded_to_hold_and_unit_sized_under_its_cap(monkeypatch):
+    monkeypatch.setattr(orch, "load_watchlist", lambda: ["GRMLW", "FVNNU"])
+    monkeypatch.setattr(orch, "research_ticker", lambda t, c: {"headline_summary": "x", "sources": ["s"]})
+    monkeypatch.setattr(
+        orch, "score_candidate",
+        lambda **kw: {"ticker": kw["ticker"], "checkpoint": kw["checkpoint"], "action": "BUY",
+                      "confidence": 90, "suggested_size_pct_of_portfolio": 4.0},
+    )
+    monkeypatch.setattr(orch, "_scoring_reference_price", lambda t, b, h: (10.2, "live_mid"))
+    _capture_digest(monkeypatch)
+    out = {r["ticker"]: r for r in orch.run_checkpoint("pre_open")}
+    assert out["GRMLW"]["action"] == "HOLD" and "warrant" in out["GRMLW"]["blocked_instrument"]
+    assert out["FVNNU"]["action"] == "BUY" and out["FVNNU"]["suggested_size_pct_of_portfolio"] == 1.0
+    assert out["FVNNU"]["instrument_class"] == "blank_check_unit"
