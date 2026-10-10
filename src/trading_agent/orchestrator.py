@@ -29,7 +29,7 @@ from trading_agent.data.alpaca_client import (
     get_recent_bars,
 )
 from trading_agent.execute.auto_pilot import auto_apply
-from trading_agent.guardrails import RoutineHalted, daily_loss_reason, is_option_symbol
+from trading_agent.guardrails import RoutineHalted, daily_loss_reason, halt_allows_exits, is_option_symbol
 from trading_agent.notify.approval_gateway import notify_checkpoint_halted, notify_digest, save_recommendation
 from trading_agent.research.perplexity_client import research_ticker
 from trading_agent.scoring.recommendation_engine import (
@@ -41,6 +41,7 @@ from trading_agent.scoring.recommendation_engine import (
 )
 from trading_agent.data.market_data import get_fundamentals
 from trading_agent.guardrails import instrument_reason
+from trading_agent.scoring.entry_quality import assess_entry
 from trading_agent.scoring.fundamentals import fundamental_score
 from trading_agent.scoring.instruments import OPERATING, blank_check_cfg, blank_check_score, instrument_class
 from trading_agent.scoring.timing import timing_check
@@ -141,10 +142,14 @@ def _score_tickers(
     held_pnl: dict[str, float],
     market_return_pct: float | None,
     positions_known: bool = True,
+    exits_only: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """The research -> bars -> score body for one batch of tickers — shared
     by run_checkpoint()'s two passes (held positions, then watchlist/movers;
     see run_checkpoint() for why the split exists) so it isn't duplicated.
+
+    `exits_only` is the daily-loss-halt pass: a BUY is reported HOLD
+    (`halted_no_new_buys`), only exits can come out of it.
     """
     results: list[dict[str, Any]] = []
     failed_tickers: list[dict[str, Any]] = []
@@ -220,6 +225,26 @@ def _score_tickers(
                 if blocked:
                     rec["action"] = "HOLD"
                     rec["blocked_instrument"] = blocked
+            # Entry quality (scoring/entry_quality.py): the average daily range and
+            # history length go on every recommendation for the audit trail and for
+            # the order-time backstop. A BUY a stop-loss cannot protect (too cheap,
+            # too wild, or a thin record below the higher confidence bar) becomes
+            # HOLD; the rest are sized so a normal day's move costs a bounded share.
+            quality = assess_entry(ticker, reference_price, bars, rec.get("confidence"))
+            if quality:
+                rec["avg_daily_range_pct"] = quality["avg_daily_range_pct"]
+                rec["history_bars"] = quality["history_bars"]
+                if rec["action"] == "BUY":
+                    if quality["blocked"]:
+                        rec["action"] = "HOLD"
+                        rec["blocked_entry"] = quality["blocked"]
+                    elif quality["max_size_pct"] is not None:
+                        rec["suggested_size_pct_of_portfolio"] = min(
+                            rec.get("suggested_size_pct_of_portfolio") or 0.0, quality["max_size_pct"]
+                        )
+            if exits_only and rec["action"] == "BUY":
+                rec["action"] = "HOLD"
+                rec["halted_no_new_buys"] = True
             # Is now a good price, or would waiting do better? (scoring/timing.py)
             # Advisory on the rec; auto_apply() defers a "wait", a human can still override.
             rec["timing"] = timing_check(
@@ -252,15 +277,22 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     # Halt before spending any research budget: past the daily loss cap there is
     # nothing this checkpoint should be proposing.
     halt = daily_loss_reason()
+    exits_only = False
     if halt:
         # A halt used to be silent: nothing researched, nothing saved, no email.
         # Tell the user the run didn't happen — and never let that notification
         # mask the halt itself.
+        exits_only = halt_allows_exits()
         try:
-            notify_checkpoint_halted(checkpoint, halt)
+            notify_checkpoint_halted(checkpoint, halt, exits_only=exits_only)
         except Exception as exc:  # noqa: BLE001
             print(f"Could not announce the {checkpoint} halt: {exc}")
-        raise RoutineHalted(halt)
+        if not exits_only:
+            raise RoutineHalted(halt)
+        # Past the loss cap nothing NEW is researched or bought, but what is held
+        # is still scored and may be sold (portfolio.halt_allows_exits): on
+        # 2026-10-09 three checkpoints did nothing while FVNNU kept falling.
+        print(f"HALTED for new entries: {halt} Monitoring held positions for exits only.")
 
     positions = _held_position_pnl_pct()
     positions_known = positions is not None
@@ -319,6 +351,8 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     # are removed from the watchlist/movers batch so nothing is scored twice.
     held_tickers = {t for t in held_pnl if not is_option_symbol(t)}
     watchlist_tickers -= held_tickers
+    if exits_only:
+        watchlist_tickers = set()
 
     results: list[dict[str, Any]] = []
     failed_tickers: list[dict[str, Any]] = []
@@ -329,7 +363,7 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
         if not batch:
             continue
         batch_results, batch_failed = _score_tickers(
-            sorted(batch), checkpoint, held_pnl, market_return_pct, positions_known
+            sorted(batch), checkpoint, held_pnl, market_return_pct, positions_known, exits_only
         )
         results.extend(batch_results)
         failed_tickers.extend(batch_failed)

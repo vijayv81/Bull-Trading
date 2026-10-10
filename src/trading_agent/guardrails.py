@@ -85,6 +85,33 @@ def min_confidence_reason(symbol: str, action: str, confidence: float | None) ->
     return None
 
 
+def entry_quality_reason(rec: dict[str, Any]) -> str | None:
+    """Execution-time backstop for scoring/entry_quality.py, BUY only: refuse a
+    name a 4% stop-loss cannot protect (under the price floor, or an average
+    daily range over the limit) and a thin-record name below the higher
+    confidence bar. Reads only the fields scoring put on the recommendation
+    (`reference_price`, `avg_daily_range_pct`, `history_bars`), so it costs no
+    call. A field that is missing (an older record, or an ad hoc one from
+    agents/tools.py) skips just that rule rather than refusing, the same
+    convention as the stale check's reference_price; scoring is the primary
+    enforcement, this catches a record that carries the numbers."""
+    if str(rec.get("action", "")).upper() != "BUY":
+        return None
+    from trading_agent.scoring.entry_quality import breach_reason, entry_quality_cfg
+
+    cfg = entry_quality_cfg()
+    if not cfg.get("enabled", True):
+        return None
+    return breach_reason(
+        rec["ticker"],
+        rec.get("reference_price"),
+        rec.get("avg_daily_range_pct"),
+        rec.get("history_bars"),
+        rec.get("confidence"),
+        cfg,
+    )
+
+
 def _account() -> dict[str, Any]:
     from trading_agent.data.alpaca_client import get_account
 
@@ -305,14 +332,44 @@ def position_size_reason(
     return None
 
 
-def _todays_trade_count() -> int:
+def exits_exempt_from_trade_cap() -> bool:
+    """portfolio.exits_exempt_from_daily_trade_cap: SELLs neither count against
+    nor are refused by the daily order caps (they only ever reduce a long)."""
+    return bool(load_risk_limits().get("portfolio", {}).get("exits_exempt_from_daily_trade_cap", False))
+
+
+def halt_allows_exits() -> bool:
+    """portfolio.halt_allows_exits: past the daily-loss cap a SELL may still go
+    out and held positions are still scored; nothing new is bought."""
+    return bool(load_risk_limits().get("portfolio", {}).get("halt_allows_exits", False))
+
+
+def is_exit_order(record: dict[str, Any]) -> bool:
+    """True for a record in orders_submitted.json that was a SELL. Reads the
+    recommendation's action, then the order's side; a record with neither is
+    treated as an entry (it counts), the conservative reading."""
+    action = (record.get("recommendation") or {}).get("action")
+    if action:
+        return str(action).upper() == "SELL"
+    side = (record.get("order") or {}).get("side")
+    return side is not None and "sell" in str(side).lower()
+
+
+def _todays_trade_count(entries_only: bool = False) -> int:
     path = TRADES_DIR / today() / "orders_submitted.json"
-    return len(load_json_list(path))
+    records = load_json_list(path)
+    if entries_only:
+        records = [r for r in records if not is_exit_order(r)]
+    return len(records)
 
 
-def daily_trade_count_reason() -> str | None:
+def daily_trade_count_reason(side: str | None = None) -> str | None:
     """Breach reason once today's total submitted orders — every source, BUY
     and SELL alike — reach portfolio.max_daily_trades.
+
+    With portfolio.exits_exempt_from_daily_trade_cap on, a SELL (`side`) is never
+    refused by this cap and SELLs are not counted toward it: the cap limits new
+    risk, and on 2026-10-06/07/08 it held stop-loss exits back a day at a time.
 
     Distinct from execute.auto_pilot's own `auto_apply.max_trades_per_day`:
     that one paces how many of *auto-apply's own* trades happen today and
@@ -335,8 +392,12 @@ def daily_trade_count_reason() -> str | None:
     if not cap:
         return None
 
+    exempt = exits_exempt_from_trade_cap()
+    if exempt and side is not None and side.upper() == "SELL":
+        return None
+
     try:
-        count = _todays_trade_count()
+        count = _todays_trade_count(entries_only=exempt)
     except Exception as exc:
         return f"Cannot verify the {cap}-trade daily cap ({exc}) — refusing to proceed blind."
 

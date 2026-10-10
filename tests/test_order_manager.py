@@ -24,8 +24,10 @@ def guardrails_satisfied(monkeypatch):
     Without this they would reach for live Alpaca account data.
     """
     monkeypatch.setattr(om, "daily_loss_reason", lambda: None)
-    monkeypatch.setattr(om, "daily_trade_count_reason", lambda: None)
+    monkeypatch.setattr(om, "daily_trade_count_reason", lambda side=None: None)
     monkeypatch.setattr(om, "min_confidence_reason", lambda ticker, side, confidence: None)
+    monkeypatch.setattr(om, "entry_quality_reason", lambda rec: None)
+    monkeypatch.setattr(om, "halt_allows_exits", lambda: False)
     monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty, price=None: None)
     monkeypatch.setattr(om, "position_count_reason", lambda ticker, side: None)
     monkeypatch.setattr(om, "sector_concentration_reason", lambda ticker, side, qty: None)
@@ -226,7 +228,7 @@ def test_daily_trade_count_breach_refuses(monkeypatch):
     monkeypatch.setattr(om, "get_decision", _approved(qty=10))
     monkeypatch.setattr(om, "is_expired", lambda ts: False)
     monkeypatch.setattr(
-        om, "daily_trade_count_reason", lambda: "Daily trade cap reached: 5 of 5 orders already submitted today"
+        om, "daily_trade_count_reason", lambda side=None: "Daily trade cap reached: 5 of 5 orders already submitted today"
     )
     monkeypatch.setattr(om, "submit_market_order", lambda t, s, q: pytest.fail("must not submit"))
 
@@ -237,7 +239,7 @@ def test_daily_trade_count_breach_refuses(monkeypatch):
 def test_daily_trade_count_checked_before_approval_lookup(monkeypatch):
     """Cheap/local check — must refuse before ever consulting the approval record."""
     monkeypatch.setattr(om, "load_risk_limits", lambda: _risk(True))
-    monkeypatch.setattr(om, "daily_trade_count_reason", lambda: "Daily trade cap reached: 5 of 5")
+    monkeypatch.setattr(om, "daily_trade_count_reason", lambda side=None: "Daily trade cap reached: 5 of 5")
 
     def fail(*args, **kwargs):
         raise AssertionError("should have been refused before the approval lookup")
