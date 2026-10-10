@@ -186,6 +186,19 @@ execution:
   # loss open, which is the opposite of what a stop-loss is for. true sends
   # them as bid * (1 - limit_slippage_pct/100) limits.
   limit_orders_for_sells: false
+  # Timing check (scoring/timing.py), per user instruction 2026-10-10: before a
+  # BUY/SELL, compare the price with the last week and month. A BUY at the top
+  # of its 1-month range and >= min_improvement_pct above its 1-week average,
+  # or a (non-stop-loss) SELL at the bottom of the range and >= that far below
+  # the average, is DEFERRED by auto-apply (logged, re-scored next checkpoint).
+  # A human approving by hand sees the advice and can override. enabled: false
+  # is the one-line revert.
+  timing_check:
+    enabled: true
+    min_improvement_pct: 3.0
+    buy_wait_above_range_pct: 80
+    sell_wait_below_range_pct: 20
+    defer_stop_loss_exits: false
 
 # Equities only — there is deliberately no `allow_options` key here. The ban is
 # code-level (guardrails.is_option_symbol, enforced in both order_manager and

@@ -39,6 +39,7 @@ from trading_agent.scoring.recommendation_engine import (
     score_candidate,
     technical_score,
 )
+from trading_agent.scoring.timing import timing_check
 from trading_agent.scoring.text_signals import catalyst_score, sentiment_score
 
 VALID_CHECKPOINTS = {"pre_open", "market_open", "midday", "pre_close"}
@@ -190,6 +191,19 @@ def _score_tickers(
                 held=(ticker in held_pnl) if positions_known else None,
             )
             rec["reference_price_source"] = reference_price_source
+            # Is now a good price, or would waiting do better? (scoring/timing.py)
+            # Advisory on the rec; auto_apply() defers a "wait", a human can still override.
+            rec["timing"] = timing_check(
+                rec["action"],
+                reference_price,
+                bars,
+                stop_loss_hit=(
+                    rec.get("position_pnl_pct") is not None
+                    and bool(rec.get("stop_loss_pct"))
+                    and rec["position_pnl_pct"] <= -rec["stop_loss_pct"]
+                ),
+                cfg=load_risk_limits().get("execution", {}).get("timing_check"),
+            )
             rec["rationale"] = (research.get("headline_summary") or "")[:280]
             rec["sources"] = research.get("sources", [])
             rec["research_source"] = research.get("research_source", "perplexity")

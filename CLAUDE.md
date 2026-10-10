@@ -634,6 +634,29 @@ into the top sliver of the range. `false` reverts to the original flat
 behavior: always exactly the cap for any actionable recommendation,
 confidence-blind.
 
+## Timing check: is now the right price, or better to wait? (scoring/timing.py)
+
+Per user instruction 2026-10-10 ("before deciding to BUY or SELL ... review the
+price based on last 1 week, 1 month and determine if it is better to wait").
+`timing_check()` runs in `_score_tickers()` on the bars it already fetched and
+puts a `timing` block on every recommendation (verdict `proceed`/`wait`, 1-week
+and 1-month avg/low/high, where the price sits in the month's range, a target
+price and the potential improvement %). A mean-reversion rule, not a forecast:
+a **BUY** waits when the price is in the top 20% of its 1-month range *and* at
+least `min_improvement_pct` (3%) above its 1-week average; a **SELL** waits
+when it is in the bottom 20% *and* that far below the weekly average (selling
+the low of the range). **Stop-loss exits are never deferred**
+(`defer_stop_loss_exits: false`) — waiting for a bounce is what a stop-loss
+exists to override. Under 21 bars of history means no opinion, not a guess.
+
+Enforcement is deliberately in **auto-apply only**: a "wait" candidate is logged
+as a `deferred` attempt (counted in the daily summary and the weekly review,
+which also runs the hindsight check on it, so we can see whether waiting
+actually paid) and re-scored fresh at the next checkpoint. A human approving by
+hand sees "WAIT: ..." in the digest and can override. It is not an order
+guardrail (no refusal at `submit_approved_order()`), and it is not in the
+backtest. `execution.timing_check.enabled: false` is the one-line revert.
+
 ## Portfolio guardrails (hard requirement)
 
 `guardrails.py` holds nine checks. Each returns a refusal reason or `None`;

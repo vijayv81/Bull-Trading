@@ -185,7 +185,8 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
 
     Returns one status record per candidate considered — "submitted",
     "refused" (a guardrail said no — the same outcome a human's approval could
-    hit), "skipped" (computed qty was 0), or "error" (an exception reaching
+    hit), "skipped" (computed qty was 0), "deferred" (the timing check says waiting
+    would get a better price), or "error" (an exception reaching
     Alpaca). Never raises: one bad candidate must not stop the rest, and the
     checkpoint that called this must not be halted by it either.
     """
@@ -193,12 +194,27 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
     if not auto_cfg.get("enabled", False):
         return []
 
+    # Timing check (scoring/timing.py): a candidate whose price looks worse than
+    # waiting a bit would give is deferred, not traded. Logged like every other
+    # outcome; the next checkpoint scores it again from fresh data. A human
+    # approving by hand still sees the advice and can override it.
+    deferred = [
+        r for r in recs
+        if r.get("action") in ("BUY", "SELL") and (r.get("timing") or {}).get("verdict") == "wait"
+    ]
+    deferred_results = []
+    for rec in deferred:
+        result = {"ticker": rec["ticker"], "status": "deferred", "reason": rec["timing"]["reason"]}
+        deferred_results.append(result)
+        _persist_attempt(result, checkpoint)
+    recs = [r for r in recs if r not in deferred]
+
     daily_cap = auto_cfg.get("max_trades_per_day", 5)
     ordered_today = _todays_auto_trade_count()
     remaining = daily_cap - ordered_today
     if remaining <= 0:
         _record_capped(recs, checkpoint, daily_cap, ordered_today)
-        return []
+        return deferred_results
 
     # A BUY on a symbol already at the per-position cap can't place even one
     # share; it was refused every checkpoint (MGLD/AIFF, 7 times in the week
@@ -219,7 +235,7 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
     # placed. Only submissions count against the cap, so a refused or
     # skipped candidate no longer uses up a slot a lower-ranked one could
     # have filled — previously only the top `remaining` were ever tried.
-    results = []
+    results = list(deferred_results)
     submitted = 0
     for index, rec in enumerate(candidates):
         if submitted >= remaining:
