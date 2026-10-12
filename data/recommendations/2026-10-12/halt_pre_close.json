@@ -1,0 +1,8 @@
+[
+  {
+    "checkpoint": "pre_close",
+    "reason": "Daily loss -3.40% has reached the 2.0% cap \u2014 halted for the day (equity 73,543.42 vs 76,132.90 at prior close).",
+    "halted_at": "2026-10-12T19:47:22.164357+00:00",
+    "exits_only": true
+  }
+]
