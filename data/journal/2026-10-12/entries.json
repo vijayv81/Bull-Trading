@@ -31,5 +31,27 @@
     "reference_price": 3.3,
     "recorded_at": "2026-10-12T12:49:41.150330+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "ALISU",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 79.2,
+    "reasoning": "Auto-applied: confidence 79.2 (technical=1.0, sentiment=None, catalyst=1.0, fundamental=0.1), sell_pressure=1.0 (position_pnl_pct=-47.56)",
+    "reference_price": 18.61,
+    "recorded_at": "2026-10-12T13:44:20.536027+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "PFAI",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 61.4,
+    "reasoning": "Auto-applied: confidence 61.4 (technical=0.876183757235007, sentiment=None, catalyst=0.3333333333333333, fundamental=0.2845), sell_pressure=1.0 (position_pnl_pct=-29.42)",
+    "reference_price": 2.935,
+    "recorded_at": "2026-10-12T13:44:23.479676+00:00",
+    "outcome": null
   }
 ]
