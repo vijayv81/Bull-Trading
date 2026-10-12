@@ -33,10 +33,10 @@ credentials:
 # propose_weight_adjustments() for the human-reviewed weekly proposal step (§6.3) —
 # nothing here is ever auto-adjusted.
 scoring_weights:
-  sentiment: 0.25
+  sentiment: 0.2
   technical: 0.35
   fundamental: 0.15
-  catalyst: 0.15
+  catalyst: 0.2
   historical_hitrate: 0.10
 
 # Fundamental score for OPERATING companies (scoring/fundamentals.py), from
