@@ -1,0 +1,35 @@
+[
+  {
+    "ticker": "ALISU",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 85.0,
+    "reasoning": "Auto-applied: confidence 85.0 (technical=1.0, sentiment=1.0, catalyst=1.0, fundamental=0.1), sell_pressure=1.0 (position_pnl_pct=-23.8)",
+    "reference_price": 18.67,
+    "recorded_at": "2026-10-12T12:49:33.330633+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "MGLD",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 80.0,
+    "reasoning": "Auto-applied: confidence 80.0 (technical=1.0, sentiment=None, catalyst=0.3333333333333333, fundamental=None), sell_pressure=0.53 (position_pnl_pct=8.51)",
+    "reference_price": 2.005,
+    "recorded_at": "2026-10-12T12:49:36.401403+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "PFAI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 66.4,
+    "reasoning": "Auto-applied: confidence 66.4 (technical=0.9219996836281421, sentiment=0.5, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-32.28)",
+    "reference_price": 3.3,
+    "recorded_at": "2026-10-12T12:49:41.150330+00:00",
+    "outcome": null
+  }
+]
