@@ -1,0 +1,24 @@
+[
+  {
+    "id": "2026-10-12-weights-sentiment-to-catalyst",
+    "title": "Shift 0.05 of scoring weight from sentiment to catalyst",
+    "why": "sentiment has agreed with actual price direction 25% of the time over 20 measured calls, vs. catalyst's 46% over 35.",
+    "effect": "Confidence scores lean slightly more on catalyst and less on sentiment.",
+    "loosens_guardrail": false,
+    "changes": [
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.sentiment",
+        "from": 0.25,
+        "to": 0.2
+      },
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.catalyst",
+        "from": 0.15,
+        "to": 0.2
+      }
+    ],
+    "risk": "Scoring weights were last changed on 2026-10-06 (6 day(s) ago): Shift 0.05 of scoring weight from catalyst to technical. The hit rates behind this proposal have had little time to change, so consider waiting."
+  }
+]
