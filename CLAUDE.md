@@ -751,7 +751,7 @@ the account -26.5% since 9/17 against SPY +2.0%, and 91% in cash). Three changes
    sits in `core.symbol` (SPY) and the active strategy is the capped "satellite":
    - `execute/core_holding.py:core_rebalance()` runs from `run_checkpoint()` at
      `core.checkpoint` (midday) only, never while entries are halted. It buys toward
-     `target_pct_of_portfolio` (70) when the core is at least `rebalance_band_pct` (5)
+     `target_pct_of_portfolio` (35) when the core is at least `rebalance_band_pct` (5)
      under, at most `max_order_pct_of_portfolio` (10) a day, so it builds over days. BUY
      only: it never sells the core, has no stop-loss, and a trim is left to a human.
    - It goes through `submit_approved_order()` like any order: a decision on disk tagged
@@ -759,17 +759,17 @@ the account -26.5% since 9/17 against SPY +2.0%, and 91% in cash). Three changes
      means the core waits), daily order count, DAY limit price and spread check, stale-price
      check. The technical-direction re-check is skipped for the core only (it is bought to
      hold, not on a signal).
-   - The core symbol gets its own per-position cap (`max_position_pct_of_portfolio: 75`)
+   - The core symbol gets its own per-position cap (`max_position_pct_of_portfolio: 40`)
      and is exempt from the sector cap (an index fund is not a sector bet). It is left out
      of the satellite pass entirely: never researched, scored or sold by auto-apply.
    - **Satellite cap:** `guardrails.satellite_exposure_reason()` refuses a BUY that would take
-     every non-core position past `satellite_max_pct_of_portfolio` (20). Fails closed.
-     Default split: 70% core, up to 20% satellite, at least 10% cash.
+     every non-core position past `satellite_max_pct_of_portfolio` (35). Fails closed.
+     Split (set by the user 2026-10-12): 35% core, up to 35% satellite, the rest (30% or more) cash.
    - Attempts are logged to the attempt log and appear in the checkpoint digest and daily
      summary under the core symbol with `source: "core"`.
    **Limits, stated plainly:** the core makes the account track the index, including its
-   down days (a -2.9% SPY day at 70% core trips the 2% halt, which then stops new buying);
-   the 70/20/10 split and the ramp are my judgment, not a fit; the first tranches buy at
+   down days (a -5.7% SPY day at 35% core trips the 2% halt on its own, which then stops new buying);
+   the 35/35/30 split and the ramp are a judgment, not a fit; the first tranches buy at
    whatever SPY costs that day; paper trading only.
 
 ## Timing check: is now the right price, or better to wait? (scoring/timing.py)
