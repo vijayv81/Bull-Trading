@@ -27,6 +27,8 @@ def guardrails_satisfied(monkeypatch):
     monkeypatch.setattr(om, "daily_trade_count_reason", lambda side=None: None)
     monkeypatch.setattr(om, "min_confidence_reason", lambda ticker, side, confidence: None)
     monkeypatch.setattr(om, "entry_quality_reason", lambda rec: None)
+    monkeypatch.setattr(om, "buy_checkpoint_reason", lambda rec: None)
+    monkeypatch.setattr(om, "satellite_exposure_reason", lambda *a, **k: None)
     monkeypatch.setattr(om, "halt_allows_exits", lambda: False)
     monkeypatch.setattr(om, "position_size_reason", lambda ticker, side, qty, price=None: None)
     monkeypatch.setattr(om, "position_count_reason", lambda ticker, side: None)

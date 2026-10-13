@@ -16,6 +16,7 @@ from trading_agent.data.alpaca_client import submit_limit_order, submit_market_o
 from trading_agent.guardrails import (
     daily_loss_reason,
     daily_trade_count_reason,
+    buy_checkpoint_reason,
     entry_quality_reason,
     halt_allows_exits,
     entry_limit_price,
@@ -24,6 +25,7 @@ from trading_agent.guardrails import (
     options_reason,
     position_count_reason,
     position_size_reason,
+    satellite_exposure_reason,
     sector_concentration_reason,
     short_sale_reason,
     stale_recommendation_reason,
@@ -63,6 +65,10 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
 
     # Local file read, no network — cheap enough to check this early too.
     breach = entry_quality_reason(rec)
+    if breach:
+        raise OrderRefused(breach)
+
+    breach = buy_checkpoint_reason(rec)
     if breach:
         raise OrderRefused(breach)
 
@@ -117,6 +123,10 @@ def submit_approved_order(rec: dict[str, Any], qty: float, source: str = "human"
         raise OrderRefused(breach)
 
     breach = position_size_reason(rec["ticker"], rec["action"], qty, price=limit_price)
+    if breach:
+        raise OrderRefused(breach)
+
+    breach = satellite_exposure_reason(rec["ticker"], rec["action"], qty, limit_price)
     if breach:
         raise OrderRefused(breach)
 

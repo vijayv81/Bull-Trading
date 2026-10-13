@@ -104,7 +104,7 @@ def _approvals_summary(decisions: list[dict]) -> dict[str, int]:
         "approved": sum(1 for d in decisions if d.get("decision") == "approve"),
         "rejected": sum(1 for d in decisions if d.get("decision") == "reject"),
         "auto": sum(1 for d in decisions if (d.get("terms") or {}).get("source") == "auto"),
-        "human": sum(1 for d in decisions if (d.get("terms") or {}).get("source") != "auto"),
+        "human": sum(1 for d in decisions if (d.get("terms") or {}).get("source") not in ("auto", "core")),
     }
 
 

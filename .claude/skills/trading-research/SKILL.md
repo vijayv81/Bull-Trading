@@ -104,6 +104,16 @@ checkpoint's output" below — it's the audit trail showing why this checkpoint
 has no recommendations, and the daily summary lists it under "Halted
 checkpoints".
 
+## The core holding (SPY) and pre_open
+
+Since 2026-10-12 a checkpoint may also report an order for the **core holding**
+(SPY, `source: core`): that is the index core being topped up toward its target at
+midday (`risk_limits.yaml -> core`), not a recommendation, and it needs no action.
+SPY is never researched or scored by the checkpoint itself. Also, **no new BUY is
+proposed at pre_open** (`execution.no_new_buys_at_checkpoints`): a BUY there shows
+as HOLD with `blocked_checkpoint`. Exits are unaffected. Report both plainly; do not
+edit config to change either.
+
 ## When you see a DATA QUALITY ALERT
 
 This isn't a halt — the checkpoint still completes and still writes

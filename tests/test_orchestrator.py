@@ -15,6 +15,11 @@ def isolated(monkeypatch):
     # Entry quality is off here (tests/test_entry_quality.py covers it): these
     # tests use empty bars, which would otherwise count as a thin record.
     monkeypatch.setattr(orch, "assess_entry", lambda *a, **k: None)
+    # The pre_open BUY block and the core top-up have their own tests
+    # (tests/test_core_and_checkpoint_rules.py); off here so these stay about what they test.
+    monkeypatch.setattr(orch, "buy_checkpoint_reason", lambda rec: None)
+    monkeypatch.setattr(orch, "core_rebalance", lambda checkpoint: [])
+    monkeypatch.setattr(orch, "core_symbol", lambda: None)
     monkeypatch.setattr(orch, "load_watchlist", lambda: ["GOOD", "BAD"])
     monkeypatch.setattr(orch, "get_market_movers", lambda: {"gainers": []})
     monkeypatch.setattr(orch, "get_positions", lambda: [])

@@ -159,6 +159,18 @@ def _held_qty(ticker: str) -> float:
     return 0.0
 
 
+def is_stop_loss_exit(rec: dict[str, Any]) -> bool:
+    """A SELL on a held position that has fallen to or past its stop-loss
+    (position_pnl_pct <= -stop_loss_pct). A take-profit trim or a fresh bearish
+    call on a position that is not down to its stop is not one of these and keeps
+    its suggested size."""
+    if rec.get("action") != "SELL":
+        return False
+    pnl = rec.get("position_pnl_pct")
+    stop = rec.get("stop_loss_pct")
+    return pnl is not None and bool(stop) and pnl <= -abs(stop)
+
+
 def qty_for_recommendation(rec: dict[str, Any], equity: float, price: float) -> float:
     """suggested_size_pct_of_portfolio, in dollars of equity, converted to a
     whole share count at `price`. Rounds down — this only ever sizes at or
@@ -176,6 +188,12 @@ def qty_for_recommendation(rec: dict[str, Any], equity: float, price: float) -> 
     stop-loss breach and every auto-apply attempt on them was refused.
     A SELL is now capped at what's actually held, matching
     short_sale_reason()'s own bound, same as a human sizing an exit would."""
+    # A stop-loss exit closes the whole position. It used to be sized like a fresh
+    # position, so a SPAC unit (1% cap) sold in slivers across checkpoints:
+    # ALISU 29, 28 and 7 shares at $17.21, $13.24 and $12.50 on 2026-10-12, INLF in
+    # three tranches over three days the week before. No price is needed to sell.
+    if is_stop_loss_exit(rec):
+        return float(_held_qty(rec["ticker"]))
     pct = rec.get("suggested_size_pct_of_portfolio") or 0.0
     if pct <= 0 or price <= 0:
         return 0.0

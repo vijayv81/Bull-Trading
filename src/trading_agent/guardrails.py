@@ -310,7 +310,9 @@ def position_size_reason(
     cap = load_risk_limits()["position"]["max_position_pct_of_portfolio"]
     from trading_agent.scoring.instruments import OPERATING, blank_check_cfg, instrument_class
 
-    if instrument_class(symbol) != OPERATING:  # units/warrants get their own, lower cap
+    if is_core(symbol):  # the index holding has its own, higher cap (core.max_position_pct_of_portfolio)
+        cap = core_cfg().get("max_position_pct_of_portfolio", cap)
+    elif instrument_class(symbol) != OPERATING:  # units/warrants get their own, lower cap
         cap = min(cap, blank_check_cfg()["max_position_pct_of_portfolio"])
     try:
         equity = float(_account()["equity"])
@@ -328,6 +330,75 @@ def position_size_reason(
         return (
             f"{symbol} would reach {pct:.2f}% of the {equity:,.2f} portfolio "
             f"({projected:,.2f} incl. {existing:,.2f} already held), over the {cap}% cap."
+        )
+    return None
+
+
+def core_cfg() -> dict[str, Any]:
+    """risk_limits.yaml -> core, or {} when the core holding is off."""
+    cfg = load_risk_limits().get("core") or {}
+    return cfg if cfg.get("enabled") and cfg.get("symbol") else {}
+
+
+def core_symbol() -> str | None:
+    """The core index holding's symbol (upper-case), or None when it is off."""
+    cfg = core_cfg()
+    return str(cfg["symbol"]).upper() if cfg else None
+
+
+def is_core(symbol: str) -> bool:
+    return core_symbol() == symbol.upper()
+
+
+def buy_checkpoint_reason(rec: dict[str, Any]) -> str | None:
+    """Refuse a NEW BUY at a checkpoint listed in
+    execution.no_new_buys_at_checkpoints (pre_open): every BUY measured from
+    there lost (0 of 6 right, -20% on average, 2026-10-12 review) because it is
+    priced off a thin pre-market quote and fills at the open. BUY only; a rec
+    with no checkpoint is not refused."""
+    if str(rec.get("action", "")).upper() != "BUY":
+        return None
+    blocked = load_risk_limits().get("execution", {}).get("no_new_buys_at_checkpoints") or []
+    checkpoint = rec.get("checkpoint")
+    if checkpoint and checkpoint in blocked:
+        return (
+            f"New BUYs are not placed at the {checkpoint} checkpoint "
+            "(risk_limits.yaml -> execution.no_new_buys_at_checkpoints): its prices come from a thin "
+            "pre-market quote and the order fills at the open."
+        )
+    return None
+
+
+def satellite_exposure_reason(symbol: str, side: str, qty: float, price: float | None = None) -> str | None:
+    """Refuse a BUY that would take everything that is not the core holding past
+    core.satellite_max_pct_of_portfolio. Fails closed on unreadable account data.
+    The core symbol itself is exempt (it has its own cap in position_size_reason())."""
+    cfg = core_cfg()
+    if side.upper() != "BUY" or not cfg or is_core(symbol):
+        return None
+    cap = cfg.get("satellite_max_pct_of_portfolio")
+    if not cap:
+        return None
+    core = core_symbol()
+    try:
+        equity = float(_account()["equity"])
+        price = price or _reference_price(symbol)
+        satellite = sum(
+            abs(float(p.get("market_value") or 0.0))
+            for p in _positions()
+            if str(p.get("symbol", "")).upper() != core
+        )
+    except Exception as exc:
+        return f"Cannot verify the {cap}% satellite cap ({exc}) — refusing to proceed blind."
+    if equity <= 0:
+        return f"Cannot verify the {cap}% satellite cap: account equity is {equity}."
+    projected = satellite + qty * price
+    pct = projected / equity * 100
+    if pct > cap:
+        return (
+            f"Buying {symbol} would take the active (non-{core}) positions to {pct:.1f}% of the "
+            f"{equity:,.2f} portfolio ({projected:,.2f}), over the {cap}% satellite cap "
+            "(risk_limits.yaml -> core.satellite_max_pct_of_portfolio)."
         )
     return None
 
@@ -520,7 +591,7 @@ def stale_recommendation_reason(rec: dict[str, Any]) -> str | None:
                 "re-run the checkpoint for a fresh recommendation before approving/executing."
             )
 
-    if cfg.get("reverify_technical", True):
+    if cfg.get("reverify_technical", True) and not (rec.get("core") and is_core(symbol)):
         try:
             import pandas as pd
 
@@ -588,6 +659,8 @@ def sector_concentration_reason(symbol: str, side: str, qty: float) -> str | Non
     the account data the cap is measured against.
     """
     if side.upper() != "BUY":
+        return None
+    if is_core(symbol):  # a diversified index fund is not a sector bet
         return None
 
     cap = load_risk_limits().get("portfolio", {}).get("max_sector_concentration_pct")
