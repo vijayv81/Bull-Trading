@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "ALISU",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 29.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-12T12:49:31.908186+00:00"
+  },
+  {
+    "ticker": "MGLD",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1287.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-12T12:49:34.808469+00:00"
+  },
+  {
+    "ticker": "FVNNU",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 47.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-12T12:49:37.708190+00:00"
+  },
+  {
+    "ticker": "PFAI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 448.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-12T12:49:40.040642+00:00"
+  },
+  {
+    "ticker": "QETA",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 146.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-12T12:53:47.959653+00:00"
+  }
+]

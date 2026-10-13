@@ -1,0 +1,22 @@
+[
+  {
+    "ticker": "ALISU",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 28.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-12T13:44:19.095926+00:00"
+  },
+  {
+    "ticker": "PFAI",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-12T13:44:22.081531+00:00"
+  }
+]

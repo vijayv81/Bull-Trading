@@ -1,0 +1,110 @@
+[
+  {
+    "ticker": "ALISU",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 85.0,
+    "reasoning": "Auto-applied: confidence 85.0 (technical=1.0, sentiment=1.0, catalyst=1.0, fundamental=0.1), sell_pressure=1.0 (position_pnl_pct=-23.8)",
+    "reference_price": 18.67,
+    "recorded_at": "2026-10-12T12:49:33.330633+00:00",
+    "outcome": {
+      "price_at_decision": 18.67,
+      "price_at_measurement": 15.959999999999999,
+      "price_basis": "quote_mid",
+      "pct_change": -14.52,
+      "directionally_correct": true,
+      "measured_at": "2026-10-12T19:48:00.713435+00:00"
+    }
+  },
+  {
+    "ticker": "MGLD",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 80.0,
+    "reasoning": "Auto-applied: confidence 80.0 (technical=1.0, sentiment=None, catalyst=0.3333333333333333, fundamental=None), sell_pressure=0.53 (position_pnl_pct=8.51)",
+    "reference_price": 2.005,
+    "recorded_at": "2026-10-12T12:49:36.401403+00:00",
+    "outcome": {
+      "price_at_decision": 2.005,
+      "price_at_measurement": 1.995,
+      "price_basis": "quote_mid",
+      "pct_change": -0.5,
+      "directionally_correct": true,
+      "measured_at": "2026-10-12T19:48:01.395015+00:00"
+    }
+  },
+  {
+    "ticker": "PFAI",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 66.4,
+    "reasoning": "Auto-applied: confidence 66.4 (technical=0.9219996836281421, sentiment=0.5, catalyst=0.3333333333333333, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-32.28)",
+    "reference_price": 3.3,
+    "recorded_at": "2026-10-12T12:49:41.150330+00:00",
+    "outcome": {
+      "price_at_decision": 3.3,
+      "price_at_measurement": 2.74,
+      "price_basis": "quote_mid",
+      "pct_change": -16.97,
+      "directionally_correct": true,
+      "measured_at": "2026-10-12T19:48:01.847538+00:00"
+    }
+  },
+  {
+    "ticker": "ALISU",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 79.2,
+    "reasoning": "Auto-applied: confidence 79.2 (technical=1.0, sentiment=None, catalyst=1.0, fundamental=0.1), sell_pressure=1.0 (position_pnl_pct=-47.56)",
+    "reference_price": 18.61,
+    "recorded_at": "2026-10-12T13:44:20.536027+00:00",
+    "outcome": {
+      "price_at_decision": 18.61,
+      "price_at_measurement": 15.959999999999999,
+      "price_basis": "quote_mid",
+      "pct_change": -14.24,
+      "directionally_correct": true,
+      "measured_at": "2026-10-12T19:48:02.276205+00:00"
+    }
+  },
+  {
+    "ticker": "PFAI",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 61.4,
+    "reasoning": "Auto-applied: confidence 61.4 (technical=0.876183757235007, sentiment=None, catalyst=0.3333333333333333, fundamental=0.2845), sell_pressure=1.0 (position_pnl_pct=-29.42)",
+    "reference_price": 2.935,
+    "recorded_at": "2026-10-12T13:44:23.479676+00:00",
+    "outcome": {
+      "price_at_decision": 2.935,
+      "price_at_measurement": 2.74,
+      "price_basis": "quote_mid",
+      "pct_change": -6.64,
+      "directionally_correct": true,
+      "measured_at": "2026-10-12T19:48:02.641828+00:00"
+    }
+  },
+  {
+    "ticker": "ALISU",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 79.2,
+    "reasoning": "Auto-applied: confidence 79.2 (technical=1.0, sentiment=None, catalyst=1.0, fundamental=0.1), sell_pressure=1.0 (position_pnl_pct=-59.8)",
+    "reference_price": 14.44,
+    "recorded_at": "2026-10-12T16:37:39.131502+00:00",
+    "outcome": {
+      "price_at_decision": 14.44,
+      "price_at_measurement": 15.959999999999999,
+      "price_basis": "quote_mid",
+      "pct_change": 10.53,
+      "directionally_correct": false,
+      "measured_at": "2026-10-12T19:48:02.844229+00:00"
+    }
+  }
+]
