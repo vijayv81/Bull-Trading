@@ -29,7 +29,15 @@ from trading_agent.data.alpaca_client import (
     get_recent_bars,
 )
 from trading_agent.execute.auto_pilot import auto_apply
-from trading_agent.guardrails import RoutineHalted, daily_loss_reason, halt_allows_exits, is_option_symbol
+from trading_agent.execute.core_holding import core_rebalance
+from trading_agent.guardrails import (
+    RoutineHalted,
+    buy_checkpoint_reason,
+    core_symbol,
+    daily_loss_reason,
+    halt_allows_exits,
+    is_option_symbol,
+)
 from trading_agent.notify.approval_gateway import notify_checkpoint_halted, notify_digest, save_recommendation
 from trading_agent.research.perplexity_client import research_ticker
 from trading_agent.scoring.recommendation_engine import (
@@ -215,12 +223,15 @@ def _score_tickers(
             rec["reference_price_source"] = reference_price_source
             rec["instrument_class"] = iclass
             if iclass != OPERATING:
-                # Units/warrants: size under their own, lower cap, and never
-                # propose a BUY the execution guardrail would refuse anyway.
-                rec["suggested_size_pct_of_portfolio"] = min(
-                    rec.get("suggested_size_pct_of_portfolio") or 0.0,
-                    blank_check_cfg()["max_position_pct_of_portfolio"],
-                )
+                # Units/warrants: a BUY sizes under their own, lower cap and is never
+                # proposed if the execution guardrail would refuse it anyway. A SELL is
+                # NOT capped: on 2026-10-12 the 1% cap sold ALISU in three slivers
+                # (29, 28 and 7 shares) across three checkpoints while it fell 65%.
+                if rec["action"] == "BUY":
+                    rec["suggested_size_pct_of_portfolio"] = min(
+                        rec.get("suggested_size_pct_of_portfolio") or 0.0,
+                        blank_check_cfg()["max_position_pct_of_portfolio"],
+                    )
                 blocked = instrument_reason(ticker, rec["action"], reference_price) if rec["action"] == "BUY" else None
                 if blocked:
                     rec["action"] = "HOLD"
@@ -242,6 +253,13 @@ def _score_tickers(
                         rec["suggested_size_pct_of_portfolio"] = min(
                             rec.get("suggested_size_pct_of_portfolio") or 0.0, quality["max_size_pct"]
                         )
+            # No new BUYs at pre_open (execution.no_new_buys_at_checkpoints): 0 of 6
+            # pre_open BUYs were right, -20% on average. Reported HOLD with the reason.
+            if rec["action"] == "BUY":
+                cp_block = buy_checkpoint_reason(rec)
+                if cp_block:
+                    rec["action"] = "HOLD"
+                    rec["blocked_checkpoint"] = cp_block
             if exits_only and rec["action"] == "BUY":
                 rec["action"] = "HOLD"
                 rec["halted_no_new_buys"] = True
@@ -351,6 +369,12 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     # are removed from the watchlist/movers batch so nothing is scored twice.
     held_tickers = {t for t in held_pnl if not is_option_symbol(t)}
     watchlist_tickers -= held_tickers
+    # The core index holding is never researched, scored or sold by the active
+    # (satellite) pass; execute/core_holding.py tops it up on its own.
+    core = core_symbol()
+    if core:
+        watchlist_tickers.discard(core)
+        held_tickers.discard(core)
     if exits_only:
         watchlist_tickers = set()
 
@@ -374,6 +398,14 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             data_quality_alerts.append(alert)
             continue  # a flat score never reaches auto_apply for this batch
         auto_results.extend(auto_apply(batch_results, checkpoint))
+
+    # Core holding top-up (one checkpoint a day, never while entries are halted).
+    # Its own result, never a reason to fail the checkpoint.
+    if not exits_only:
+        try:
+            auto_results.extend(core_rebalance(checkpoint))
+        except Exception as exc:  # noqa: BLE001
+            print(f"Core holding top-up failed: {exc}")
 
     notify_digest(
         results,

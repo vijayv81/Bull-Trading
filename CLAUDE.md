@@ -6,7 +6,10 @@ GitHub for versioning. Built from the implementation plan dated 2026-09-20
 (the plan's section numbers, e.g. "§8", are referenced throughout the code).
 
 **Not a trading bot.** It proposes; it never executes without a human
-approval record on disk. Nothing here is investment advice.
+approval record on disk, with two deliberate, config-gated exceptions that write
+their own decision record and then pass every guardrail: auto-apply
+(`operational.auto_apply`) and the index core-holding top-up (`core`, see "Exit
+sizing, no pre_open BUYs, and the core holding"). Nothing here is investment advice.
 
 ## Two research paths, one data layer
 
@@ -59,7 +62,8 @@ src/trading_agent/
   journal.py              decision reasoning + outcome measurement + performance aggregation (plan §6.3)
   scoring/                 recommendation_engine.py — confidence formula (plan §6)
   notify/                  approval_gateway.py — hard requirement gate (plan §8); senders.py — email/SMS over Resend's HTTPS API (plan §12)
-  execute/                 order_manager.py — approval + kill-switch gated Alpaca submission; auto_pilot.py — opt-in auto-apply (see below)
+  execute/                 order_manager.py — approval + kill-switch gated Alpaca submission; auto_pilot.py — opt-in auto-apply (see below);
+                           core_holding.py — tops up the index core holding (see "Core holding and satellite")
   reporting/               report_builder.py — daily/weekly markdown reports + realized/unrealized P&L,
                            plus the Saturday weekly learning review (see below)
   agents/                  interactive Claude Agent SDK research (see above)
@@ -720,6 +724,53 @@ Three changes, each a one-line revert in `risk_limits.yaml`:
    and one set of names, so they are a judgment, not a fit; the 92 bar is only as
    good as the confidence score, whose technical and sentiment components hit 45%
    and 28% over the outcomes recorded so far.
+
+## Exit sizing, no pre_open BUYs, and the core holding (2026-10-12)
+
+Per user instruction 2026-10-12, after the 10-12 session (-3.4% against SPY -0.1%,
+the account -26.5% since 9/17 against SPY +2.0%, and 91% in cash). Three changes.
+
+1. **A stop-loss exit sells the whole position** (`auto_pilot.is_stop_loss_exit()`:
+   a SELL with `position_pnl_pct <= -stop_loss_pct`; `qty_for_recommendation()` returns
+   everything held and needs no price). Before, a SELL was sized like a fresh
+   position, and the blank-check 1% cap applied to SELLs too, so ALISU sold as 29, 28
+   and 7 shares at $17.21, $13.24 and $12.50 over three checkpoints, and INLF in three
+   tranches over three days the week before. The unit cap in `_score_tickers()` now
+   applies to a BUY only. A take-profit trim or a fresh bearish call on a position not
+   down to its stop keeps its suggested size.
+2. **No new BUYs at pre_open** (`execution.no_new_buys_at_checkpoints: [pre_open]`,
+   empty list reverts). Of the journaled outcomes, every BUY measured from pre_open lost
+   (0 of 6 right, -20% on average); they are priced off a thin pre-market quote and fill
+   at the open. At scoring the BUY becomes `HOLD` with `blocked_checkpoint`;
+   `guardrails.buy_checkpoint_reason()` refuses it again at order submission. SELLs are
+   never blocked. The evidence is small (n=6) and the pre_close/midday sample is 3.
+3. **Core holding and satellite** (`risk_limits.yaml -> core`, `enabled: false` reverts).
+   The active strategy has not shown an edge: technical 40% right live, BUYs 22% right,
+   and `trading-agent backtest`-style runs of the real scorer over 3 years trailed
+   buy-and-hold on 10 of 11 liquid names (SPY 1.8% vs 21.7% CAGR). So most of the account
+   sits in `core.symbol` (SPY) and the active strategy is the capped "satellite":
+   - `execute/core_holding.py:core_rebalance()` runs from `run_checkpoint()` at
+     `core.checkpoint` (midday) only, never while entries are halted. It buys toward
+     `target_pct_of_portfolio` (70) when the core is at least `rebalance_band_pct` (5)
+     under, at most `max_order_pct_of_portfolio` (10) a day, so it builds over days. BUY
+     only: it never sells the core, has no stop-loss, and a trim is left to a human.
+   - It goes through `submit_approved_order()` like any order: a decision on disk tagged
+     `source: "core"` (checkpoint bucket `core`), the kill switch, daily-loss halt (a halt
+     means the core waits), daily order count, DAY limit price and spread check, stale-price
+     check. The technical-direction re-check is skipped for the core only (it is bought to
+     hold, not on a signal).
+   - The core symbol gets its own per-position cap (`max_position_pct_of_portfolio: 75`)
+     and is exempt from the sector cap (an index fund is not a sector bet). It is left out
+     of the satellite pass entirely: never researched, scored or sold by auto-apply.
+   - **Satellite cap:** `guardrails.satellite_exposure_reason()` refuses a BUY that would take
+     every non-core position past `satellite_max_pct_of_portfolio` (20). Fails closed.
+     Default split: 70% core, up to 20% satellite, at least 10% cash.
+   - Attempts are logged to the attempt log and appear in the checkpoint digest and daily
+     summary under the core symbol with `source: "core"`.
+   **Limits, stated plainly:** the core makes the account track the index, including its
+   down days (a -2.9% SPY day at 70% core trips the 2% halt, which then stops new buying);
+   the 70/20/10 split and the ramp are my judgment, not a fit; the first tranches buy at
+   whatever SPY costs that day; paper trading only.
 
 ## Timing check: is now the right price, or better to wait? (scoring/timing.py)
 

@@ -100,6 +100,8 @@ def gate(monkeypatch):
     monkeypatch.setattr(om, "load_risk_limits", lambda: {"operational": {"trading_enabled": True}})
     monkeypatch.setattr(om, "min_confidence_reason", lambda *a: None)
     monkeypatch.setattr(om, "entry_quality_reason", lambda rec: None)
+    monkeypatch.setattr(om, "buy_checkpoint_reason", lambda rec: None)
+    monkeypatch.setattr(om, "satellite_exposure_reason", lambda *a, **k: None)
     monkeypatch.setattr(om, "daily_trade_count_reason", lambda side=None: None)
     monkeypatch.setattr(
         om, "get_decision",

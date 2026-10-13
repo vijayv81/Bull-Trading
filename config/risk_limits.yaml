@@ -161,6 +161,14 @@ operational:
     max_trades_per_day: 5 # across ALL checkpoints combined for the day, not per checkpoint
 
 execution:
+  # Checkpoints at which a NEW BUY is not proposed or placed. Per user instruction
+  # 2026-10-12: every BUY measured from pre_open lost (0 of 6 right, -20% on
+  # average) because it is priced off a thin pre-market quote and fills at the
+  # open. Enforced at scoring (the BUY becomes HOLD, `blocked_checkpoint`) and
+  # again at order submission (guardrails.buy_checkpoint_reason()). SELLs are
+  # never blocked. Empty list is the revert.
+  no_new_buys_at_checkpoints: [pre_open]
+
   # Re-verified right before every order submission (auto or human) —
   # guardrails.stale_recommendation_reason(), enforced in
   # execute.order_manager.submit_approved_order(). A recommendation can sit
@@ -256,3 +264,24 @@ entry_quality:
   risky_price_below: 5.0
   risky_min_history_bars: 200
   risky_min_confidence_to_buy: 92
+
+# Core holding + capped satellite (execute/core_holding.py), per user instruction
+# 2026-10-12. The active strategy has no demonstrated edge: technical 40% right
+# live, and a 3-year backtest of the scorer trailed buy-and-hold on 10 of 11 liquid
+# names. So most of the account sits in a broad index fund and the active strategy
+# trades a small, hard-capped slice. The core is bought toward its target in
+# tranches at one checkpoint a day, as an ordinary DAY limit order through
+# submit_approved_order() (every guardrail applies, including the daily-loss halt),
+# with a decision tagged source "core". It is never scored, never sold by
+# auto-apply, and has no stop-loss: it is the index. `enabled: false` is the revert.
+core:
+  enabled: true
+  symbol: SPY
+  checkpoint: midday # the one checkpoint that tops the core up
+  target_pct_of_portfolio: 70.0
+  rebalance_band_pct: 5.0 # top up only when the core is this many points under target
+  max_order_pct_of_portfolio: 10.0 # ramp in: at most this much per day
+  max_position_pct_of_portfolio: 75.0 # per-position cap for the core symbol only
+  # Everything that is not the core (the active strategy) may total at most this
+  # much of the portfolio; a BUY past it is refused (guardrails.satellite_exposure_reason()).
+  satellite_max_pct_of_portfolio: 20.0
