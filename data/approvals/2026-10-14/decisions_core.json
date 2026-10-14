@@ -1,0 +1,12 @@
+[
+  {
+    "ticker": "SPY",
+    "checkpoint": "core",
+    "decision": "approve",
+    "terms": {
+      "qty": 9,
+      "source": "core"
+    },
+    "timestamp": "2026-10-14T16:45:01.345827+00:00"
+  }
+]
