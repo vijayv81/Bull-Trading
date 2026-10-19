@@ -1,0 +1,53 @@
+[
+  {
+    "recommendation": {
+      "ticker": "SPY",
+      "checkpoint": "core",
+      "action": "BUY",
+      "confidence": 100,
+      "core": true,
+      "reference_price": 766.77,
+      "reference_price_source": "live_mid",
+      "rationale": "Core holding: SPY is 28.3% of the portfolio against a 35.0% target; topping up in tranches."
+    },
+    "order": {
+      "id": "7c02c645-10c3-49f2-b3eb-c899eae84c6f",
+      "client_order_id": "da9bcc62-ed8a-44c7-8afb-70f37b69a13e",
+      "created_at": "2026-10-16T16:37:26.689934Z",
+      "updated_at": "2026-10-16T16:37:26.692649Z",
+      "submitted_at": "2026-10-16T16:37:26.689934Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-10-16T20:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "b28f4066-5c6d-479b-a2af-85dc1a8f16fb",
+      "symbol": "SPY",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "6",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "774.46",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null
+    },
+    "submitted_at": "2026-10-16T16:37:26.890479+00:00",
+    "source": "core"
+  }
+]
