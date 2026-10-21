@@ -65,6 +65,12 @@ fundamentals:
 holding_period: swing
 
 notifications:
+  # Research outage alert (notify_research_outage(), per user instruction
+  # 2026-10-21): when at least this % of a checkpoint's tickers (3+) could not be
+  # researched, email it and record it for the daily summary. 2026-10-16..20 ran
+  # silently with Perplexity returning 401 and Yahoo rate-limited.
+  research_outage_alert_enabled: true
+  research_outage_threshold_pct: 50
   # plan §12. A single value or a list — "console" prints to stdout (per
   # ticker); "file" relies on the recommendation JSON itself (already
   # written either way); "email"/"sms" send one consolidated message per
@@ -151,3 +157,23 @@ secondary_data_vendor: null
 # intent, not yet enforced by code. Revisit if data/raw grows large enough to
 # need active pruning.
 raw_data_retention_days: 90
+
+# New-candidate sourcing (scoring/candidates.py), per user instruction 2026-10-21.
+# mode: liquid screens this universe plus the day's movers on price, 20-day
+# average dollar volume and daily range BEFORE spending research, ranks the
+# survivors by technical score and researches the top max_candidates. The
+# watchlist and held positions are always added on top. mode: movers is the
+# revert (top-10 gainers and losers over position.candidate_min_price).
+candidate_sourcing:
+  mode: liquid
+  include_movers: true
+  min_price: 10.0
+  min_avg_dollar_volume: 50000000 # $50M a day, consolidated volume
+  max_avg_daily_range_pct: 8.0 # same as entry_quality: skip what the entry filter would refuse
+  lookback_bars: 20
+  max_candidates: 10
+  # Liquid US large caps across sectors; edit freely. ETFs are left out (SPY is the core).
+  universe: [AAPL, MSFT, NVDA, AMZN, GOOGL, META, AVGO, TSLA, JPM, V, MA, UNH, XOM, CVX,
+             JNJ, LLY, ABBV, MRK, PFE, PG, KO, PEP, COST, WMT, HD, MCD, NKE, DIS, NFLX,
+             ADBE, CRM, ORCL, CSCO, AMD, INTC, QCOM, TXN, IBM, CAT, GE, HON, BA, UNP,
+             BAC, WFC, GS, MS, AXP, T, VZ, NEE, LIN, UBER, PLTR]

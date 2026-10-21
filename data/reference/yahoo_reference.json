@@ -1,0 +1,153 @@
+{
+ "fundamentals": {
+  "AAPL": {
+   "at": "2026-10-21T03:29:26.123350+00:00",
+   "value": {
+    "debtToEquity": 78.445,
+    "forwardPE": 35.47285,
+    "marketCap": 4954723975168,
+    "profitMargins": 0.27618998,
+    "returnOnEquity": 1.4875101,
+    "revenueGrowth": 0.164,
+    "totalRevenue": 466822987776,
+    "trailingPE": 39.33951
+   }
+  },
+  "ABBV": {
+   "at": "2026-10-21T03:29:28.481083+00:00",
+   "value": {
+    "debtToEquity": null,
+    "forwardPE": 17.83939,
+    "marketCap": 510838243328,
+    "profitMargins": 0.098000005,
+    "returnOnEquity": null,
+    "revenueGrowth": 0.102,
+    "totalRevenue": 64385998848,
+    "trailingPE": 81.66101
+   }
+  },
+  "AMD": {
+   "at": "2026-10-21T03:29:30.766233+00:00",
+   "value": {
+    "debtToEquity": 6.361,
+    "forwardPE": 33.92398,
+    "marketCap": 872949678080,
+    "profitMargins": 0.15577,
+    "returnOnEquity": 0.10196,
+    "revenueGrowth": 0.501,
+    "totalRevenue": 41305001984,
+    "trailingPE": 136.41325
+   }
+  },
+  "CVX": {
+   "at": "2026-10-21T03:29:32.970840+00:00",
+   "value": {
+    "debtToEquity": 18.959,
+    "forwardPE": 14.496031,
+    "marketCap": 442753515520,
+    "profitMargins": 0.09834,
+    "returnOnEquity": 0.12231,
+    "revenueGrowth": 0.535,
+    "totalRevenue": 209383997440,
+    "trailingPE": 21.723772
+   }
+  },
+  "LLY": {
+   "at": "2026-10-21T03:29:35.159156+00:00",
+   "value": {
+    "debtToEquity": 162.071,
+    "forwardPE": 27.190605,
+    "marketCap": 1144692801536,
+    "profitMargins": 0.33528998,
+    "returnOnEquity": 1.02286,
+    "revenueGrowth": 0.477,
+    "totalRevenue": 79666003968,
+    "trailingPE": 43.090298
+   }
+  },
+  "META": {
+   "at": "2026-10-21T03:29:37.466172+00:00",
+   "value": {
+    "debtToEquity": 42.997,
+    "forwardPE": 20.035631,
+    "marketCap": 1768606138368,
+    "profitMargins": 0.29834998,
+    "returnOnEquity": 0.29848,
+    "revenueGrowth": 0.28,
+    "totalRevenue": 228246994944,
+    "trailingPE": 26.158628
+   }
+  },
+  "PFE": {
+   "at": "2026-10-21T03:29:39.670630+00:00",
+   "value": {
+    "debtToEquity": 74.253,
+    "forwardPE": 10.432837,
+    "marketCap": 171617173504,
+    "profitMargins": 0.06804,
+    "returnOnEquity": 0.05014,
+    "revenueGrowth": 0.026,
+    "totalRevenue": 63695998976,
+    "trailingPE": 39.618423
+   }
+  },
+  "PG": {
+   "at": "2026-10-21T03:29:41.631133+00:00",
+   "value": {
+    "debtToEquity": 64.49,
+    "forwardPE": 21.554636,
+    "marketCap": 370048172032,
+    "profitMargins": 0.18437,
+    "returnOnEquity": 0.30290002,
+    "revenueGrowth": 0.015,
+    "totalRevenue": 87031996416,
+    "trailingPE": 23.81465
+   }
+  },
+  "QCOM": {
+   "at": "2026-10-21T03:29:43.523165+00:00",
+   "value": {
+    "debtToEquity": 55.21,
+    "forwardPE": 17.243073,
+    "marketCap": 187630075904,
+    "profitMargins": 0.21013,
+    "returnOnEquity": 0.33754003,
+    "revenueGrowth": -0.04,
+    "totalRevenue": 44068999168,
+    "trailingPE": 20.081144
+   }
+  },
+  "TSLA": {
+   "at": "2026-10-21T03:27:00.486600+00:00",
+   "value": {
+    "debtToEquity": 18.373,
+    "forwardPE": 172.34286,
+    "marketCap": 1475985408000,
+    "profitMargins": 0.03671,
+    "returnOnEquity": 0.046669997,
+    "revenueGrowth": 0.255,
+    "totalRevenue": 103619002368,
+    "trailingPE": 346.02777
+   }
+  },
+  "WMT": {
+   "at": "2026-10-21T03:29:46.934058+00:00",
+   "value": {
+    "debtToEquity": 71.653,
+    "forwardPE": 36.52576,
+    "marketCap": 937859612672,
+    "profitMargins": 0.03,
+    "returnOnEquity": 0.22313999,
+    "revenueGrowth": 0.059,
+    "totalRevenue": 735839977472,
+    "trailingPE": 42.699276
+   }
+  }
+ },
+ "sector": {
+  "TSLA": {
+   "at": "2026-10-21T03:27:00.176149+00:00",
+   "value": "Consumer Cyclical"
+  }
+ }
+}

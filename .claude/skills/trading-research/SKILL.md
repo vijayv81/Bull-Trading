@@ -114,6 +114,18 @@ proposed at pre_open** (`execution.no_new_buys_at_checkpoints`): a BUY there sho
 as HOLD with `blocked_checkpoint`. Exits are unaffected. Report both plainly; do not
 edit config to change either.
 
+## When research fails (RESEARCH OUTAGE)
+
+`RESEARCH OUTAGE: N of M tickers could not be researched` means Perplexity and
+both fallbacks (Yahoo RSS, Alpaca news) came back empty for most tickers. The
+run has already emailed it and written `research_outage_<checkpoint>.json`, so
+don't send anything yourself. Report it first, with the errors: a `401` means
+the `PERPLEXITY_API_KEY` in the environment needs replacing (the user does that
+in the environment settings; never ask for the key in chat). Positions already
+held were still scored on price data alone (`research_unavailable` on the
+recommendation) and can still be sold; nothing new can be bought. Commit the
+record like any other checkpoint output.
+
 ## When you see a DATA QUALITY ALERT
 
 This isn't a halt — the checkpoint still completes and still writes
@@ -143,7 +155,7 @@ the repo — the session's local checkout is reclaimed once the run ends, and
 the `post_close` wrap-up starts from a fresh clone of `main`, so it only sees
 what each checkpoint merged — it can't pick up an earlier checkpoint's files
 from a different, already-gone container. So, after
-reporting is otherwise ready: `git add data/recommendations/ data/approvals/
+reporting is otherwise ready: `git add data/recommendations/ data/approvals/ data/reference/
 data/trades/`, check `git status` before committing (same reasoning as
 `trading-report`'s snapshot commit — notice anything unexpected before it's
 staged), commit with a plain factual message (e.g. "pre_open 2026-09-25: 6

@@ -44,6 +44,16 @@ def _day_halts(day: str) -> list[dict]:
     return sorted(items, key=lambda h: h.get("halted_at", ""))
 
 
+def _day_research_outages(day: str) -> list[dict]:
+    """Checkpoints where most tickers could not be researched
+    (notify.approval_gateway.notify_research_outage()), in order."""
+    items: list[dict] = []
+    if (RECOMMENDATIONS_DIR / day).exists():
+        for path in (RECOMMENDATIONS_DIR / day).glob("research_outage_*.json"):
+            items.extend(load_json_list(path))
+    return sorted(items, key=lambda o: o.get("at", ""))
+
+
 def _day_decisions(day: str) -> list[dict]:
     items = []
     for path in sorted((APPROVALS_DIR / day).glob("decisions_*.json")) if (APPROVALS_DIR / day).exists() else []:
@@ -563,6 +573,7 @@ def build_daily_summary(day: str | None = None) -> dict:
         "optimization_options": options_awaiting_review(day),
         "as_of_note": _as_of_note(),
         "halted_checkpoints": _day_halts(day),
+        "research_outages": _day_research_outages(day),
         # Opening balance (prior close), closing balance, and the net difference.
         "balances": window_balances(day, day),
         # Net result of every SELL that filled that day (Alpaca fills, average cost).
