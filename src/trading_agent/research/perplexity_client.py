@@ -163,23 +163,10 @@ def _perplexity_extraction(ticker: str, checkpoint: str, prompt: str) -> dict[st
     }
 
 
-def _yahoo_fallback_extraction(ticker: str, checkpoint: str) -> dict[str, Any] | None:
-    """Fallback when Perplexity is unavailable or empty (see module docstring
-    and CLAUDE.md's credential policy — this needs no new credential, unlike
-    a Google-backed fallback would, so it's the one wired up here). Returns
-    None if Yahoo Finance also has nothing — the caller must then refuse to
-    score this ticker at all rather than fabricate an analysis with no real
-    research behind it.
-    """
-    from trading_agent.data.market_data import fetch_news_headlines
-
-    headlines = fetch_news_headlines(ticker)
-    if not headlines:
-        return None
-
+def _headline_extraction(ticker: str, checkpoint: str, headlines: list[dict], provider: str) -> dict[str, Any]:
     sources = [h["url"] for h in headlines if h.get("url")]
     return {
-        "raw_response": {"provider": "yahoo_finance_fallback", "headlines": headlines},
+        "raw_response": {"provider": provider, "headlines": headlines},
         "extraction": {
             "ticker": ticker,
             "checkpoint": checkpoint,
@@ -189,9 +176,30 @@ def _yahoo_fallback_extraction(ticker: str, checkpoint: str) -> dict[str, Any] |
             # Headlines alone, no synthesis — deliberately below Perplexity's
             # floor (0.6) so a fallback run never outscores a real one.
             "confidence_of_extraction": 0.5 if sources else 0.4,
-            "research_source": "yahoo_finance_fallback",
+            "research_source": provider,
         },
     }
+
+
+def _yahoo_fallback_extraction(ticker: str, checkpoint: str) -> dict[str, Any] | None:
+    """Fallback when Perplexity is unavailable or empty (see module docstring
+    and CLAUDE.md's credential policy — no new credential). Yahoo Finance's RSS
+    headlines first, then Alpaca's news API on the existing Alpaca keys (added
+    2026-10-21: Yahoo rate-limited this cloud IP while Perplexity returned 401,
+    and with one keyless fallback down too, nothing could be scored for days).
+    Returns None if both are empty — the caller must then refuse to score this
+    ticker rather than fabricate an analysis with no research behind it.
+    """
+    from trading_agent.data.alpaca_client import get_news_headlines
+    from trading_agent.data.market_data import fetch_news_headlines
+
+    headlines = fetch_news_headlines(ticker)
+    if headlines:
+        return _headline_extraction(ticker, checkpoint, headlines, "yahoo_finance_fallback")
+    headlines = get_news_headlines(ticker)
+    if headlines:
+        return _headline_extraction(ticker, checkpoint, headlines, "alpaca_news_fallback")
+    return None
 
 
 def research_ticker(ticker: str, checkpoint: str, force_refresh: bool = False) -> dict[str, Any]:

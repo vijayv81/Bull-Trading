@@ -348,6 +348,13 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
             note = " [exits only: held positions still monitored]" if hlt.get("exits_only") else ""
             lines.append(f"- {hlt['checkpoint']}{note}: {hlt['reason'][:160]}")
 
+    outages = summary.get("research_outages") or []
+    if outages:
+        lines.append("")
+        lines.append("Research outages:")
+        for o in outages:
+            lines.append(f"- {o['checkpoint']}: research failed for {o['failed']} of {o['attempted']} tickers")
+
     attempts = summary.get("auto_apply_attempts") or []
     if attempts:
         lines.append("")
@@ -522,6 +529,16 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
 
             status = "halted for new entries (exits only)" if hlt.get("exits_only") else "did not run"
             inner += h.alert_banner(f"{_esc(hlt['checkpoint'])} {status}: {_esc(hlt['reason'][:160])}")
+
+    outages = summary.get("research_outages") or []
+    if outages:
+        from html import escape as _esc2
+
+        inner += h.section_heading("Research outages")
+        for o in outages:
+            inner += h.alert_banner(
+                f"{_esc2(o['checkpoint'])}: research failed for {o['failed']} of {o['attempted']} tickers"
+            )
 
     attempts = summary.get("auto_apply_attempts") or []
     if attempts:
@@ -1398,6 +1415,66 @@ def notify_checkpoint_halted(checkpoint: str, reason: str, exits_only: bool = Fa
             send_sms(f"Bull-Trading {label} HALTED: {reason}"[:300])
         except Exception as exc:  # noqa: BLE001
             print(f"NOTIFY (checkpoint halt sms) failed: {exc}")
+
+
+def notify_research_outage(checkpoint: str, failed: int, attempted: int, errors: list[str]) -> None:
+    """Email (and SMS, if enabled) when most of a checkpoint's tickers could not
+    be researched, plus a record at data/recommendations/<day>/research_outage_<checkpoint>.json
+    that the daily summary lists. On 2026-10-16..20 Perplexity returned 401 and
+    Yahoo rate-limited this server, every run recorded "0 recommendations", and
+    nothing said why. Gated by notifications.research_outage_alert_enabled
+    (default true); the record is written regardless. Never raises."""
+    distinct = list(dict.fromkeys(e[:160] for e in errors))[:3]
+    try:
+        append_json(
+            day_dir(RECOMMENDATIONS_DIR) / f"research_outage_{checkpoint}.json",
+            {
+                "checkpoint": checkpoint,
+                "failed": failed,
+                "attempted": attempted,
+                "errors": distinct,
+                "at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"Could not record the {checkpoint} research outage: {exc}")
+
+    if not load_agent_config().get("notifications", {}).get("research_outage_alert_enabled", True):
+        return
+    channels = notification_channels()
+    if not channels & {"email", "sms"}:
+        return
+    label = checkpoint.replace("_", " ")
+    subject = f"[Bull-Trading] {label}: research failed for {failed} of {attempted} tickers"
+    meaning = (
+        "What that means: those tickers were not scored, so nothing new was bought on them. Positions "
+        "you hold were still scored on price data and P&L alone, so a stop-loss SELL could still go out. "
+        "Check the research credentials (PERPLEXITY_API_KEY) and the errors below."
+    )
+    body = "\n".join(
+        [f"Bull-Trading: research failed for {failed} of {attempted} tickers at {label}.", "", meaning, "", "Errors:"]
+        + [f"- {e}" for e in distinct]
+    )
+    if "email" in channels:
+        try:
+            from html import escape
+
+            from trading_agent.notify import html as h
+            from trading_agent.notify.senders import send_email
+
+            inner = h.alert_banner(escape(f"Research failed for {failed} of {attempted} tickers."))
+            inner += f'<div style="font-size:14px;padding:4px 0;">{escape(meaning)}</div>'
+            inner += "".join(h.muted(escape(e)) for e in distinct)
+            send_email(subject, body, h.wrap(f"{label.title()}: research outage", "", inner))
+        except Exception as exc:  # noqa: BLE001
+            print(f"NOTIFY (research outage email) failed: {exc}")
+    if "sms" in channels:
+        try:
+            from trading_agent.notify.senders import send_sms
+
+            send_sms(f"Bull-Trading {label}: research failed for {failed}/{attempted} tickers"[:300])
+        except Exception as exc:  # noqa: BLE001
+            print(f"NOTIFY (research outage sms) failed: {exc}")
 
 
 def notify_pending_reminder() -> None:

@@ -20,7 +20,7 @@ from typing import Any
 
 import pandas as pd
 
-from trading_agent.config import load_risk_limits, load_watchlist
+from trading_agent.config import load_agent_config, load_risk_limits, load_watchlist
 from trading_agent.data.alpaca_client import (
     get_market_movers,
     get_market_return_pct,
@@ -38,7 +38,12 @@ from trading_agent.guardrails import (
     halt_allows_exits,
     is_option_symbol,
 )
-from trading_agent.notify.approval_gateway import notify_checkpoint_halted, notify_digest, save_recommendation
+from trading_agent.notify.approval_gateway import (
+    notify_checkpoint_halted,
+    notify_digest,
+    notify_research_outage,
+    save_recommendation,
+)
 from trading_agent.research.perplexity_client import research_ticker
 from trading_agent.scoring.recommendation_engine import (
     MIN_BARS_FOR_TECHNICAL,
@@ -49,6 +54,7 @@ from trading_agent.scoring.recommendation_engine import (
 )
 from trading_agent.data.market_data import get_fundamentals
 from trading_agent.guardrails import instrument_reason
+from trading_agent.scoring.candidates import select_liquid_candidates, sourcing_cfg
 from trading_agent.scoring.entry_quality import assess_entry
 from trading_agent.scoring.fundamentals import fundamental_score
 from trading_agent.scoring.instruments import OPERATING, blank_check_cfg, blank_check_score, instrument_class
@@ -163,7 +169,21 @@ def _score_tickers(
     failed_tickers: list[dict[str, Any]] = []
     for ticker in tickers:
         try:
-            research = research_ticker(ticker, checkpoint)
+            research_unavailable = None
+            try:
+                research = research_ticker(ticker, checkpoint)
+            except Exception as exc:
+                # A position you hold is still scored when research fails, on its
+                # price bars and P&L alone, so a stop-loss SELL can still fire
+                # (position.monitor_held_without_research). 2026-10-16..20: Perplexity
+                # 401 and Yahoo rate-limited, nothing was scored for days and the
+                # stop-losses on MGLD/TSLA were not being checked. Never a BUY.
+                if ticker not in held_pnl or not load_risk_limits().get("position", {}).get(
+                    "monitor_held_without_research", True
+                ):
+                    raise
+                research_unavailable = str(exc)[:200]
+                research = {"headline_summary": "", "sources": [], "research_source": "none"}
 
             # TREND_FETCH_CALENDAR_DAYS (~52 weeks) instead of just enough for
             # MIN_BARS_FOR_TECHNICAL's SMA window, so technical_score() and
@@ -279,6 +299,16 @@ def _score_tickers(
             rec["rationale"] = (research.get("headline_summary") or "")[:280]
             rec["sources"] = research.get("sources", [])
             rec["research_source"] = research.get("research_source", "perplexity")
+            if research_unavailable:
+                rec["research_unavailable"] = research_unavailable
+                if rec["action"] == "BUY":
+                    rec["action"] = "HOLD"
+                    rec["blocked_research"] = "No research available; a BUY is never made without it."
+                # A non-blank rationale, so the digest shows an exit made this way.
+                rec["rationale"] = (
+                    "Research unavailable; scored on price data and position P&L only "
+                    "(exits only, no BUY)."
+                )
 
             save_recommendation(rec)
             results.append(rec)
@@ -342,11 +372,23 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
     # a penny-stock-heavy day instead of reaching past them for real
     # candidates). This is a liquidity floor on *new* candidate sourcing
     # only — see below for why held positions are deliberately exempt.
-    min_price = load_risk_limits().get("position", {}).get("candidate_min_price")
-    gainers = _above_min_price(movers.get("gainers", []), min_price)
-    losers = _above_min_price(movers.get("losers", []), min_price)
-    watchlist_tickers |= {m["symbol"] for m in gainers[:10] if "symbol" in m}
-    watchlist_tickers |= {m["symbol"] for m in losers[:10] if "symbol" in m}
+    #
+    # Since 2026-10-21 (candidate_sourcing.mode: liquid, scoring/candidates.py) new
+    # candidates come from a liquid large-cap universe plus the movers, screened
+    # on price, dollar volume and daily range before any research is spent. The
+    # raw movers were almost all names the entry filter refuses, so the active
+    # slice made no BUY in ~200 recommendations. `mode: movers` is the revert.
+    sourcing = sourcing_cfg(load_agent_config())
+    if sourcing["mode"] == "liquid":
+        if not exits_only:
+            exclude = set(watchlist_tickers) | set(held_pnl) | ({core_symbol()} - {None})
+            watchlist_tickers |= set(select_liquid_candidates(movers, exclude, sourcing))
+    else:
+        min_price = load_risk_limits().get("position", {}).get("candidate_min_price")
+        gainers = _above_min_price(movers.get("gainers", []), min_price)
+        losers = _above_min_price(movers.get("losers", []), min_price)
+        watchlist_tickers |= {m["symbol"] for m in gainers[:10] if "symbol" in m}
+        watchlist_tickers |= {m["symbol"] for m in losers[:10] if "symbol" in m}
     # Never research, score, or propose an options contract, whatever the source.
     watchlist_tickers = {t for t in watchlist_tickers if not is_option_symbol(t)}
 
@@ -398,6 +440,21 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             data_quality_alerts.append(alert)
             continue  # a flat score never reaches auto_apply for this batch
         auto_results.extend(auto_apply(batch_results, checkpoint))
+
+    # Research outage: most tickers could not be researched. Said out loud, like a
+    # halt: on 2026-10-16..20 the runs just recorded "0 recommendations".
+    research_failed = len(failed_tickers) + sum(1 for r in results if r.get("research_unavailable"))
+    attempted = len(results) + len(failed_tickers)
+    threshold = load_agent_config().get("notifications", {}).get("research_outage_threshold_pct", 50)
+    if attempted >= 3 and research_failed / attempted * 100 >= threshold:
+        errors = [f["error"] for f in failed_tickers] + [
+            r["research_unavailable"] for r in results if r.get("research_unavailable")
+        ]
+        print(f"RESEARCH OUTAGE: {research_failed} of {attempted} tickers could not be researched.")
+        try:
+            notify_research_outage(checkpoint, research_failed, attempted, errors)
+        except Exception as exc:  # noqa: BLE001
+            print(f"Could not announce the research outage: {exc}")
 
     # Core holding top-up (one checkpoint a day, never while entries are halted).
     # Its own result, never a reason to fail the checkpoint.

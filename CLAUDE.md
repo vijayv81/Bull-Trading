@@ -772,6 +772,49 @@ the account -26.5% since 9/17 against SPY +2.0%, and 91% in cash). Three changes
    the 35/35/30 split and the ramp are a judgment, not a fit; the first tranches buy at
    whatever SPY costs that day; paper trading only.
 
+## Research outages and liquid candidate sourcing (2026-10-21)
+
+Per user instruction 2026-10-21. From 2026-10-16 to 10-20 Perplexity returned
+401 and Yahoo rate-limited this server (HTTP 429 on its cookie endpoint), so
+every ticker failed research, every run recorded "0 recommendations", nothing
+said why, and the stop-losses on the positions held (MGLD, TSLA) were not being
+checked. The week before, about 200 recommendations from the raw movers produced
+no BUY at all, because the entry filter refuses almost every mover.
+
+- **Yahoo without the rate limit** (`data/market_data.py`): headlines come from
+  Yahoo's public RSS feed (no cookie, not rate-limited when the cookie endpoints
+  were), then Alpaca's news API (`alpaca_client.get_news_headlines()`, existing
+  Alpaca keys, no new credential). Sector and fundamentals (yfinance `.info`,
+  cookie-based) are cached in the **tracked** file
+  `data/reference/yahoo_reference.json` (sector 30 days, fundamentals 7) so a
+  fresh routine clone doesn't look every ticker up again, calls are spaced
+  `YAHOO_MIN_INTERVAL_S` apart and retried once after a back-off on "too many
+  requests", and a failed lookup falls back to the stale cached value. The
+  routines commit `data/reference/` with their snapshot.
+- **Held positions are monitored without research**
+  (`position.monitor_held_without_research`, default `true`): a held ticker whose
+  research fails is still scored on bars and P&L (sentiment and catalyst `None`),
+  carries `research_unavailable`, a non-blank rationale saying so, and is
+  `HOLD` with `blocked_research` if it would have been a BUY. Exits only.
+- **Research outage alert** (`notify_research_outage()`): when at least
+  `notifications.research_outage_threshold_pct` (50%) of a checkpoint's tickers
+  (3 or more) fail research, an email/SMS names the count and up to three distinct
+  errors, a record goes to `data/recommendations/<day>/research_outage_<checkpoint>.json`,
+  and the daily summary lists it under "Research outages".
+  `notifications.research_outage_alert_enabled: false` turns the email off.
+- **Liquid candidate sourcing** (`scoring/candidates.py`,
+  `agent_config.yaml -> candidate_sourcing`, `mode: movers` reverts). New
+  candidates come from a curated list of ~54 liquid large caps plus the day's
+  movers, screened on daily bars (one multi-symbol Alpaca request) before any
+  research: price at least $10, 20-day average dollar volume at least $50M,
+  average daily range at most 8%, enough history for the technical score. The
+  survivors are ranked by technical score and the top 10 are researched; the
+  watchlist, held positions and the core symbol are excluded from the screen
+  and added separately. On 2026-10-21 55 of 94 symbols passed, but only 1 of the
+  day's 40 movers. It decides what gets looked at, not what gets bought: every
+  name still goes through research, scoring, the entry filter and the guardrails,
+  and the ranking signal has been right 40% of the time.
+
 ## Timing check: is now the right price, or better to wait? (scoring/timing.py)
 
 Per user instruction 2026-10-10 ("before deciding to BUY or SELL ... review the
@@ -927,11 +970,18 @@ where all 15 recommendations came back with an identical, wrong confidence of
   sources), it falls back to `data/market_data.py`'s
   `fetch_news_headlines()` — free, keyless Yahoo Finance headlines, tagged
   `research_source: "yahoo_finance_fallback"` on the recommendation so the
-  audit trail never confuses a fallback run with a real Perplexity one. If
+  audit trail never confuses a fallback run with a real Perplexity one. Since
+  2026-10-21 the Yahoo headlines come from its public RSS feed (yfinance's
+  `Ticker.news` needs a cookie endpoint that rate-limits this server), and
+  Alpaca's news API, on the existing Alpaca keys, is a further fallback
+  (`"alpaca_news_fallback"`); see "Research outages" below. If
   *both* sources come back empty, `research_ticker()` raises rather than
   returning a placeholder, and `orchestrator.run_checkpoint()`'s existing
   per-ticker try/except skips that ticker entirely (into `failed_tickers`) —
-  analysis without real research data is refused, not guessed at. (Google was
+  analysis without real research data is refused, not guessed at. **One
+  exception (2026-10-21): a position already held** is still scored on its
+  price bars and P&L when research fails, so a stop-loss SELL can fire; it is
+  never a BUY (see "Research outages" below). (Google was
   considered as a second fallback and deliberately left out: it would need a
   new API credential under the policy above, a reviewed decision, not
   something to wire in silently.)

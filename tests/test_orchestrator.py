@@ -20,6 +20,10 @@ def isolated(monkeypatch):
     monkeypatch.setattr(orch, "buy_checkpoint_reason", lambda rec: None)
     monkeypatch.setattr(orch, "core_rebalance", lambda checkpoint: [])
     monkeypatch.setattr(orch, "core_symbol", lambda: None)
+    # These tests predate liquid sourcing (tests/test_research_resilience.py covers it):
+    # keep the movers path, and never send a real outage email from a test.
+    monkeypatch.setattr(orch, "sourcing_cfg", lambda cfg: {"mode": "movers"})
+    monkeypatch.setattr(orch, "notify_research_outage", lambda *a, **k: None)
     monkeypatch.setattr(orch, "load_watchlist", lambda: ["GOOD", "BAD"])
     monkeypatch.setattr(orch, "get_market_movers", lambda: {"gainers": []})
     monkeypatch.setattr(orch, "get_positions", lambda: [])

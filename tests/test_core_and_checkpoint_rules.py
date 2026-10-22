@@ -36,6 +36,8 @@ def _limits(**extra):
 def limits(monkeypatch):
     monkeypatch.setattr(g, "load_risk_limits", _limits())
     monkeypatch.setattr(ch, "core_cfg", g.core_cfg)
+    monkeypatch.setattr(orch, "sourcing_cfg", lambda cfg: {"mode": "movers"})
+    monkeypatch.setattr(orch, "notify_research_outage", lambda *a, **k: None)
 
 
 # --- no new BUYs at pre_open ----------------------------------------------------

@@ -211,6 +211,7 @@ def test_falls_back_to_yahoo_when_perplexity_returns_nothing_usable(monkeypatch,
 def test_raises_when_both_sources_have_nothing(monkeypatch, no_cache):
     monkeypatch.setattr(pc, "query_perplexity", lambda prompt: {"output": []})
     monkeypatch.setattr("trading_agent.data.market_data.fetch_news_headlines", lambda ticker, limit=5: [])
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_news_headlines", lambda ticker, limit=5: [])
 
     with pytest.raises(RuntimeError, match="No research data available"):
         pc.research_ticker("TSLA", "pre_open")
@@ -222,6 +223,7 @@ def test_raises_when_perplexity_errors_and_yahoo_also_fails(monkeypatch, no_cach
 
     monkeypatch.setattr(pc, "query_perplexity", boom)
     monkeypatch.setattr("trading_agent.data.market_data.fetch_news_headlines", lambda ticker, limit=5: [])
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_news_headlines", lambda ticker, limit=5: [])
 
     with pytest.raises(RuntimeError, match="No research data available"):
         pc.research_ticker("TSLA", "pre_open")
@@ -236,3 +238,16 @@ def test_yahoo_fallback_confidence_never_outranks_a_real_perplexity_call(monkeyp
 
     extraction = pc.research_ticker("TSLA", "pre_open")
     assert extraction["confidence_of_extraction"] < 1.0
+
+
+def test_alpaca_news_is_the_fallback_after_yahoo(monkeypatch, no_cache):
+    monkeypatch.setattr(pc, "query_perplexity", lambda prompt: {"output": []})
+    monkeypatch.setattr("trading_agent.data.market_data.fetch_news_headlines", lambda ticker, limit=5: [])
+    monkeypatch.setattr(
+        "trading_agent.data.alpaca_client.get_news_headlines",
+        lambda ticker, limit=5: [{"title": "Tesla explores merger", "url": "https://benzinga.com/x"}],
+    )
+    out = pc.research_ticker("TSLA", "pre_open")
+    assert out["research_source"] == "alpaca_news_fallback"
+    assert "Tesla explores merger" in out["headline_summary"]
+    assert out["confidence_of_extraction"] < 0.6  # never outranks a real Perplexity call

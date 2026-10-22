@@ -140,6 +140,20 @@ def get_recent_bars(ticker: str, lookback_days: int = 120) -> list[dict[str, Any
     return [bar.model_dump(mode="json") for bar in symbol_bars]
 
 
+def get_recent_bars_multi(symbols: list[str], lookback_days: int = 120) -> dict[str, list[dict[str, Any]]]:
+    """Daily bars for many symbols in one request: {symbol: [bar, ...]}. Used by
+    the liquid-candidate screen, which looks at ~50 symbols per checkpoint."""
+    if not symbols:
+        return {}
+    request = StockBarsRequest(
+        symbol_or_symbols=sorted(set(symbols)),
+        timeframe=TimeFrame.Day,
+        start=datetime.now(timezone.utc) - timedelta(days=lookback_days),
+    )
+    bars = data_client().get_stock_bars(request)
+    return {sym: [bar.model_dump(mode="json") for bar in bars[sym]] for sym in bars.data}
+
+
 def _bar_et_date(bar: dict[str, Any]) -> str:
     """The ET session date a daily bar belongs to (bars are stamped at midnight ET)."""
     from zoneinfo import ZoneInfo
@@ -206,6 +220,30 @@ def get_market_return_pct(symbol: str, lookback_days: int = 5, day: str | None =
     if prior_close <= 0:
         return None
     return round((close - prior_close) / prior_close * 100, 2)
+
+
+def get_news_headlines(ticker: str, limit: int = 5) -> list[dict[str, str]]:
+    """Recent headlines for `ticker` from Alpaca's news API (Benzinga feed), on
+    the Alpaca keys this project already uses, so no new credential (plan §7.1).
+    The research fallback after Yahoo's RSS feed. [] on any failure, never raises."""
+    try:
+        from alpaca.data.historical.news import NewsClient
+        from alpaca.data.requests import NewsRequest
+
+        key_id, secret_key = _credentials()
+        news = NewsClient(api_key=key_id, secret_key=secret_key).get_news(
+            NewsRequest(symbols=ticker.upper(), limit=limit)
+        )
+        items = news.data.get("news", []) if hasattr(news, "data") else []
+        out = []
+        for item in items[:limit]:
+            item = item.model_dump(mode="json") if hasattr(item, "model_dump") else dict(item)
+            if item.get("headline"):
+                out.append({"title": item["headline"], "url": item.get("url") or "",
+                            "published": str(item.get("created_at") or "")})
+        return out
+    except Exception:
+        return []
 
 
 def get_market_movers(top_n: int = 20) -> dict[str, Any]:

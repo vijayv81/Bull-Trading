@@ -212,7 +212,7 @@ The report and the data behind it should land in the same commit, so a report in
 git history can always be traced to the records that produced it (plan §7).
 
 ```bash
-git add reports/ data/recommendations/ data/approvals/ data/trades/ data/journal/ data/optimizations/
+git add reports/ data/recommendations/ data/approvals/ data/trades/ data/journal/ data/optimizations/ data/reference/
 git status                                    # confirm before committing
 git commit -m "Daily snapshot <date>: <n> recommendations, <n> approved"
 ```

@@ -81,6 +81,13 @@ position:
   # SELL could never even be proposed for it). Unset/zero means no floor.
   candidate_min_price: 1.0
 
+  # A position you hold is still scored when research fails, on its price bars
+  # and P&L alone, so a stop-loss SELL can still fire; it can never become a BUY
+  # (per user instruction 2026-10-21, after 2026-10-16..20 when nothing was scored
+  # and MGLD/TSLA's stop-losses went unchecked). false restores "no research,
+  # no score" for held positions too.
+  monitor_held_without_research: true
+
 portfolio:
   starting_paper_capital_usd: 100000 # plan §12 open decision — set to your actual paper account size
   # Measured as Alpaca equity vs. prior close, so it resets each trading day.
