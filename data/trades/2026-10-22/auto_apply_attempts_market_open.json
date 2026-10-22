@@ -1,0 +1,14 @@
+[
+  {
+    "ticker": "AMD",
+    "status": "refused",
+    "reason": "AMD bid/ask spread is 5.4% (bid 521.0, ask 549.86), over the 5.0% cap \u2014 too thin to buy safely.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "TXN",
+    "status": "refused",
+    "reason": "TXN bid/ask spread is 9.5% (bid 268.24, ask 294.86), over the 5.0% cap \u2014 too thin to buy safely.",
+    "checkpoint": "market_open"
+  }
+]
