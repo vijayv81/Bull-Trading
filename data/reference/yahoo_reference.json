@@ -39,6 +39,19 @@
     "trailingPE": 136.41325
    }
   },
+  "COST": {
+   "at": "2026-10-22T19:47:12.041271+00:00",
+   "value": {
+    "debtToEquity": 28.436,
+    "forwardPE": 40.656796,
+    "marketCap": 450879684608,
+    "profitMargins": 0.03043,
+    "returnOnEquity": 0.28402,
+    "revenueGrowth": 0.111,
+    "totalRevenue": 303154003968,
+    "trailingPE": 49.012043
+   }
+  },
   "CVX": {
    "at": "2026-10-21T03:29:32.970840+00:00",
    "value": {
