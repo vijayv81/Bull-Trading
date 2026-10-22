@@ -1,0 +1,22 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-22T13:47:24.102339+00:00"
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-22T13:47:27.501596+00:00"
+  }
+]

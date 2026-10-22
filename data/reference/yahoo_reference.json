@@ -259,6 +259,19 @@
     "totalRevenue": 735839977472,
     "trailingPE": 42.699276
    }
+  },
+  "XOM": {
+   "at": "2026-10-22T13:47:22.540093+00:00",
+   "value": {
+    "debtToEquity": 15.921,
+    "forwardPE": 14.542833,
+    "marketCap": 734099603456,
+    "profitMargins": 0.09072,
+    "returnOnEquity": 0.12584,
+    "revenueGrowth": 0.441,
+    "totalRevenue": 361060007936,
+    "trailingPE": 22.976833
+   }
   }
  },
  "sector": {
