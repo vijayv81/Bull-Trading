@@ -1,0 +1,8 @@
+[
+  {
+    "ticker": "PG",
+    "status": "deferred",
+    "reason": "Price $165.87 is 96% of the way up its 1-month range ($143.40-$166.85) and 3.7% above its 1-week average $159.80 \u2014 waiting for a pullback toward $159.80 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  }
+]
