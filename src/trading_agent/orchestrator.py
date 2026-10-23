@@ -16,6 +16,8 @@ unconditionally true again.
 
 from __future__ import annotations
 
+from collections import Counter
+
 from typing import Any
 
 import pandas as pd
@@ -24,6 +26,7 @@ from trading_agent.config import load_agent_config, load_risk_limits, load_watch
 from trading_agent.data.alpaca_client import (
     get_market_movers,
     get_market_return_pct,
+    get_live_price,
     get_mid_price,
     get_positions,
     get_recent_bars,
@@ -41,6 +44,7 @@ from trading_agent.guardrails import (
 from trading_agent.notify.approval_gateway import (
     notify_checkpoint_halted,
     notify_digest,
+    notify_research_degraded,
     notify_research_outage,
     save_recommendation,
 )
@@ -136,15 +140,17 @@ def _held_position_pnl_pct() -> dict[str, float] | None:
 
 
 def _scoring_reference_price(ticker: str, bars: pd.DataFrame, have_bars: bool) -> tuple[float | None, str | None]:
-    """(price, source): the live bid/ask midpoint when a quote is available,
-    else the last daily close, else (None, None) — in which case the stale
-    check skips its price comparison, same as for any record without one."""
+    """(price, source): the latest IEX trade when it is fresh ("live_trade"),
+    else the IEX bid/ask midpoint ("live_mid"), else the last daily close, else
+    (None, None) — in which case the stale check skips its price comparison,
+    same as for any record without one. The stale check compares against the
+    same live price (guardrails._mid_price())."""
     try:
-        mid = get_mid_price(ticker)
+        live, source = get_live_price(ticker)
     except Exception:  # noqa: BLE001 - a missing quote just falls back
-        mid = None
-    if mid:
-        return round(mid, 6), "live_mid"
+        live, source = None, None
+    if live:
+        return round(live, 6), source
     if have_bars:
         return float(bars["close"].iloc[-1]), "daily_close"
     return None, None
@@ -299,6 +305,8 @@ def _score_tickers(
             rec["rationale"] = (research.get("headline_summary") or "")[:280]
             rec["sources"] = research.get("sources", [])
             rec["research_source"] = research.get("research_source", "perplexity")
+            if research.get("primary_error"):
+                rec["research_primary_error"] = research["primary_error"]
             if research_unavailable:
                 rec["research_unavailable"] = research_unavailable
                 if rec["action"] == "BUY":
@@ -455,6 +463,19 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             notify_research_outage(checkpoint, research_failed, attempted, errors)
         except Exception as exc:  # noqa: BLE001
             print(f"Could not announce the research outage: {exc}")
+    elif results:
+        # Degraded, not down: the fallbacks answered, but Perplexity did not for most
+        # tickers. 2026-10-22 ran all day on Yahoo headlines with Perplexity returning
+        # 401, and nothing said so because no ticker actually failed.
+        fallback = [r for r in results if r.get("research_source") not in (None, "perplexity")]
+        if len(results) >= 3 and len(fallback) / len(results) * 100 >= threshold:
+            sources = dict(Counter(r.get("research_source") for r in fallback))
+            primary = [r["research_primary_error"] for r in fallback if r.get("research_primary_error")]
+            print(f"RESEARCH DEGRADED: {len(fallback)} of {len(results)} tickers researched without Perplexity {sources}.")
+            try:
+                notify_research_degraded(checkpoint, len(fallback), len(results), sources, primary)
+            except Exception as exc:  # noqa: BLE001
+                print(f"Could not announce degraded research: {exc}")
 
     # Core holding top-up (one checkpoint a day, never while entries are halted).
     # Its own result, never a reason to fail the checkpoint.

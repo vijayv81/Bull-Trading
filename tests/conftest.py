@@ -37,6 +37,14 @@ def _no_external_side_effects(monkeypatch, tmp_path, request):
         monkeypatch.setattr(module, "submit_market_order", no_orders)
         monkeypatch.setattr(module, "submit_limit_order", no_orders)
 
+    # No live market data either: the trade and delayed-quote lookups fail, so code
+    # falls back to the (test-stubbed) IEX quote. Tests that need them patch them.
+    def no_live_data(*a, **k):
+        raise RuntimeError("tests must not read live market data")
+
+    monkeypatch.setattr(alpaca_client, "get_latest_trade", no_live_data)
+    monkeypatch.setattr(alpaca_client, "get_delayed_quote", no_live_data)
+
     data = tmp_path / "_data"
     for module, names in (
         (approval_gateway, ("APPROVALS_DIR", "RECOMMENDATIONS_DIR")),
