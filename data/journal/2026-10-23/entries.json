@@ -31,5 +31,16 @@
     "reference_price": 284.12,
     "recorded_at": "2026-10-23T13:43:56.637763+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 85.1,
+    "reasoning": "Auto-applied: confidence 85.1 (technical=0.8474445090779409, sentiment=None, catalyst=None, fundamental=0.8598)",
+    "reference_price": 182.69,
+    "recorded_at": "2026-10-23T16:43:34.929212+00:00",
+    "outcome": null
   }
 ]
