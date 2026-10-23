@@ -1,0 +1,35 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 94.2,
+    "reasoning": "Auto-applied: confidence 94.2 (technical=1.0, sentiment=None, catalyst=None, fundamental=0.8082)",
+    "reference_price": 512.5,
+    "recorded_at": "2026-10-23T13:43:40.219237+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "PLTR",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 91.5,
+    "reasoning": "Auto-applied: confidence 91.5 (technical=0.9647625992766962, sentiment=None, catalyst=None, fundamental=0.7979)",
+    "reference_price": 192.98000000000002,
+    "recorded_at": "2026-10-23T13:43:49.155075+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 85.0,
+    "reasoning": "Auto-applied: confidence 85.0 (technical=0.8628596968818817, sentiment=None, catalyst=None, fundamental=0.8208)",
+    "reference_price": 284.12,
+    "recorded_at": "2026-10-23T13:43:56.637763+00:00",
+    "outcome": null
+  }
+]

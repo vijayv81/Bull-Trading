@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-23T13:43:32.054448+00:00"
+  },
+  {
+    "ticker": "PLTR",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 10.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-23T13:43:40.894890+00:00"
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-23T13:43:49.812150+00:00"
+  }
+]
