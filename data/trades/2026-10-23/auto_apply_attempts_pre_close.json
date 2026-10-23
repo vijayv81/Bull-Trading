@@ -1,0 +1,57 @@
+[
+  {
+    "ticker": "AMD",
+    "status": "refused",
+    "reason": "AMD would reach 5.69% of the 73,107.02 portfolio (4,156.32 incl. 2,065.64 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "PLTR",
+    "status": "refused",
+    "reason": "PLTR would reach 6.08% of the 73,106.91 portfolio (4,442.51 incl. 1,958.15 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "XOM",
+    "status": "submitted",
+    "qty": 4.0,
+    "order": {
+      "id": "ef733fdc-883b-4aa3-a31b-ba1be6e618d7",
+      "client_order_id": "f3427288-fd5e-4adf-a741-46fdcec566b7",
+      "created_at": "2026-10-23T19:46:45.582724Z",
+      "updated_at": "2026-10-23T19:46:45.583760Z",
+      "submitted_at": "2026-10-23T19:46:45.582724Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-10-23T20:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "0dd35bf7-a49c-4068-bce0-8e40b700454d",
+      "symbol": "XOM",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "4",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "184.99",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null
+    },
+    "checkpoint": "pre_close"
+  }
+]

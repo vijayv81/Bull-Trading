@@ -117,6 +117,19 @@
     "trailingPE": null
    }
   },
+  "LIN": {
+   "at": "2026-10-23T19:47:03.740521+00:00",
+   "value": {
+    "debtToEquity": 68.947,
+    "forwardPE": 26.022612,
+    "marketCap": 234818682880,
+    "profitMargins": 0.20435,
+    "returnOnEquity": 0.18400998,
+    "revenueGrowth": 0.093,
+    "totalRevenue": 35448999936,
+    "trailingPE": 32.88509
+   }
+  },
   "LLY": {
    "at": "2026-10-21T03:29:35.159156+00:00",
    "value": {
