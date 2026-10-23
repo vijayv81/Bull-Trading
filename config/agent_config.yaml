@@ -71,6 +71,10 @@ notifications:
   # silently with Perplexity returning 401 and Yahoo rate-limited.
   research_outage_alert_enabled: true
   research_outage_threshold_pct: 50
+  # "Degraded" (2026-10-22): research ran, but at least the same % of tickers were
+  # answered by the headline fallbacks, not Perplexity. Recorded every checkpoint,
+  # emailed once a day.
+  research_degraded_alert_enabled: true
   # plan §12. A single value or a list — "console" prints to stdout (per
   # ticker); "file" relies on the recommendation JSON itself (already
   # written either way); "email"/"sms" send one consolidated message per

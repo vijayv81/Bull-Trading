@@ -124,6 +124,51 @@ def get_mid_price(ticker: str) -> float | None:
     return sum(sides) / len(sides) if sides else None
 
 
+# Alpaca's free market-data plan gives real-time quotes from IEX only, one
+# exchange whose top of book is often far wider than the market: at the 2026-10-22
+# close IEX showed AMD $486.59/$529.39 (8.4%) while the consolidated (SIP) quote,
+# 15 minutes delayed, was $505.64/$505.80 (0.03%). The spread check refused AMD and
+# TXN on that, the only real BUY signals that week. Real-time SIP is refused on this
+# plan ("subscription does not permit querying recent SIP data"); delayed SIP and
+# the IEX last trade (a real execution) are not.
+MAX_TRADE_AGE_MINUTES = 15
+
+
+def get_latest_trade(ticker: str) -> dict[str, Any]:
+    from alpaca.data.requests import StockLatestTradeRequest
+
+    trades = data_client().get_stock_latest_trade(StockLatestTradeRequest(symbol_or_symbols=ticker))
+    return trades[ticker].model_dump(mode="json")
+
+
+def get_delayed_quote(ticker: str) -> dict[str, Any]:
+    """The consolidated (SIP) quote, 15 minutes delayed: the real market's
+    spread, used to judge whether a name is liquid enough to buy."""
+    from alpaca.data.enums import DataFeed
+
+    quotes = data_client().get_stock_latest_quote(
+        StockLatestQuoteRequest(symbol_or_symbols=ticker, feed=DataFeed.DELAYED_SIP)
+    )
+    return quotes[ticker].model_dump(mode="json")
+
+
+def get_live_price(ticker: str, max_age_minutes: float = MAX_TRADE_AGE_MINUTES) -> tuple[float | None, str | None]:
+    """(price, source): the latest IEX trade when it is under `max_age_minutes`
+    old ("live_trade"), else the IEX bid/ask midpoint ("live_mid"), else
+    (None, None). A trade is a price someone actually paid; the IEX quote is
+    only one exchange's book."""
+    try:
+        trade = get_latest_trade(ticker)
+        price = float(trade.get("price") or 0.0)
+        stamp = datetime.fromisoformat(str(trade.get("timestamp")).replace("Z", "+00:00"))
+        if price > 0 and datetime.now(timezone.utc) - stamp <= timedelta(minutes=max_age_minutes):
+            return price, "live_trade"
+    except Exception:  # noqa: BLE001 - fall back to the quote
+        pass
+    mid = get_mid_price(ticker)
+    return (mid, "live_mid") if mid else (None, None)
+
+
 def get_recent_bars(ticker: str, lookback_days: int = 120) -> list[dict[str, Any]]:
     # 120 calendar days ~= 85 trading days after weekends/holidays — comfortably
     # above scoring.recommendation_engine.MIN_BARS_FOR_TECHNICAL (50). A lower

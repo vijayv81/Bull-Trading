@@ -125,10 +125,14 @@ def _positions() -> list[dict[str, Any]]:
 
 
 def _reference_price(symbol: str) -> float:
-    from trading_agent.data.alpaca_client import get_latest_quote
+    """A realistic price for sizing checks: the fresh IEX last trade when there
+    is one, else the ask (a BUY's fill), else the bid."""
+    from trading_agent.data.alpaca_client import get_latest_quote, get_live_price
 
+    price, source = get_live_price(symbol)
+    if price and source == "live_trade":
+        return float(price)
     quote = get_latest_quote(symbol)
-    # Ask is the realistic fill for a BUY; bid is a usable fallback on thin quotes.
     for key in ("ask_price", "bid_price"):
         value = quote.get(key)
         if value:
@@ -137,12 +141,14 @@ def _reference_price(symbol: str) -> float:
 
 
 def _mid_price(symbol: str) -> float:
-    from trading_agent.data.alpaca_client import get_mid_price
+    """Where the price is right now: the fresh IEX last trade, else the IEX
+    bid/ask midpoint (alpaca_client.get_live_price())."""
+    from trading_agent.data.alpaca_client import get_live_price
 
-    mid = get_mid_price(symbol)
-    if not mid:
+    price, _ = get_live_price(symbol)
+    if not price:
         raise ValueError(f"No usable quote price for {symbol}")
-    return mid
+    return price
 
 
 def daily_loss_reason() -> str | None:
@@ -213,8 +219,9 @@ def entry_limit_price(symbol: str, side: str) -> tuple[str | None, float | None]
     A BUY also refuses outright on a one-sided quote or a spread wider than
     `execution.max_spread_pct`: a wide or missing side means the quote isn't
     a price anyone can rely on. Fails closed when the quote can't be read.
-    BUY limit = ask * (1 + limit_slippage_pct/100); SELL limit = bid * (1 -
-    limit_slippage_pct/100).
+    BUY limit = (fresh IEX last trade, else IEX ask) * (1 + limit_slippage_pct/100);
+    the spread is judged on the delayed consolidated quote (see below). SELL
+    limit = bid * (1 - limit_slippage_pct/100).
     """
     cfg = load_risk_limits().get("execution", {}) or {}
     is_buy = side.upper() == "BUY"
@@ -234,17 +241,49 @@ def entry_limit_price(symbol: str, side: str) -> tuple[str | None, float | None]
 
     slip = float(cfg.get("limit_slippage_pct", 1.0)) / 100
     if is_buy:
-        if bid <= 0 or ask <= 0:
-            return f"{symbol} has a one-sided quote (bid {bid}, ask {ask}) — refusing to buy against it.", None
+        # The spread is judged on the consolidated (SIP) quote, 15 minutes delayed,
+        # not IEX's real-time book: on 2026-10-22 IEX showed AMD at an 8.4% spread
+        # and TXN at 11.8% while the market's were 0.03% and 1.0%, and both BUYs
+        # were refused. A stock's normal spread doesn't change in 15 minutes, and a
+        # genuinely thin name is still thin there. execution.spread_quote_feed: iex
+        # reverts; an unreadable delayed quote falls back to IEX.
+        s_bid, s_ask, feed = bid, ask, "IEX"
+        if cfg.get("spread_quote_feed", "delayed_sip") == "delayed_sip":
+            try:
+                from trading_agent.data.alpaca_client import get_delayed_quote
+
+                dq = get_delayed_quote(symbol)
+                d_bid, d_ask = float(dq.get("bid_price") or 0.0), float(dq.get("ask_price") or 0.0)
+                if d_bid > 0 and d_ask > 0:
+                    s_bid, s_ask, feed = d_bid, d_ask, "consolidated, 15-min delayed"
+            except Exception:  # noqa: BLE001 - fall back to the IEX quote
+                pass
+        if s_bid <= 0 or s_ask <= 0:
+            return f"{symbol} has a one-sided quote (bid {s_bid}, ask {s_ask}) — refusing to buy against it.", None
         max_spread = float(cfg.get("max_spread_pct", 5.0) or 0)
-        spread_pct = (ask - bid) / ((ask + bid) / 2) * 100
+        spread_pct = (s_ask - s_bid) / ((s_ask + s_bid) / 2) * 100
         if max_spread and spread_pct > max_spread:
             return (
-                f"{symbol} bid/ask spread is {spread_pct:.1f}% (bid {bid}, ask {ask}), "
+                f"{symbol} bid/ask spread is {spread_pct:.1f}% (bid {s_bid}, ask {s_ask}, {feed} quote), "
                 f"over the {max_spread}% cap — too thin to buy safely.",
                 None,
             )
-        price = ask * (1 + slip)
+        # The limit is set off the latest IEX trade when it is fresh (a price
+        # someone actually paid), else the IEX ask as before, else the delayed
+        # consolidated ask. It is a cap: the order fills at the best price
+        # available up to it.
+        base = ask or (s_ask if feed != "IEX" else 0.0)
+        try:
+            from trading_agent.data.alpaca_client import get_live_price
+
+            live, source = get_live_price(symbol)
+            if live and source == "live_trade":
+                base = live
+        except Exception:  # noqa: BLE001
+            pass
+        if base <= 0:
+            return f"{symbol} has no usable price to set a limit — refusing to buy.", None
+        price = base * (1 + slip)
     else:
         if bid <= 0:
             return f"{symbol} has no bid — cannot price a sell limit.", None

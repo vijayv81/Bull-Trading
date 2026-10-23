@@ -126,6 +126,12 @@ held were still scored on price data alone (`research_unavailable` on the
 recommendation) and can still be sold; nothing new can be bought. Commit the
 record like any other checkpoint output.
 
+`RESEARCH DEGRADED: N of M tickers researched without Perplexity` is the milder
+case: the Yahoo RSS / Alpaca news fallbacks answered, so recommendations were still
+made, from headlines only. The run has recorded it (and emailed once for the day).
+Say so in your summary with the Perplexity error from `research_primary_error`
+(a 401 means the key needs replacing); don't send anything yourself.
+
 ## When you see a DATA QUALITY ALERT
 
 This isn't a halt — the checkpoint still completes and still writes

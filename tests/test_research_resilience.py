@@ -140,7 +140,7 @@ def checkpoint(monkeypatch):
     monkeypatch.setattr(orch, "get_market_movers", lambda: {"gainers": []})
     monkeypatch.setattr(orch, "get_fundamentals", lambda t: None)
     monkeypatch.setattr(orch, "get_recent_bars", lambda t, **k: [])
-    monkeypatch.setattr(orch, "get_mid_price", lambda t: None)
+    monkeypatch.setattr(orch, "get_live_price", lambda t: (None, None))
     monkeypatch.setattr(orch, "get_market_return_pct", lambda s: None)
     monkeypatch.setattr(orch, "technical_score", lambda b: 0.5)
     monkeypatch.setattr(orch, "save_recommendation", lambda r: None)

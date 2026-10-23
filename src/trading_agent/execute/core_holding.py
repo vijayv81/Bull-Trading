@@ -84,6 +84,14 @@ def core_rebalance(checkpoint: str) -> list[dict[str, Any]]:
         ask = float(quote.get("ask_price") or 0.0)
         bid = float(quote.get("bid_price") or 0.0)
         price = ask or bid
+        try:  # size at the fresh IEX last trade when there is one (see alpaca_client.get_live_price)
+            from trading_agent.data.alpaca_client import get_live_price
+
+            live, source = get_live_price(symbol)
+            if live and source == "live_trade":
+                price = float(live)
+        except Exception:  # noqa: BLE001
+            pass
         qty = core_order_qty(equity, cash, gap, price, cfg)
         if qty <= 0:
             result = {"ticker": symbol, "status": "skipped", "reason": "core top-up rounds to 0 shares or no cash",
