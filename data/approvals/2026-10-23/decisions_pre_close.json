@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-23T19:46:31.766596+00:00"
+  },
+  {
+    "ticker": "PLTR",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 12.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-23T19:46:35.579211+00:00"
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-23T19:46:39.267468+00:00"
+  }
+]
