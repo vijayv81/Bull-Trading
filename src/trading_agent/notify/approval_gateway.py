@@ -355,6 +355,14 @@ def notify_daily_summary(summary: dict[str, Any], pr_url: str | None = None) -> 
         for o in outages:
             lines.append(f"- {o['checkpoint']}: research failed for {o['failed']} of {o['attempted']} tickers")
 
+    degraded = summary.get("research_degraded") or []
+    if degraded:
+        lines.append("")
+        lines.append("Research quality (Perplexity unavailable, headlines-only fallback):")
+        for d in degraded:
+            err = f" — {d['primary_errors'][0]}" if d.get("primary_errors") else ""
+            lines.append(f"- {d['checkpoint']}: {d['fallback']} of {d['total']} tickers via fallback{err}")
+
     attempts = summary.get("auto_apply_attempts") or []
     if attempts:
         lines.append("")
@@ -539,6 +547,17 @@ def _daily_summary_html(summary: dict[str, Any], pr_url: str | None = None) -> s
             inner += h.alert_banner(
                 f"{_esc2(o['checkpoint'])}: research failed for {o['failed']} of {o['attempted']} tickers"
             )
+
+    degraded = summary.get("research_degraded") or []
+    if degraded:
+        from html import escape as _esc3
+
+        inner += h.section_heading("Research quality")
+        for d in degraded:
+            inner += h.muted(_esc3(
+                f"{d['checkpoint']}: {d['fallback']} of {d['total']} tickers via headlines-only fallback"
+                + (f" — Perplexity: {d['primary_errors'][0]}" if d.get("primary_errors") else "")
+            ))
 
     attempts = summary.get("auto_apply_attempts") or []
     if attempts:
@@ -1475,6 +1494,65 @@ def notify_research_outage(checkpoint: str, failed: int, attempted: int, errors:
             send_sms(f"Bull-Trading {label}: research failed for {failed}/{attempted} tickers"[:300])
         except Exception as exc:  # noqa: BLE001
             print(f"NOTIFY (research outage sms) failed: {exc}")
+
+
+def notify_research_degraded(
+    checkpoint: str, fallback: int, total: int, sources: dict[str, int], primary_errors: list[str]
+) -> None:
+    """Research ran, but mostly without Perplexity: the Yahoo RSS / Alpaca news
+    fallbacks answered instead. Writes data/recommendations/<day>/research_degraded_<checkpoint>.json
+    every time (the daily summary lists it) and emails at most ONCE A DAY, on the
+    first degraded checkpoint: 2026-10-22 ran entirely on headlines while
+    Perplexity returned 401, and nothing said so because no ticker failed.
+    Gated by notifications.research_degraded_alert_enabled (default true). Never raises."""
+    distinct = list(dict.fromkeys(e[:160] for e in primary_errors))[:3]
+    folder = day_dir(RECOMMENDATIONS_DIR)
+    already_told = any(folder.glob("research_degraded_*.json"))
+    try:
+        append_json(
+            folder / f"research_degraded_{checkpoint}.json",
+            {
+                "checkpoint": checkpoint,
+                "fallback": fallback,
+                "total": total,
+                "sources": sources,
+                "primary_errors": distinct,
+                "at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"Could not record degraded research at {checkpoint}: {exc}")
+
+    if already_told or not load_agent_config().get("notifications", {}).get("research_degraded_alert_enabled", True):
+        return
+    channels = notification_channels()
+    if "email" not in channels:
+        return
+    label = checkpoint.replace("_", " ")
+    used = ", ".join(f"{k} {v}" for k, v in sources.items())
+    subject = f"[Bull-Trading] Research degraded: Perplexity unavailable ({fallback} of {total} tickers on fallback)"
+    meaning = (
+        "Recommendations are still being made, but from headlines only (Yahoo Finance RSS / Alpaca news), "
+        "not Perplexity's research synthesis, so sentiment and catalyst readings are thinner. If the error "
+        "below is a 401, replace PERPLEXITY_API_KEY in the environment settings. This email is sent once a "
+        "day; the daily summary shows every checkpoint."
+    )
+    body = "\n".join(
+        [f"Bull-Trading {label}: {fallback} of {total} tickers were researched without Perplexity ({used}).",
+         "", meaning, "", "Perplexity error:"] + [f"- {e}" for e in distinct or ["(not recorded)"]]
+    )
+    try:
+        from html import escape
+
+        from trading_agent.notify import html as h
+        from trading_agent.notify.senders import send_email
+
+        inner = h.alert_banner(escape(f"{fallback} of {total} tickers researched without Perplexity ({used})."))
+        inner += f'<div style="font-size:14px;padding:4px 0;">{escape(meaning)}</div>'
+        inner += "".join(h.muted(escape(e)) for e in distinct)
+        send_email(subject, body, h.wrap("Research degraded", "", inner))
+    except Exception as exc:  # noqa: BLE001
+        print(f"NOTIFY (research degraded email) failed: {exc}")
 
 
 def notify_pending_reminder() -> None:

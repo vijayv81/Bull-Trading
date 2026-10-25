@@ -131,6 +131,11 @@ def _extract_sources(raw: dict[str, Any]) -> list[str]:
     return urls
 
 
+# Why Perplexity didn't answer, per ticker, so a fallback result can say so
+# (research_ticker() puts it on the extraction as `primary_error`).
+_last_primary_error: dict[str, str] = {}
+
+
 def _perplexity_extraction(ticker: str, checkpoint: str, prompt: str) -> dict[str, Any] | None:
     """Perplexity attempt. Returns None (never raises past this point) when
     the call fails outright OR succeeds but synthesizes nothing usable (no
@@ -141,12 +146,14 @@ def _perplexity_extraction(ticker: str, checkpoint: str, prompt: str) -> dict[st
         raw = query_perplexity(prompt)
     except Exception as exc:
         print(f"Perplexity research failed for {ticker}: {exc} — trying the Yahoo Finance fallback.")
+        _last_primary_error[ticker] = str(exc)[:200]
         return None
 
     text = _extract_text(raw)
     sources = _extract_sources(raw)
     if not text and not sources:
         print(f"Perplexity returned no usable content for {ticker} — trying the Yahoo Finance fallback.")
+        _last_primary_error[ticker] = "Perplexity returned no usable content"
         return None
 
     return {
@@ -230,7 +237,10 @@ def research_ticker(ticker: str, checkpoint: str, force_refresh: bool = False) -
         f"Latest news, catalysts, and analyst rating changes for {ticker} in the "
         "last 24 hours. Include any notable options flow or unusual volume commentary."
     )
+    _last_primary_error.pop(ticker, None)
     result = _perplexity_extraction(ticker, checkpoint, prompt) or _yahoo_fallback_extraction(ticker, checkpoint)
+    if result is not None and result["extraction"].get("research_source") != "perplexity":
+        result["extraction"]["primary_error"] = _last_primary_error.get(ticker)
     if result is None:
         raise RuntimeError(
             f"No research data available for {ticker} — Perplexity returned nothing usable and "

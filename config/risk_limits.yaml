@@ -207,6 +207,12 @@ execution:
   # one-line revert.
   order_type: limit
   limit_slippage_pct: 1.0
+  # Which quote judges the bid/ask spread (per user instruction 2026-10-22): the
+  # consolidated (SIP) quote, 15 minutes delayed. This data plan's real-time quote
+  # is IEX only, whose book showed AMD at 8.4% and TXN at 11.8% while the market's
+  # spreads were 0.03% and 1.0%, so both BUYs were refused. `iex` reverts. The BUY
+  # limit is set off the latest IEX trade when it is under 15 minutes old.
+  spread_quote_feed: delayed_sip
   # A BUY refuses on a one-sided quote or a bid/ask spread wider than this %
   # of the midpoint. Unset/zero skips the width check (a missing side still refuses).
   max_spread_pct: 5.0

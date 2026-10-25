@@ -538,6 +538,21 @@ revert. Not covered: the quote used for sizing and the spread check can itself
 be stale pre-market; the limit bounds the damage, it doesn't make that quote
 good.
 
+**Which quote, since 2026-10-22.** This Alpaca data plan's real-time quote is
+IEX only, one exchange whose book is often far wider than the market's: on
+10-22 IEX showed AMD at $486.59/$529.39 (8.4%) and TXN at 11.8% while the
+consolidated (SIP) quote showed 0.03% and 1.0%, and both BUYs, the only real
+signals that week, were refused. Real-time SIP is refused on this plan; the
+15-minute-delayed SIP quote and the IEX last trade are not. So the spread is
+judged on the **delayed consolidated quote** (`execution.spread_quote_feed:
+delayed_sip`; `iex` reverts; falls back to IEX if the delayed quote can't be
+read), and the BUY limit, the sizing price and the stale-check price use the
+**IEX last trade when it is under 15 minutes old**
+(`alpaca_client.get_live_price()`, `reference_price_source: "live_trade"`),
+else the IEX ask/midpoint as before, else the delayed ask. A limit is a cap: the
+order fills at the best available price up to it. A thin name is still refused:
+MGLD's consolidated spread was 16.4%.
+
 `allow_live_trading` in the same file is a second, independent guard —
 `data/alpaca_client.py:trading_client()` refuses to even construct a client
 if it's `true`; flipping it is deliberately not sufficient on its own.
@@ -802,6 +817,17 @@ no BUY at all, because the entry filter refuses almost every mover.
   errors, a record goes to `data/recommendations/<day>/research_outage_<checkpoint>.json`,
   and the daily summary lists it under "Research outages".
   `notifications.research_outage_alert_enabled: false` turns the email off.
+- **Degraded research notice** (`notify_research_degraded()`, 2026-10-22): when
+  research *ran* but at least the same 50% of tickers were answered by the headline
+  fallbacks instead of Perplexity, the checkpoint writes
+  `research_degraded_<checkpoint>.json` and emails **once a day** (the first such
+  checkpoint) with the Perplexity error, which each fallback result now carries as
+  `primary_error` (`research_primary_error` on the recommendation). The daily
+  summary lists every degraded checkpoint under "Research quality". 10-22 ran
+  entirely on Yahoo headlines with Perplexity returning 401 and nothing said so,
+  because no ticker failed outright. An outage is reported as an outage, not also
+  as degraded. `notifications.research_degraded_alert_enabled: false` turns the
+  email off.
 - **Liquid candidate sourcing** (`scoring/candidates.py`,
   `agent_config.yaml -> candidate_sourcing`, `mode: movers` reverts). New
   candidates come from a curated list of ~54 liquid large caps plus the day's

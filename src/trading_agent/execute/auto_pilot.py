@@ -276,11 +276,17 @@ def auto_apply(recs: list[dict[str, Any]], checkpoint: str) -> list[dict[str, An
             capped.append(rec)
             continue
         try:
-            from trading_agent.data.alpaca_client import get_account, get_latest_quote
+            from trading_agent.data.alpaca_client import get_account, get_latest_quote, get_live_price
 
             equity = float(get_account()["equity"])
-            quote = get_latest_quote(rec["ticker"])
-            price = float(quote.get("ask_price") or quote.get("bid_price") or 0.0)
+            # Sized at the fresh IEX last trade when there is one: the IEX ask can sit
+            # several % above the market on this data plan (AMD 2026-10-22).
+            live, source = get_live_price(rec["ticker"])
+            if live and source == "live_trade":
+                price = float(live)
+            else:
+                quote = get_latest_quote(rec["ticker"])
+                price = float(quote.get("ask_price") or quote.get("bid_price") or 0.0)
             qty = qty_for_recommendation(rec, equity, price)
             if qty <= 0:
                 result = {"ticker": rec["ticker"], "status": "skipped", "reason": "computed qty is 0"}

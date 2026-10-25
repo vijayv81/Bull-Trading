@@ -29,7 +29,7 @@ def isolated(monkeypatch):
     monkeypatch.setattr(orch, "get_positions", lambda: [])
     monkeypatch.setattr(orch, "get_fundamentals", lambda ticker: None)
     monkeypatch.setattr(orch, "get_recent_bars", lambda ticker, **kwargs: [])
-    monkeypatch.setattr(orch, "get_mid_price", lambda ticker: None)
+    monkeypatch.setattr(orch, "get_live_price", lambda ticker: (None, None))
     monkeypatch.setattr(orch, "get_market_return_pct", lambda symbol: None)
     monkeypatch.setattr(orch, "technical_score", lambda bars: 0.5)
     monkeypatch.setattr(orch, "save_recommendation", lambda rec: None)
@@ -628,7 +628,7 @@ def test_reference_price_is_the_live_mid_when_a_quote_exists(monkeypatch):
     _ok_research(monkeypatch)
     bars = [{"close": 10.0}] * 60
     monkeypatch.setattr(orch, "get_recent_bars", lambda ticker, **kwargs: bars)
-    monkeypatch.setattr(orch, "get_mid_price", lambda ticker: 12.5)
+    monkeypatch.setattr(orch, "get_live_price", lambda ticker: (12.5, "live_mid"))
     seen = _capture_score_kwargs(monkeypatch)
     _capture_digest(monkeypatch)
 
@@ -646,7 +646,7 @@ def test_reference_price_falls_back_to_daily_close_without_a_quote(monkeypatch):
     def no_quote(ticker):
         raise RuntimeError("no quote")
 
-    monkeypatch.setattr(orch, "get_mid_price", no_quote)
+    monkeypatch.setattr(orch, "get_live_price", no_quote)
     seen = _capture_score_kwargs(monkeypatch)
     _capture_digest(monkeypatch)
 
