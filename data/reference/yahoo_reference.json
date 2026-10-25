@@ -117,6 +117,19 @@
     "trailingPE": null
    }
   },
+  "LIN": {
+   "at": "2026-10-23T19:47:03.740521+00:00",
+   "value": {
+    "debtToEquity": 68.947,
+    "forwardPE": 26.022612,
+    "marketCap": 234818682880,
+    "profitMargins": 0.20435,
+    "returnOnEquity": 0.18400998,
+    "revenueGrowth": 0.093,
+    "totalRevenue": 35448999936,
+    "trailingPE": 32.88509
+   }
+  },
   "LLY": {
    "at": "2026-10-21T03:29:35.159156+00:00",
    "value": {
@@ -288,9 +301,33 @@
   }
  },
  "sector": {
+  "AMD": {
+   "at": "2026-10-23T13:43:36.784313+00:00",
+   "value": "Technology"
+  },
+  "MGLD": {
+   "at": "2026-10-23T13:43:38.479496+00:00",
+   "value": "Financial Services"
+  },
+  "PLTR": {
+   "at": "2026-10-23T13:43:45.865587+00:00",
+   "value": "Technology"
+  },
+  "SPY": {
+   "at": "2026-10-23T13:43:39.238373+00:00",
+   "value": null
+  },
   "TSLA": {
    "at": "2026-10-21T03:27:00.176149+00:00",
    "value": "Consumer Cyclical"
+  },
+  "TXN": {
+   "at": "2026-10-23T13:43:54.574559+00:00",
+   "value": "Technology"
+  },
+  "XOM": {
+   "at": "2026-10-23T16:43:32.636146+00:00",
+   "value": "Energy"
   }
  }
 }
