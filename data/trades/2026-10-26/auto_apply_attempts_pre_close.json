@@ -1,0 +1,26 @@
+[
+  {
+    "ticker": "TXN",
+    "status": "deferred",
+    "reason": "Price $298.61 is 99% of the way up its 1-month range ($272.01-$298.94) and 4.5% above its 1-week average $285.07 \u2014 waiting for a pullback toward $285.07 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "AMD",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "CVX",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  }
+]

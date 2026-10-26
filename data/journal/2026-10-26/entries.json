@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 88.0 (technical=0.9119910793957741, sentiment=1.0, catalyst=0.6666666666666666, fundamental=0.8208)",
     "reference_price": 286.625,
     "recorded_at": "2026-10-26T13:47:03.991316+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 286.625,
+      "price_at_measurement": 298.595,
+      "price_basis": "quote_mid",
+      "pct_change": 4.18,
+      "directionally_correct": true,
+      "measured_at": "2026-10-26T19:49:07.524556+00:00"
+    }
   },
   {
     "ticker": "PLTR",
@@ -19,7 +26,14 @@
     "reasoning": "Auto-applied: confidence 87.2 (technical=0.903225355901004, sentiment=None, catalyst=None, fundamental=0.7979)",
     "reference_price": 196.0,
     "recorded_at": "2026-10-26T13:47:12.771407+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 196.0,
+      "price_at_measurement": 201.45499999999998,
+      "price_basis": "quote_mid",
+      "pct_change": 2.78,
+      "directionally_correct": true,
+      "measured_at": "2026-10-26T19:49:07.991555+00:00"
+    }
   },
   {
     "ticker": "XOM",
@@ -30,7 +44,14 @@
     "reasoning": "Auto-applied: confidence 86.9 (technical=0.872987970457869, sentiment=None, catalyst=None, fundamental=0.8598)",
     "reference_price": 181.715,
     "recorded_at": "2026-10-26T13:47:27.982674+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 181.715,
+      "price_at_measurement": 184.31,
+      "price_basis": "quote_mid",
+      "pct_change": 1.43,
+      "directionally_correct": true,
+      "measured_at": "2026-10-26T19:49:08.401171+00:00"
+    }
   },
   {
     "ticker": "ABBV",
@@ -41,7 +62,14 @@
     "reasoning": "Auto-applied: confidence 86.5 (technical=0.866518561871334, sentiment=None, catalyst=1.0, fundamental=0.7284)",
     "reference_price": 291.83000000000004,
     "recorded_at": "2026-10-26T13:48:06.667685+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 291.83000000000004,
+      "price_at_measurement": 286.66999999999996,
+      "price_basis": "quote_mid",
+      "pct_change": -1.77,
+      "directionally_correct": false,
+      "measured_at": "2026-10-26T19:49:08.767766+00:00"
+    }
   },
   {
     "ticker": "TSLA",
@@ -52,7 +80,14 @@
     "reasoning": "Auto-applied: confidence 78.0 (technical=0.7700044348846106, sentiment=1.0, catalyst=0.6666666666666666, fundamental=0.5503), sell_pressure=0.51 (position_pnl_pct=8.15)",
     "reference_price": 395.375,
     "recorded_at": "2026-10-26T16:36:21.435561+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 395.375,
+      "price_at_measurement": 386.75,
+      "price_basis": "quote_mid",
+      "pct_change": -2.18,
+      "directionally_correct": true,
+      "measured_at": "2026-10-26T19:49:09.125122+00:00"
+    }
   },
   {
     "ticker": "TXN",
@@ -63,6 +98,13 @@
     "reasoning": "Auto-applied: confidence 90.4 (technical=0.9725247114507061, sentiment=1.0, catalyst=0.6666666666666666, fundamental=0.8208)",
     "reference_price": 292.66,
     "recorded_at": "2026-10-26T16:36:34.513808+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 292.66,
+      "price_at_measurement": 298.595,
+      "price_basis": "quote_mid",
+      "pct_change": 2.03,
+      "directionally_correct": true,
+      "measured_at": "2026-10-26T19:49:09.551231+00:00"
+    }
   }
 ]
