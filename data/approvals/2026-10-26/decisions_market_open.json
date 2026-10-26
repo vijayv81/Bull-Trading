@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-26T13:46:51.609245+00:00"
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-26T13:46:56.134085+00:00"
+  },
+  {
+    "ticker": "PLTR",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-26T13:47:04.766815+00:00"
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-26T13:47:13.786461+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-26T13:47:58.907817+00:00"
+  }
+]

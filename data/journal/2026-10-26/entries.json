@@ -1,0 +1,46 @@
+[
+  {
+    "ticker": "TXN",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 88.0,
+    "reasoning": "Auto-applied: confidence 88.0 (technical=0.9119910793957741, sentiment=1.0, catalyst=0.6666666666666666, fundamental=0.8208)",
+    "reference_price": 286.625,
+    "recorded_at": "2026-10-26T13:47:03.991316+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "PLTR",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 87.2,
+    "reasoning": "Auto-applied: confidence 87.2 (technical=0.903225355901004, sentiment=None, catalyst=None, fundamental=0.7979)",
+    "reference_price": 196.0,
+    "recorded_at": "2026-10-26T13:47:12.771407+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 86.9,
+    "reasoning": "Auto-applied: confidence 86.9 (technical=0.872987970457869, sentiment=None, catalyst=None, fundamental=0.8598)",
+    "reference_price": 181.715,
+    "recorded_at": "2026-10-26T13:47:27.982674+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 86.5,
+    "reasoning": "Auto-applied: confidence 86.5 (technical=0.866518561871334, sentiment=None, catalyst=1.0, fundamental=0.7284)",
+    "reference_price": 291.83000000000004,
+    "recorded_at": "2026-10-26T13:48:06.667685+00:00",
+    "outcome": null
+  }
+]
