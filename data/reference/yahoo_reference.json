@@ -311,9 +311,26 @@
     "totalRevenue": 361060007936,
     "trailingPE": 22.976833
    }
+  },
+  "XP": {
+   "at": "2026-10-26T13:47:57.465882+00:00",
+   "value": {
+    "debtToEquity": 642.491,
+    "forwardPE": 5.9324675,
+    "marketCap": 7563437568,
+    "profitMargins": 0.28538,
+    "returnOnEquity": 0.22563,
+    "revenueGrowth": 0.106,
+    "totalRevenue": 18630881280,
+    "trailingPE": 7.8036647
+   }
   }
  },
  "sector": {
+  "ABBV": {
+   "at": "2026-10-26T13:48:04.482337+00:00",
+   "value": "Healthcare"
+  },
   "AMD": {
    "at": "2026-10-23T13:43:36.784313+00:00",
    "value": "Technology"
