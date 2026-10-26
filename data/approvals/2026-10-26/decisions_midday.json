@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "TSLA",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-26T16:36:20.221259+00:00"
+  },
+  {
+    "ticker": "AMD",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-26T16:36:22.154337+00:00"
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-26T16:36:26.822873+00:00"
+  }
+]

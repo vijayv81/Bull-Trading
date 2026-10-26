@@ -42,5 +42,27 @@
     "reference_price": 291.83000000000004,
     "recorded_at": "2026-10-26T13:48:06.667685+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "TSLA",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 78.0,
+    "reasoning": "Auto-applied: confidence 78.0 (technical=0.7700044348846106, sentiment=1.0, catalyst=0.6666666666666666, fundamental=0.5503), sell_pressure=0.51 (position_pnl_pct=8.15)",
+    "reference_price": 395.375,
+    "recorded_at": "2026-10-26T16:36:21.435561+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 90.4,
+    "reasoning": "Auto-applied: confidence 90.4 (technical=0.9725247114507061, sentiment=1.0, catalyst=0.6666666666666666, fundamental=0.8208)",
+    "reference_price": 292.66,
+    "recorded_at": "2026-10-26T16:36:34.513808+00:00",
+    "outcome": null
   }
 ]
