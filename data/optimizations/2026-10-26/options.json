@@ -1,0 +1,23 @@
+[
+  {
+    "id": "2026-10-26-weights-sentiment-to-fundamental",
+    "title": "Shift 0.05 of scoring weight from sentiment to fundamental",
+    "why": "sentiment has agreed with actual price direction 30% of the time over 23 measured calls, vs. fundamental's 80% over 15.",
+    "effect": "Confidence scores lean slightly more on fundamental and less on sentiment.",
+    "loosens_guardrail": false,
+    "changes": [
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.sentiment",
+        "from": 0.25,
+        "to": 0.2
+      },
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.fundamental",
+        "from": 0.15,
+        "to": 0.2
+      }
+    ]
+  }
+]
