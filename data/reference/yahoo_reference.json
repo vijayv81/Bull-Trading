@@ -65,6 +65,19 @@
     "trailingPE": 21.723772
    }
   },
+  "EWZS": {
+   "at": "2026-10-26T16:36:42.532369+00:00",
+   "value": {
+    "debtToEquity": null,
+    "forwardPE": null,
+    "marketCap": null,
+    "profitMargins": null,
+    "returnOnEquity": null,
+    "revenueGrowth": null,
+    "totalRevenue": null,
+    "trailingPE": 8.208381
+   }
+  },
   "GOOG": {
    "at": "2026-10-22T12:47:24.366839+00:00",
    "value": {
@@ -245,6 +258,19 @@
     "revenueGrowth": -0.04,
     "totalRevenue": 44068999168,
     "trailingPE": 20.081144
+   }
+  },
+  "SGRY": {
+   "at": "2026-10-26T16:36:58.459313+00:00",
+   "value": {
+    "debtToEquity": 117.259,
+    "forwardPE": 132.0,
+    "marketCap": 3024211712,
+    "profitMargins": -0.02632,
+    "returnOnEquity": 0.023239998,
+    "revenueGrowth": 0.027,
+    "totalRevenue": 3366299904,
+    "trailingPE": null
    }
   },
   "TSLA": {
