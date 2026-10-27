@@ -1,0 +1,14 @@
+[
+  {
+    "ticker": "TXN",
+    "status": "deferred",
+    "reason": "Price $301.64 is 92% of the way up its 1-month range ($272.01-$304.32) and 4.0% above its 1-week average $289.71 \u2014 waiting for a pullback toward $289.71 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "AMD",
+    "status": "refused",
+    "reason": "AMD would reach 6.72% of the 73,900.81 portfolio (4,969.43 incl. 2,197.18 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  }
+]

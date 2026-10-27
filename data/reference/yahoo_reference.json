@@ -52,6 +52,19 @@
     "trailingPE": 49.012043
    }
   },
+  "CSCO": {
+   "at": "2026-10-27T14:05:51.913503+00:00",
+   "value": {
+    "debtToEquity": 62.017,
+    "forwardPE": 19.663717,
+    "marketCap": 435853000704,
+    "profitMargins": 0.20951,
+    "returnOnEquity": 0.27319,
+    "revenueGrowth": 0.176,
+    "totalRevenue": 63324999680,
+    "trailingPE": 33.1982
+   }
+  },
   "CVX": {
    "at": "2026-10-21T03:29:32.970840+00:00",
    "value": {
