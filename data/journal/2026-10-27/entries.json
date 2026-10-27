@@ -1,0 +1,24 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 80.2,
+    "reasoning": "Auto-applied: confidence 80.2 (technical=1.0, sentiment=None, catalyst=0.3333333333333333, fundamental=0.8082), sell_pressure=0.53 (position_pnl_pct=8.52)",
+    "reference_price": 555.0,
+    "recorded_at": "2026-10-27T16:36:30.427450+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "TSLA",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 75.0,
+    "reasoning": "Auto-applied: confidence 75.0 (technical=0.8362635058091714, sentiment=None, catalyst=None, fundamental=0.5503), sell_pressure=0.55 (position_pnl_pct=8.86)",
+    "reference_price": 404.1,
+    "recorded_at": "2026-10-27T16:36:33.006157+00:00",
+    "outcome": null
+  }
+]
