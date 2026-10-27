@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 80.2 (technical=1.0, sentiment=None, catalyst=0.3333333333333333, fundamental=0.8082), sell_pressure=0.53 (position_pnl_pct=8.52)",
     "reference_price": 555.0,
     "recorded_at": "2026-10-27T16:36:30.427450+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 555.0,
+      "price_at_measurement": 568.5,
+      "price_basis": "quote_mid",
+      "pct_change": 2.43,
+      "directionally_correct": false,
+      "measured_at": "2026-10-27T19:47:36.181364+00:00"
+    }
   },
   {
     "ticker": "TSLA",
@@ -19,6 +26,49 @@
     "reasoning": "Auto-applied: confidence 75.0 (technical=0.8362635058091714, sentiment=None, catalyst=None, fundamental=0.5503), sell_pressure=0.55 (position_pnl_pct=8.86)",
     "reference_price": 404.1,
     "recorded_at": "2026-10-27T16:36:33.006157+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 404.1,
+      "price_at_measurement": 408.245,
+      "price_basis": "quote_mid",
+      "pct_change": 1.03,
+      "directionally_correct": false,
+      "measured_at": "2026-10-27T19:47:36.572152+00:00"
+    }
+  },
+  {
+    "ticker": "TSLA",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 74.3,
+    "reasoning": "Auto-applied: confidence 74.3 (technical=0.8577986696767764, sentiment=None, catalyst=0.6666666666666666, fundamental=0.5503), sell_pressure=0.6 (position_pnl_pct=9.56)",
+    "reference_price": 406.745,
+    "recorded_at": "2026-10-27T19:46:47.099481+00:00",
+    "outcome": {
+      "price_at_decision": 406.745,
+      "price_at_measurement": 406.745,
+      "price_basis": "quote_mid",
+      "pct_change": 0.0,
+      "directionally_correct": false,
+      "measured_at": "2026-10-27T19:47:36.868483+00:00"
+    }
+  },
+  {
+    "ticker": "AMD",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 85.7,
+    "reasoning": "Auto-applied: confidence 85.7 (technical=1.0, sentiment=1.0, catalyst=0.3333333333333333, fundamental=0.8082)",
+    "reference_price": 561.0,
+    "recorded_at": "2026-10-27T19:47:24.940022+00:00",
+    "outcome": {
+      "price_at_decision": 561.0,
+      "price_at_measurement": 568.5,
+      "price_basis": "quote_mid",
+      "pct_change": 1.34,
+      "directionally_correct": true,
+      "measured_at": "2026-10-27T19:47:37.279158+00:00"
+    }
   }
 ]
