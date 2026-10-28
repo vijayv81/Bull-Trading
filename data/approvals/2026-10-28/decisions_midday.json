@@ -1,0 +1,22 @@
+[
+  {
+    "ticker": "ABBV",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-28T16:36:16.191742+00:00"
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-28T16:36:25.173406+00:00"
+  }
+]

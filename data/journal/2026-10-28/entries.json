@@ -9,5 +9,16 @@
     "reference_price": 285.43,
     "recorded_at": "2026-10-28T13:46:35.541450+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 89.2,
+    "reasoning": "Auto-applied: confidence 89.2 (technical=0.8460565896024437, sentiment=None, catalyst=1.0, fundamental=None)",
+    "reference_price": 287.05,
+    "recorded_at": "2026-10-28T16:36:24.406681+00:00",
+    "outcome": null
   }
 ]

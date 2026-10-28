@@ -1,0 +1,63 @@
+[
+  {
+    "ticker": "TXN",
+    "status": "deferred",
+    "reason": "Price $305.17 is 88% of the way up its 1-month range ($272.01-$309.63) and 3.2% above its 1-week average $295.27 \u2014 waiting for a pullback toward $295.27 would buy it cheaper.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "submitted",
+    "qty": 5.0,
+    "order": {
+      "id": "c3e510da-7768-42b1-acdc-fa3c6716f857",
+      "client_order_id": "d8c84ffb-b6ee-470e-adf3-d74ff02760cc",
+      "created_at": "2026-10-28T16:36:23.944635Z",
+      "updated_at": "2026-10-28T16:36:23.945654Z",
+      "submitted_at": "2026-10-28T16:36:23.944635Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-10-28T20:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "09a51104-980a-47b6-ad4d-e4f04059be4a",
+      "symbol": "ABBV",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "5",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "289.86",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null
+    },
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "XOM",
+    "status": "refused",
+    "reason": "XOM would reach 5.46% of the 74,154.40 portfolio (4,048.98 incl. 2,567.46 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "GMAB",
+    "status": "deferred",
+    "reason": "Price $57.74 is 97% of the way up its 1-month range ($33.73-$58.54) and 20.0% above its 1-week average $46.18 \u2014 waiting for a pullback toward $46.18 would buy it cheaper.",
+    "checkpoint": "midday"
+  }
+]
