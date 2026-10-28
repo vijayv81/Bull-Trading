@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 88.0 (technical=0.8282770066765623, sentiment=None, catalyst=1.0, fundamental=None)",
     "reference_price": 285.43,
     "recorded_at": "2026-10-28T13:46:35.541450+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 285.43,
+      "price_at_measurement": 286.34000000000003,
+      "price_basis": "quote_mid",
+      "pct_change": 0.32,
+      "directionally_correct": true,
+      "measured_at": "2026-10-28T19:47:58.004449+00:00"
+    }
   },
   {
     "ticker": "ABBV",
@@ -19,6 +26,13 @@
     "reasoning": "Auto-applied: confidence 89.2 (technical=0.8460565896024437, sentiment=None, catalyst=1.0, fundamental=None)",
     "reference_price": 287.05,
     "recorded_at": "2026-10-28T16:36:24.406681+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 287.05,
+      "price_at_measurement": 286.24,
+      "price_basis": "quote_mid",
+      "pct_change": -0.28,
+      "directionally_correct": false,
+      "measured_at": "2026-10-28T19:47:58.431607+00:00"
+    }
   }
 ]

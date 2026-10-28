@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "ABBV",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-28T19:46:55.541304+00:00"
+  },
+  {
+    "ticker": "CVX",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 7.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-28T19:47:27.763564+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-28T19:47:36.529352+00:00"
+  }
+]

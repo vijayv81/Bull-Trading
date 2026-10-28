@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "TXN",
+    "status": "deferred",
+    "reason": "Price $307.64 is 95% of the way up its 1-month range ($272.01-$309.63) and 3.9% above its 1-week average $295.76 \u2014 waiting for a pullback toward $295.76 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 6.58% of the 74,191.24 portfolio (4,880.29 incl. 3,434.34 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "CVX",
+    "status": "refused",
+    "reason": "CVX (Unclassified) would push that sector to 36.49% of the 74,189.91 portfolio, over the 30.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V (Unclassified) would push that sector to 35.41% of the 74,196.37 portfolio, over the 30.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_close"
+  }
+]
