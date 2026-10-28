@@ -1,0 +1,57 @@
+[
+  {
+    "ticker": "TXN",
+    "status": "deferred",
+    "reason": "Price $305.45 is 89% of the way up its 1-month range ($272.01-$309.47) and 3.3% above its 1-week average $295.45 \u2014 waiting for a pullback toward $295.45 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "AMD",
+    "status": "refused",
+    "reason": "AMD would reach 5.38% of the 74,121.34 portfolio (3,987.33 incl. 564.68 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "submitted",
+    "qty": 4.0,
+    "order": {
+      "id": "1310c120-4e14-4f6b-a11d-4c1897bc8728",
+      "client_order_id": "e7135364-3f55-4ce5-9613-9bdd9ea01b1e",
+      "created_at": "2026-10-28T13:46:35.072599Z",
+      "updated_at": "2026-10-28T13:46:35.074697Z",
+      "submitted_at": "2026-10-28T13:46:35.072599Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-10-28T20:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "09a51104-980a-47b6-ad4d-e4f04059be4a",
+      "symbol": "ABBV",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "4",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "288.23",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null
+    },
+    "checkpoint": "market_open"
+  }
+]

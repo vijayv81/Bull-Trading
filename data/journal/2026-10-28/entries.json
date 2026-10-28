@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 88.0,
+    "reasoning": "Auto-applied: confidence 88.0 (technical=0.8282770066765623, sentiment=None, catalyst=1.0, fundamental=None)",
+    "reference_price": 285.43,
+    "recorded_at": "2026-10-28T13:46:35.541450+00:00",
+    "outcome": null
+  }
+]

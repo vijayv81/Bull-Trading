@@ -170,16 +170,16 @@
    }
   },
   "LLY": {
-   "at": "2026-10-21T03:29:35.159156+00:00",
+   "at": "2026-10-28T13:46:54.831518+00:00",
    "value": {
     "debtToEquity": 162.071,
-    "forwardPE": 27.190605,
-    "marketCap": 1144692801536,
+    "forwardPE": 27.15812,
+    "marketCap": 1147635499008,
     "profitMargins": 0.33528998,
     "returnOnEquity": 1.02286,
     "revenueGrowth": 0.477,
     "totalRevenue": 79666003968,
-    "trailingPE": 43.090298
+    "trailingPE": 43.201073
    }
   },
   "META": {
