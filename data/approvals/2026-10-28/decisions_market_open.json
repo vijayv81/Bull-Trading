@@ -1,0 +1,22 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-28T13:46:21.502693+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-28T13:46:26.945698+00:00"
+  }
+]
