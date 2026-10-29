@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "ABBV",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-29T19:46:45.634160+00:00"
+  },
+  {
+    "ticker": "PLTR",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-29T19:46:50.270702+00:00"
+  },
+  {
+    "ticker": "MSFT",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-29T19:47:23.986535+00:00"
+  },
+  {
+    "ticker": "AAPL",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-29T19:47:34.433553+00:00"
+  }
+]

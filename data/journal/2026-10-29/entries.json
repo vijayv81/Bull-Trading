@@ -8,6 +8,31 @@
     "reasoning": "Auto-applied: confidence 90.0 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None)",
     "reference_price": 575.1949999999999,
     "recorded_at": "2026-10-29T14:03:40.963777+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 575.1949999999999,
+      "price_at_measurement": 565.9100000000001,
+      "price_basis": "quote_mid",
+      "pct_change": -1.61,
+      "directionally_correct": false,
+      "measured_at": "2026-10-29T19:48:28.060600+00:00"
+    }
+  },
+  {
+    "ticker": "MSFT",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 88.1,
+    "reasoning": "Auto-applied: confidence 88.1 (technical=0.8038629075535926, sentiment=1.0, catalyst=None, fundamental=0.8636)",
+    "reference_price": 529.025,
+    "recorded_at": "2026-10-29T19:47:33.627232+00:00",
+    "outcome": {
+      "price_at_decision": 529.025,
+      "price_at_measurement": 528.61,
+      "price_basis": "quote_mid",
+      "pct_change": -0.08,
+      "directionally_correct": false,
+      "measured_at": "2026-10-29T19:48:28.480421+00:00"
+    }
   }
 ]
