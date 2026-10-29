@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "TXN",
+    "status": "refused",
+    "reason": "TXN would reach 7.94% of the 74,137.12 portfolio (5,884.28 incl. 3,702.24 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 6.26% of the 74,139.98 portfolio (4,638.38 incl. 3,470.22 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "LLY",
+    "status": "deferred",
+    "reason": "Price $1373.88 is 88% of the way up its 1-month range ($1131.21-$1408.38) and 5.4% above its 1-week average $1299.42 \u2014 waiting for a pullback toward $1299.42 would buy it cheaper.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "CVX",
+    "status": "refused",
+    "reason": "CVX (Unclassified) would push that sector to 35.47% of the 74,136.94 portfolio, over the 30.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "AAPL",
+    "status": "refused",
+    "reason": "AAPL (Unclassified) would push that sector to 35.17% of the 74,143.59 portfolio, over the 30.0% cap.",
+    "checkpoint": "midday"
+  }
+]
