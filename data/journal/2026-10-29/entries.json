@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 90.0,
+    "reasoning": "Auto-applied: confidence 90.0 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None)",
+    "reference_price": 575.1949999999999,
+    "recorded_at": "2026-10-29T14:03:40.963777+00:00",
+    "outcome": null
+  }
+]
