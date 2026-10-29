@@ -52,6 +52,19 @@
     "trailingPE": 49.012043
    }
   },
+  "CROX": {
+   "at": "2026-10-29T14:03:44.609113+00:00",
+   "value": {
+    "debtToEquity": null,
+    "forwardPE": 9.79616,
+    "marketCap": 7047926272,
+    "profitMargins": null,
+    "returnOnEquity": null,
+    "revenueGrowth": null,
+    "totalRevenue": null,
+    "trailingPE": 12.883436
+   }
+  },
   "CSCO": {
    "at": "2026-10-27T14:05:51.913503+00:00",
    "value": {
@@ -89,6 +102,19 @@
     "revenueGrowth": null,
     "totalRevenue": null,
     "trailingPE": 8.208381
+   }
+  },
+  "GKOS": {
+   "at": "2026-10-29T14:03:51.135770+00:00",
+   "value": {
+    "debtToEquity": 15.766,
+    "forwardPE": 392.98795,
+    "marketCap": 13672476672,
+    "profitMargins": -0.30685,
+    "returnOnEquity": -0.25981,
+    "revenueGrowth": 0.495,
+    "totalRevenue": 612838976,
+    "trailingPE": null
    }
   },
   "GMAB": {
@@ -156,6 +182,19 @@
     "trailingPE": null
    }
   },
+  "IOVA": {
+   "at": "2026-10-29T14:03:57.764717+00:00",
+   "value": {
+    "debtToEquity": 6.25,
+    "forwardPE": -52.796936,
+    "marketCap": 4681459712,
+    "profitMargins": -0.89091,
+    "returnOnEquity": -0.40363997,
+    "revenueGrowth": 0.657,
+    "totalRevenue": 324968992,
+    "trailingPE": null
+   }
+  },
   "IREN": {
    "at": "2026-10-29T13:02:00.244438+00:00",
    "value": {
@@ -193,6 +232,19 @@
     "revenueGrowth": 0.477,
     "totalRevenue": 79666003968,
     "trailingPE": 43.201073
+   }
+  },
+  "MA": {
+   "at": "2026-10-29T14:04:04.602675+00:00",
+   "value": {
+    "debtToEquity": 439.583,
+    "forwardPE": 27.660997,
+    "marketCap": 559027191808,
+    "profitMargins": 0.46339,
+    "returnOnEquity": 2.41202,
+    "revenueGrowth": 0.141,
+    "totalRevenue": 35083001856,
+    "trailingPE": 35.101852
    }
   },
   "META": {
@@ -352,16 +404,16 @@
    }
   },
   "XOM": {
-   "at": "2026-10-22T13:47:22.540093+00:00",
+   "at": "2026-10-29T14:03:21.585317+00:00",
    "value": {
-    "debtToEquity": 15.921,
-    "forwardPE": 14.542833,
-    "marketCap": 734099603456,
-    "profitMargins": 0.09072,
-    "returnOnEquity": 0.12584,
-    "revenueGrowth": 0.441,
-    "totalRevenue": 361060007936,
-    "trailingPE": 22.976833
+    "debtToEquity": null,
+    "forwardPE": null,
+    "marketCap": null,
+    "profitMargins": null,
+    "returnOnEquity": null,
+    "revenueGrowth": null,
+    "totalRevenue": null,
+    "trailingPE": null
    }
   },
   "XP": {

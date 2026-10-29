@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "TXN",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 7.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-29T14:03:23.092101+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-29T14:03:28.329247+00:00"
+  },
+  {
+    "ticker": "AMD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-29T14:03:32.843797+00:00"
+  },
+  {
+    "ticker": "CVX",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-29T14:04:15.232792+00:00"
+  }
+]

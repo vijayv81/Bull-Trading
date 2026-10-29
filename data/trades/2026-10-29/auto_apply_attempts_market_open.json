@@ -1,0 +1,69 @@
+[
+  {
+    "ticker": "TXN",
+    "status": "refused",
+    "reason": "TXN would reach 7.92% of the 74,209.92 portfolio (5,875.65 incl. 3,697.32 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 7.88% of the 74,214.35 portfolio (5,851.58 incl. 3,496.62 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "AMD",
+    "status": "submitted",
+    "qty": 3.0,
+    "order": {
+      "id": "cb51bf1c-694b-4553-93b1-e35f771414de",
+      "client_order_id": "15e5a6f2-26af-4578-80cc-2029909c8c3d",
+      "created_at": "2026-10-29T14:03:40.415638Z",
+      "updated_at": "2026-10-29T14:03:40.428601Z",
+      "submitted_at": "2026-10-29T14:03:40.415638Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-10-29T20:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "03fb07bb-5db1-4077-8dea-5d711b272625",
+      "symbol": "AMD",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "3",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "573.67",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null
+    },
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "CROX",
+    "status": "deferred",
+    "reason": "Price $147.07 is 90% of the way up its 1-month range ($114.08-$150.68) and 15.1% above its 1-week average $124.82 \u2014 waiting for a pullback toward $124.82 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "CVX",
+    "status": "refused",
+    "reason": "CVX (Unclassified) would push that sector to 35.77% of the 74,218.35 portfolio, over the 30.0% cap.",
+    "checkpoint": "market_open"
+  }
+]
