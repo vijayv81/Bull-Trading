@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 90.0 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-9.32)",
     "reference_price": 562.0450000000001,
     "recorded_at": "2026-10-30T13:02:46.103281+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 562.0450000000001,
+      "price_at_measurement": 499.71500000000003,
+      "price_basis": "quote_mid",
+      "pct_change": -11.09,
+      "directionally_correct": true,
+      "measured_at": "2026-10-30T19:48:41.275711+00:00"
+    }
   },
   {
     "ticker": "V",
@@ -19,7 +26,14 @@
     "reasoning": "Auto-applied: confidence 91.5 (technical=0.877990006365025, sentiment=None, catalyst=1.0, fundamental=None)",
     "reference_price": 415.355,
     "recorded_at": "2026-10-30T16:34:08.373114+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 415.355,
+      "price_at_measurement": 412.85,
+      "price_basis": "quote_mid",
+      "pct_change": -0.6,
+      "directionally_correct": false,
+      "measured_at": "2026-10-30T19:48:41.643731+00:00"
+    }
   },
   {
     "ticker": "CVX",
@@ -30,7 +44,14 @@
     "reasoning": "Auto-applied: confidence 91.0 (technical=0.868520509735583, sentiment=1.0, catalyst=None, fundamental=0.8591)",
     "reference_price": 235.28,
     "recorded_at": "2026-10-30T16:34:17.430555+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 235.28,
+      "price_at_measurement": 235.31,
+      "price_basis": "quote_mid",
+      "pct_change": 0.01,
+      "directionally_correct": true,
+      "measured_at": "2026-10-30T19:48:42.007577+00:00"
+    }
   },
   {
     "ticker": "MA",
@@ -41,6 +62,49 @@
     "reasoning": "Auto-applied: confidence 88.0 (technical=0.8381385960714316, sentiment=1.0, catalyst=1.0, fundamental=0.6574)",
     "reference_price": 637.925,
     "recorded_at": "2026-10-30T16:34:26.835764+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 637.925,
+      "price_at_measurement": 623.54,
+      "price_basis": "quote_mid",
+      "pct_change": -2.25,
+      "directionally_correct": false,
+      "measured_at": "2026-10-30T19:48:42.331840+00:00"
+    }
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 90.3,
+    "reasoning": "Auto-applied: confidence 90.3 (technical=0.8607220603030616, sentiment=None, catalyst=1.0, fundamental=None)",
+    "reference_price": 413.12,
+    "recorded_at": "2026-10-30T19:47:46.547505+00:00",
+    "outcome": {
+      "price_at_decision": 413.12,
+      "price_at_measurement": 412.85,
+      "price_basis": "quote_mid",
+      "pct_change": -0.07,
+      "directionally_correct": false,
+      "measured_at": "2026-10-30T19:48:42.651974+00:00"
+    }
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 88.2,
+    "reasoning": "Auto-applied: confidence 88.2 (technical=0.8444390523256768, sentiment=1.0, catalyst=1.0, fundamental=0.6574)",
+    "reference_price": 637.96,
+    "recorded_at": "2026-10-30T19:47:54.310751+00:00",
+    "outcome": {
+      "price_at_decision": 637.96,
+      "price_at_measurement": 623.54,
+      "price_basis": "quote_mid",
+      "pct_change": -2.26,
+      "directionally_correct": false,
+      "measured_at": "2026-10-30T19:48:43.095722+00:00"
+    }
   }
 ]
