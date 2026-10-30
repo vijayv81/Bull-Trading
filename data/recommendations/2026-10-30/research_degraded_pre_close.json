@@ -1,0 +1,14 @@
+[
+  {
+    "checkpoint": "pre_close",
+    "fallback": 23,
+    "total": 23,
+    "sources": {
+      "yahoo_finance_fallback": 23
+    },
+    "primary_errors": [
+      "401 Client Error: Unauthorized for url: https://api.perplexity.ai/v1/agent"
+    ],
+    "at": "2026-10-30T19:48:21.675613+00:00"
+  }
+]
