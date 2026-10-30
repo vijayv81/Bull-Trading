@@ -40,16 +40,16 @@
    }
   },
   "COST": {
-   "at": "2026-10-22T19:47:12.041271+00:00",
+   "at": "2026-10-30T16:33:34.221336+00:00",
    "value": {
     "debtToEquity": 28.436,
-    "forwardPE": 40.656796,
-    "marketCap": 450879684608,
+    "forwardPE": 40.686764,
+    "marketCap": 451212017664,
     "profitMargins": 0.03043,
     "returnOnEquity": 0.28402,
     "revenueGrowth": 0.111,
     "totalRevenue": 303154003968,
-    "trailingPE": 49.012043
+    "trailingPE": 49.04817
    }
   },
   "CROX": {
@@ -287,16 +287,16 @@
    }
   },
   "PFE": {
-   "at": "2026-10-21T03:29:39.670630+00:00",
+   "at": "2026-10-30T16:33:51.387571+00:00",
    "value": {
     "debtToEquity": 74.253,
-    "forwardPE": 10.432837,
-    "marketCap": 171617173504,
+    "forwardPE": 10.597797,
+    "marketCap": 174210531328,
     "profitMargins": 0.06804,
     "returnOnEquity": 0.05014,
     "revenueGrowth": 0.026,
     "totalRevenue": 63695998976,
-    "trailingPE": 39.618423
+    "trailingPE": 40.217106
    }
   },
   "PG": {
@@ -439,6 +439,14 @@
    "at": "2026-10-23T13:43:36.784313+00:00",
    "value": "Technology"
   },
+  "CVX": {
+   "at": "2026-10-30T16:34:15.373933+00:00",
+   "value": "Energy"
+  },
+  "MA": {
+   "at": "2026-10-30T16:34:24.392094+00:00",
+   "value": "Financial Services"
+  },
   "MGLD": {
    "at": "2026-10-23T13:43:38.479496+00:00",
    "value": "Financial Services"
@@ -458,6 +466,10 @@
   "TXN": {
    "at": "2026-10-23T13:43:54.574559+00:00",
    "value": "Technology"
+  },
+  "V": {
+   "at": "2026-10-30T16:34:06.024245+00:00",
+   "value": "Financial Services"
   },
   "XOM": {
    "at": "2026-10-23T16:43:32.636146+00:00",

@@ -9,5 +9,38 @@
     "reference_price": 562.0450000000001,
     "recorded_at": "2026-10-30T13:02:46.103281+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 91.5,
+    "reasoning": "Auto-applied: confidence 91.5 (technical=0.877990006365025, sentiment=None, catalyst=1.0, fundamental=None)",
+    "reference_price": 415.355,
+    "recorded_at": "2026-10-30T16:34:08.373114+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "CVX",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 91.0,
+    "reasoning": "Auto-applied: confidence 91.0 (technical=0.868520509735583, sentiment=1.0, catalyst=None, fundamental=0.8591)",
+    "reference_price": 235.28,
+    "recorded_at": "2026-10-30T16:34:17.430555+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 88.0,
+    "reasoning": "Auto-applied: confidence 88.0 (technical=0.8381385960714316, sentiment=1.0, catalyst=1.0, fundamental=0.6574)",
+    "reference_price": 637.925,
+    "recorded_at": "2026-10-30T16:34:26.835764+00:00",
+    "outcome": null
   }
 ]

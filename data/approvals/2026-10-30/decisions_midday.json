@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "V",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-30T16:34:00.110894+00:00"
+  },
+  {
+    "ticker": "CVX",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-30T16:34:09.238589+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-10-30T16:34:18.122530+00:00"
+  }
+]
