@@ -44,6 +44,10 @@ def _no_external_side_effects(monkeypatch, tmp_path, request):
 
     monkeypatch.setattr(alpaca_client, "get_latest_trade", no_live_data)
     monkeypatch.setattr(alpaca_client, "get_delayed_quote", no_live_data)
+    # No live fill history: the re-entry cooldown reads it; empty means "no recent exits".
+    # test_sell_results exercises get_filled_orders itself against a fake client.
+    if request.module.__name__.split(".")[-1] != "test_sell_results":
+        monkeypatch.setattr(alpaca_client, "get_filled_orders", lambda since=None: [])
 
     data = tmp_path / "_data"
     for module, names in (

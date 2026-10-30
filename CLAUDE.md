@@ -841,6 +841,32 @@ no BUY at all, because the entry filter refuses almost every mover.
   name still goes through research, scoring, the entry filter and the guardrails,
   and the ranking signal has been right 40% of the time.
 
+## Sector-cap fixes and the re-entry cooldown (2026-10-30)
+
+Per user instruction 2026-10-30, after the week to 10-29 (the active slice's first
+profitable week: +$600 realized on four take-profit sells).
+
+- **Sector cap (two bugs).** AAPL, CVX and V were refused 5+ times as
+  "Unclassified sector over 30%". (1) Yahoo had returned them once without a
+  sector (a partial `.info` response), and `get_sector()` cached that "no sector"
+  for 30 days. Now an empty sector is cached only when Yahoo says the symbol is a
+  fund (`quoteType` ETF/MUTUALFUND/INDEX, e.g. SPY); for a stock it is treated as a
+  failed lookup, not cached, and retried next time (a stale real sector is kept
+  meanwhile). The four cached empties were cleared from
+  `data/reference/yahoo_reference.json`. (2) The SPY core (34% of the account, no
+  sector) was counted in the "Unclassified" bucket, which alone put that bucket
+  over the cap. The core's value is now left out of every sector's total in
+  `sector_concentration_reason()`, not only exempt from its own check.
+- **Re-entry cooldown** (`guardrails.reentry_cooldown_reason()`,
+  `execution.reentry_cooldown_days: 3`, `0` turns it off): no BUY of a ticker for 3
+  trading days after it was sold, unless the price is back below that sale's fill
+  (`reentry_below_exit_allowed: true`). AMD was taken profit on at $559.11 on
+  10-27, bought back at $562.96 that afternoon and at $568.85 on 10-29, and was
+  $527 that evening. Replayed on the real fills, both re-buys are refused. Checked at
+  scoring (the BUY becomes `HOLD` with `blocked_reentry`) and again in
+  `submit_approved_order()`. Reads Alpaca's fills, so it fails closed when they
+  can't be read; weekdays count as trading days (holidays are not excluded).
+
 ## Timing check: is now the right price, or better to wait? (scoring/timing.py)
 
 Per user instruction 2026-10-10 ("before deciding to BUY or SELL ... review the
@@ -964,7 +990,8 @@ it can never place.
    warrants alone made up over 8% of the portfolio, invisible to this
    guardrail). Cap: `risk_limits.yaml -> portfolio.max_sector_concentration_pct`
    (30%, raised from 25% per user instruction 2026-09-29); unset/zero means
-   no cap.
+   no cap. The core index holding is left out of every sector total, and a
+   stock's missing sector is not cached (see "Sector-cap fixes" above).
 9. **Minimum confidence to buy** — `min_confidence_reason()`, checked before
    any BUY (never a SELL — see "Minimum confidence to buy" below). Backstop
    for the same bar `recommendation_engine.score_candidate()` already
