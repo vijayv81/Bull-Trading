@@ -213,6 +213,12 @@ execution:
   # spreads were 0.03% and 1.0%, so both BUYs were refused. `iex` reverts. The BUY
   # limit is set off the latest IEX trade when it is under 15 minutes old.
   spread_quote_feed: delayed_sip
+  # Re-entry cooldown (per user instruction 2026-10-30): no BUY of a ticker for this
+  # many trading days after it was sold, unless its price is back below that sale's
+  # fill. AMD was taken profit on at $559 on 10-27 and bought back at $563 and $569
+  # within two days; it was $527 by 10-29. 0 turns it off. guardrails.reentry_cooldown_reason().
+  reentry_cooldown_days: 3
+  reentry_below_exit_allowed: true
   # A BUY refuses on a one-sided quote or a bid/ask spread wider than this %
   # of the midpoint. Unset/zero skips the width check (a missing side still refuses).
   max_spread_pct: 5.0

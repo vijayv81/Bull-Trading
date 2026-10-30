@@ -40,6 +40,7 @@ from trading_agent.guardrails import (
     daily_loss_reason,
     halt_allows_exits,
     is_option_symbol,
+    reentry_cooldown_reason,
 )
 from trading_agent.notify.approval_gateway import (
     notify_checkpoint_halted,
@@ -286,6 +287,14 @@ def _score_tickers(
                 if cp_block:
                     rec["action"] = "HOLD"
                     rec["blocked_checkpoint"] = cp_block
+            # Re-entry cooldown after an exit (guardrails.reentry_cooldown_reason()):
+            # reported HOLD with the reason, so the digest doesn't headline a BUY the
+            # order gate would refuse.
+            if rec["action"] == "BUY":
+                cooldown = reentry_cooldown_reason(ticker, "BUY", reference_price)
+                if cooldown:
+                    rec["action"] = "HOLD"
+                    rec["blocked_reentry"] = cooldown
             if exits_only and rec["action"] == "BUY":
                 rec["action"] = "HOLD"
                 rec["halted_no_new_buys"] = True

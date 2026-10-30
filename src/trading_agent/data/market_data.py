@@ -36,6 +36,7 @@ from trading_agent.config import DATA_DIR, RAW_DATA_DIR
 YAHOO_RSS_URL = "https://feeds.finance.yahoo.com/rss/2.0/headline"
 REFERENCE_CACHE_PATH = DATA_DIR / "reference" / "yahoo_reference.json"
 SECTOR_TTL_DAYS = 30
+FUND_QUOTE_TYPES = {"ETF", "MUTUALFUND", "INDEX"}
 FUNDAMENTALS_TTL_DAYS = 7
 YAHOO_MIN_INTERVAL_S = 1.0
 YAHOO_RETRY_BACKOFF_S = 5.0
@@ -193,10 +194,19 @@ def get_sector(ticker: str) -> str | None:
             _SECTOR_CACHE[ticker] = value
         else:
             try:
-                _SECTOR_CACHE[ticker] = _yahoo_info(ticker).get("sector") or None
-                _store("sector", ticker, _SECTOR_CACHE[ticker])
+                info = _yahoo_info(ticker)
+                sector = info.get("sector") or None
+                # No sector is only an answer for a fund (SPY, QQQ ...). For anything
+                # else it is a partial response: on 2026-10 AAPL, CVX and V came back
+                # without one, were cached as "no sector" for 30 days, and every BUY of
+                # them was refused as "Unclassified". Not cached; retried next time.
+                if sector is None and str(info.get("quoteType", "")).upper() not in FUND_QUOTE_TYPES:
+                    raise RuntimeError(f"Yahoo returned no sector for {ticker}")
+                _SECTOR_CACHE[ticker] = sector
+                _store("sector", ticker, sector)
             except Exception:
-                _SECTOR_CACHE[ticker] = value if present else None  # stale beats nothing
+                # stale beats nothing, but a stale "no sector" is not worth keeping
+                _SECTOR_CACHE[ticker] = value if present else None
     return _SECTOR_CACHE[ticker]
 
 

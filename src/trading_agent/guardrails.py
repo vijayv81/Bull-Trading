@@ -442,6 +442,61 @@ def satellite_exposure_reason(symbol: str, side: str, qty: float, price: float |
     return None
 
 
+def reentry_cooldown_reason(
+    symbol: str, side: str, price: float | None = None, today: "date | None" = None
+) -> str | None:
+    """Refuse a BUY of a ticker sold within the last `execution.reentry_cooldown_days`
+    trading days (3), unless its price is now below that sale's fill price
+    (`reentry_below_exit_allowed`, default true). Per user instruction 2026-10-30:
+    AMD was sold on a take-profit at $559.11 on 10-27, rebought the same afternoon at
+    $562.96 and again on 10-29 at $568.85, and was $527 that evening. The same
+    signal that had just been cashed in bought the position straight back, higher.
+    BUY only. Reads Alpaca's fills; fails closed if they can't be read. 0 turns it off.
+    Weekdays are counted as trading days (holidays are not excluded)."""
+    if side.upper() != "BUY":
+        return None
+    cfg = load_risk_limits().get("execution", {}) or {}
+    days = int(cfg.get("reentry_cooldown_days", 0) or 0)
+    if days <= 0:
+        return None
+    import numpy as np
+    from datetime import datetime, timedelta, timezone
+    from zoneinfo import ZoneInfo
+
+    et = ZoneInfo("America/New_York")
+    try:
+        from trading_agent.data.alpaca_client import get_filled_orders
+
+        since = datetime.now(timezone.utc) - timedelta(days=days * 2 + 7)
+        sells = [
+            o for o in get_filled_orders(since=since)
+            if str(o.get("symbol", "")).upper() == symbol.upper() and "sell" in str(o.get("side", "")).lower()
+        ]
+    except Exception as exc:
+        return f"Cannot verify {symbol}'s recent exits for the re-entry cooldown ({exc}) — refusing to proceed blind."
+    if not sells:
+        return None
+    last = sells[-1]
+    exit_price = float(last.get("filled_avg_price") or 0.0)
+    sold_on = datetime.fromisoformat(str(last["filled_at"]).replace("Z", "+00:00")).astimezone(et).date()
+    today = today or datetime.now(et).date()
+    elapsed = int(np.busday_count(sold_on, today))
+    if elapsed > days:
+        return None
+    if cfg.get("reentry_below_exit_allowed", True) and exit_price > 0:
+        try:
+            current = price or _mid_price(symbol)
+        except Exception as exc:
+            return f"Cannot price {symbol} for the re-entry cooldown ({exc}) — refusing to proceed blind."
+        if current < exit_price:
+            return None
+    return (
+        f"{symbol} was sold on {sold_on} at ${exit_price:,.2f}, {elapsed} trading day(s) ago; no BUY "
+        f"for {days} trading days after an exit unless the price is back below the exit "
+        "(risk_limits.yaml -> execution.reentry_cooldown_days)."
+    )
+
+
 def exits_exempt_from_trade_cap() -> bool:
     """portfolio.exits_exempt_from_daily_trade_cap: SELLs neither count against
     nor are refused by the daily order caps (they only ever reduce a long)."""
@@ -718,10 +773,16 @@ def sector_concentration_reason(symbol: str, side: str, qty: float) -> str | Non
     if equity <= 0:
         return f"Cannot verify the {cap}% sector concentration cap: account equity is {equity}."
 
+    # The core index holding is not a sector bet, so its value is left out of every
+    # sector's total, not only exempt from its own check: at 34% of the account SPY
+    # (no sector, so "Unclassified") alone filled that bucket past the 30% cap, and
+    # every unclassified name was refused (CVX, V, AAPL, week to 2026-10-29).
+    core = core_symbol()
     other_sector_value = sum(
         abs(float(p.get("market_value") or 0.0))
         for p in positions
-        if str(p.get("symbol", "")).upper() != symbol.upper() and _sector_bucket(str(p.get("symbol", ""))) == sector
+        if str(p.get("symbol", "")).upper() not in (symbol.upper(), core)
+        and _sector_bucket(str(p.get("symbol", ""))) == sector
     )
     projected = other_sector_value + _existing_position_value(symbol) + qty * price
     pct = projected / equity * 100
