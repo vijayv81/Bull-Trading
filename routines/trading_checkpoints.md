@@ -107,7 +107,8 @@ No human is present; it never approves, rejects or sizes a trade, and it places
 no orders (the checkpoints do that). If a step fails it says so plainly in its
 completion message and carries on to the email, which must go out either way.
 The trigger uses a `CRON_TZ=America/New_York` expression (`30 16 * * 1-5`), so
-unlike the four UTC-cron checkpoints it follows DST by itself.
+it follows DST by itself — same as all five cloud routines now (see "Cloud
+cron schedules are DST-aware" below).
 
 ## Refining them
 
@@ -137,25 +138,31 @@ switch (`false` blocks every order, auto or manual), and
 submits its own top picks without a human approving them first — see
 CLAUDE.md's "Auto-apply" section before enabling that combination.
 
-## Cloud cron schedules are UTC-only — recheck at each DST transition
+## Cloud cron schedules are DST-aware (fixed 2026-10-30)
 
-(The 4:30pm `post_close` wrap-up is exempt: its trigger carries a
-`CRON_TZ=America/New_York` prefix, which the trigger tools accept, so it stays
-at 4:30pm ET across both transitions with no update. Only the four below need
-it.)
+All five cloud routines — the four checkpoints plus `post_close` — now carry
+a `CRON_TZ=America/New_York` prefix on `cron_expression` (e.g. `CRON_TZ=
+America/New_York 45 8 * * 1-5` for `pre_open`), which the trigger platform
+resolves against the real IANA tz database. That means DST is handled
+automatically, permanently — confirmed live: switching `pre_open` to this
+format on 2026-10-30 immediately computed the correct post-transition
+`next_run_at` (2026-11-02T13:45:00Z, i.e. 8:45 ET under EST) with no manual
+recomputation.
 
-The four cloud routines (`bull-trading-pre-open/market-open/midday/pre-close`)
-are cron-triggered in UTC; the trigger platform has no timezone field, so the
-UTC time for a fixed ET checkpoint shifts by an hour across the twice-yearly
-US DST transition unless the cron expression is recomputed and pushed.
+This replaces the original design, which scheduled the four checkpoints on
+bare UTC cron (no timezone field) and needed `src/trading_agent/scheduling.py`
+plus a pair of twice-yearly self-reminders to recompute and push each
+transition by hand. Those reminders are now disabled (one had already fired
+and auto-disabled itself; the other was disabled manually once the permanent
+fix landed) — nothing should ever recreate that pattern for a cloud routine
+again. `scheduling.py` / `trading-agent cron-status` are kept only as a
+reference for what each checkpoint's UTC-equivalent time is on a given date;
+they are no longer load-bearing for keeping any live trigger correct.
 
-`src/trading_agent/scheduling.py` is the single source of truth for the
-correct UTC cron per checkpoint — it converts through `zoneinfo`
-(`America/New_York`) rather than a hand-maintained transition calendar, so it
-stays correct indefinitely. Run `trading-agent cron-status` to see today's
-correct expressions, and near each transition (next: 2026-11-01, then
-2027-03-14) an agent session with routine-management access updates the four
-triggers' `cron_expression` (schedule-only, not the prompt) to match.
+If you ever add a sixth cloud routine (or recreate one of these from
+scratch), give it `CRON_TZ=America/New_York` from the start rather than a
+bare UTC cron — there is no reason to reintroduce the manual-recheck
+problem this section used to describe.
 
 ## Guardrails
 
