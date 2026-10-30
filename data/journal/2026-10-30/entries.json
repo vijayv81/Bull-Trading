@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "AMD",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 90.0,
+    "reasoning": "Auto-applied: confidence 90.0 (technical=1.0, sentiment=None, catalyst=0.6666666666666666, fundamental=None), sell_pressure=1.0 (position_pnl_pct=-9.32)",
+    "reference_price": 562.0450000000001,
+    "recorded_at": "2026-10-30T13:02:46.103281+00:00",
+    "outcome": null
+  }
+]
