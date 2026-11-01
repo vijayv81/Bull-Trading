@@ -126,6 +126,12 @@ held were still scored on price data alone (`research_unavailable` on the
 recommendation) and can still be sold; nothing new can be bought. Commit the
 record like any other checkpoint output.
 
+Since 2026-11-01 Perplexity is **switched off in config**
+(`agent_config.yaml -> research.perplexity_enabled: false`), so every recommendation
+comes from the Yahoo RSS / Alpaca news fallbacks and no "degraded" notice is sent.
+That is expected; mention it once in your summary, don't treat it as a failure, and
+don't flip the setting yourself — the user re-enables it by hand.
+
 `RESEARCH DEGRADED: N of M tickers researched without Perplexity` is the milder
 case: the Yahoo RSS / Alpaca news fallbacks answered, so recommendations were still
 made, from headlines only. The run has recorded it (and emailed once for the day).

@@ -24,7 +24,7 @@ from typing import Any
 
 import requests
 
-from trading_agent.config import RAW_DATA_DIR, require_env
+from trading_agent.config import RAW_DATA_DIR, load_agent_config, require_env
 from trading_agent.utils import day_dir
 
 PERPLEXITY_URL = "https://api.perplexity.ai/v1/agent"
@@ -129,6 +129,16 @@ def _extract_sources(raw: dict[str, Any]) -> list[str]:
                 if url:
                     urls.append(url)
     return urls
+
+
+PERPLEXITY_DISABLED = "Perplexity disabled in config (agent_config.yaml -> research.perplexity_enabled: false)"
+
+
+def perplexity_enabled() -> bool:
+    """agent_config.yaml -> research.perplexity_enabled (default true). Turned off
+    on 2026-11-01 after 401s on every call since 10-16: research then goes straight
+    to the Yahoo RSS / Alpaca news fallbacks, without a doomed call per ticker."""
+    return bool((load_agent_config().get("research") or {}).get("perplexity_enabled", True))
 
 
 # Why Perplexity didn't answer, per ticker, so a fallback result can say so
@@ -238,7 +248,11 @@ def research_ticker(ticker: str, checkpoint: str, force_refresh: bool = False) -
         "last 24 hours. Include any notable options flow or unusual volume commentary."
     )
     _last_primary_error.pop(ticker, None)
-    result = _perplexity_extraction(ticker, checkpoint, prompt) or _yahoo_fallback_extraction(ticker, checkpoint)
+    if perplexity_enabled():
+        result = _perplexity_extraction(ticker, checkpoint, prompt) or _yahoo_fallback_extraction(ticker, checkpoint)
+    else:
+        _last_primary_error[ticker] = PERPLEXITY_DISABLED
+        result = _yahoo_fallback_extraction(ticker, checkpoint)
     if result is not None and result["extraction"].get("research_source") != "perplexity":
         result["extraction"]["primary_error"] = _last_primary_error.get(ticker)
     if result is None:
