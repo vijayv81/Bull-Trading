@@ -159,7 +159,17 @@ again. `scheduling.py` / `trading-agent cron-status` are kept only as a
 reference for what each checkpoint's UTC-equivalent time is on a given date;
 they are no longer load-bearing for keeping any live trigger correct.
 
-If you ever add a sixth cloud routine (or recreate one of these from
+**Reviewed 2026-11-01 (the day DST ended):** the Saturday weekly learning review
+was already on `CRON_TZ=America/New_York 58 5 * * 6`. One routine had been
+missed: the "Daily pending-approval check" (a chat summary, not one of the five
+above) was still on bare UTC `45 19 * * 1-5`, which would have moved it from
+3:45pm to 2:45pm ET. It is now `CRON_TZ=America/New_York 45 15 * * 1-5`. Every
+recurring routine on the account is now Eastern-time based. Next runs after the
+change (EST, UTC-5): pre_open 13:45Z, market_open 14:40Z, midday ~17:35Z,
+pre_close 20:45Z, post_close ~21:43Z, pending-approval check 20:45Z, Saturday
+review 10:58Z (the platform adds a few minutes to some, as before).
+
+If you ever add a new cloud routine (or recreate one of these from
 scratch), give it `CRON_TZ=America/New_York` from the start rather than a
 bare UTC cron — there is no reason to reintroduce the manual-recheck
 problem this section used to describe.

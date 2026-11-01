@@ -49,7 +49,7 @@ from trading_agent.notify.approval_gateway import (
     notify_research_outage,
     save_recommendation,
 )
-from trading_agent.research.perplexity_client import research_ticker
+from trading_agent.research.perplexity_client import perplexity_enabled, research_ticker
 from trading_agent.scoring.recommendation_engine import (
     MIN_BARS_FOR_TECHNICAL,
     TREND_FETCH_CALENDAR_DAYS,
@@ -472,10 +472,11 @@ def run_checkpoint(checkpoint: str, extra_tickers: list[str] | None = None) -> l
             notify_research_outage(checkpoint, research_failed, attempted, errors)
         except Exception as exc:  # noqa: BLE001
             print(f"Could not announce the research outage: {exc}")
-    elif results:
+    elif results and perplexity_enabled():
         # Degraded, not down: the fallbacks answered, but Perplexity did not for most
         # tickers. 2026-10-22 ran all day on Yahoo headlines with Perplexity returning
-        # 401, and nothing said so because no ticker actually failed.
+        # 401, and nothing said so because no ticker actually failed. Not reported
+        # while Perplexity is switched off on purpose (research.perplexity_enabled).
         fallback = [r for r in results if r.get("research_source") not in (None, "perplexity")]
         if len(results) >= 3 and len(fallback) / len(results) * 100 >= threshold:
             sources = dict(Counter(r.get("research_source") for r in fallback))

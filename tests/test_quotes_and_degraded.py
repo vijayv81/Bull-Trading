@@ -244,3 +244,48 @@ def test_the_daily_summary_lists_degraded_checkpoints(monkeypatch):
     plain, html = sent[0][1], sent[0][2]
     assert "midday: 15 of 15 tickers via fallback — 401 Unauthorized" in plain
     assert "Research quality" in html
+
+
+# --- Perplexity switched off in config (2026-11-01) ------------------------------------
+
+
+def test_disabled_perplexity_is_never_called_and_the_fallback_says_why(monkeypatch, no_cache):
+    monkeypatch.setattr(pc, "perplexity_enabled", lambda: False)
+    monkeypatch.setattr(pc, "query_perplexity", lambda prompt: pytest.fail("Perplexity must not be called"))
+    monkeypatch.setattr("trading_agent.data.market_data.fetch_news_headlines",
+                        lambda t, limit=5: [{"title": "Headline", "url": "https://x"}])
+    out = pc.research_ticker("AMD", "midday")
+    assert out["research_source"] == "yahoo_finance_fallback"
+    assert "disabled in config" in out["primary_error"]
+
+
+def test_disabled_perplexity_with_no_fallback_still_refuses_to_score(monkeypatch, no_cache):
+    monkeypatch.setattr(pc, "perplexity_enabled", lambda: False)
+    monkeypatch.setattr("trading_agent.data.market_data.fetch_news_headlines", lambda t, limit=5: [])
+    monkeypatch.setattr("trading_agent.data.alpaca_client.get_news_headlines", lambda t, limit=5: [])
+    with pytest.raises(RuntimeError, match="No research data available"):
+        pc.research_ticker("AMD", "midday")
+
+
+def test_no_degraded_alert_while_perplexity_is_off_on_purpose(monkeypatch, checkpoint):
+    monkeypatch.setattr(orch, "perplexity_enabled", lambda: False)
+    monkeypatch.setattr(orch, "research_ticker", _research())
+    orch.run_checkpoint("midday")
+    assert checkpoint["degraded"] == [] and checkpoint["outage"] == []
+
+
+def test_an_outage_is_still_reported_while_perplexity_is_off(monkeypatch, checkpoint):
+    monkeypatch.setattr(orch, "perplexity_enabled", lambda: False)
+
+    def down(t, c):
+        raise RuntimeError("No research data available")
+
+    monkeypatch.setattr(orch, "research_ticker", down)
+    orch.run_checkpoint("midday")
+    assert len(checkpoint["outage"]) == 1
+
+
+def test_the_real_config_has_perplexity_switched_off():
+    from trading_agent.config import load_agent_config
+
+    assert load_agent_config()["research"]["perplexity_enabled"] is False

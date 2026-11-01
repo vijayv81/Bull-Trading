@@ -49,6 +49,14 @@ def _no_external_side_effects(monkeypatch, tmp_path, request):
     if request.module.__name__.split(".")[-1] != "test_sell_results":
         monkeypatch.setattr(alpaca_client, "get_filled_orders", lambda since=None: [])
 
+    # Tests exercise the Perplexity path unless they turn it off themselves: the real
+    # config has it disabled (research.perplexity_enabled: false, 2026-11-01).
+    from trading_agent import orchestrator
+    from trading_agent.research import perplexity_client
+
+    monkeypatch.setattr(perplexity_client, "perplexity_enabled", lambda: True)
+    monkeypatch.setattr(orchestrator, "perplexity_enabled", lambda: True)
+
     data = tmp_path / "_data"
     for module, names in (
         (approval_gateway, ("APPROVALS_DIR", "RECOMMENDATIONS_DIR")),

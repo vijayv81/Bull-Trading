@@ -828,6 +828,15 @@ no BUY at all, because the entry filter refuses almost every mover.
   because no ticker failed outright. An outage is reported as an outage, not also
   as degraded. `notifications.research_degraded_alert_enabled: false` turns the
   email off.
+- **Perplexity switched off** (2026-11-01, per user instruction: "disable them
+  temporarily via config for future runs until manually reenabled").
+  `agent_config.yaml -> research.perplexity_enabled: false`: `research_ticker()`
+  no longer calls Perplexity at all and goes straight to Yahoo RSS, then Alpaca
+  news; each result's `primary_error` says "Perplexity disabled in config". The
+  daily "research degraded" notice is not sent while it is off on purpose; the
+  outage alert still fires if the fallbacks fail too. Every call had returned 401
+  since 2026-10-16. **Re-enable** by setting it back to `true` once a working
+  `PERPLEXITY_API_KEY` is in the environment; nothing else changes.
 - **Liquid candidate sourcing** (`scoring/candidates.py`,
   `agent_config.yaml -> candidate_sourcing`, `mode: movers` reverts). New
   candidates come from a curated list of ~54 liquid large caps plus the day's

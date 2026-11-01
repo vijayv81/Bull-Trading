@@ -20,6 +20,14 @@ checkpoints:
 # APIs directly rather than going through a Claude agent loop.
 model: claude-opus-5
 
+# Research source switch (per user instruction 2026-11-01). Perplexity has returned
+# 401 on every call since 2026-10-16, so it is turned off: research goes straight to
+# the keyless fallbacks (Yahoo Finance RSS headlines, then Alpaca news) and the daily
+# "research degraded" email is not sent while it's off on purpose. Set back to true
+# once a working PERPLEXITY_API_KEY is in the environment; nothing else changes.
+research:
+  perplexity_enabled: false
+
 # Names of required environment variables — values are NEVER stored in this
 # file or any other file. See config.require_env() (plan §7.1, hard requirement).
 credentials:
