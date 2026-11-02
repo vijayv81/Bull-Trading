@@ -9,5 +9,38 @@
     "reference_price": 237.565,
     "recorded_at": "2026-11-02T15:19:40.476752+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "PLTR",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 66.9,
+    "reasoning": "Auto-applied: confidence 66.9 (technical=0.6697823881773632, sentiment=None, catalyst=0.6666666666666666, fundamental=None), sell_pressure=0.62 (position_pnl_pct=-4.99)",
+    "reference_price": 186.43,
+    "recorded_at": "2026-11-02T17:47:06.055030+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 87.6,
+    "reasoning": "Auto-applied: confidence 87.6 (technical=0.8761967956320201, sentiment=1.0, catalyst=0.6666666666666666, fundamental=None)",
+    "reference_price": 182.125,
+    "recorded_at": "2026-11-02T17:47:13.741259+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "KO",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 85.4,
+    "reasoning": "Auto-applied: confidence 85.4 (technical=0.802262985250524, sentiment=1.0, catalyst=None, fundamental=0.732)",
+    "reference_price": 95.55000000000001,
+    "recorded_at": "2026-11-02T17:47:40.659929+00:00",
+    "outcome": null
   }
 ]
