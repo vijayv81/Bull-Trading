@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 90.2 (technical=0.8789529562376097, sentiment=None, catalyst=1.0, fundamental=0.8591)",
     "reference_price": 237.565,
     "recorded_at": "2026-11-02T15:19:40.476752+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 237.565,
+      "price_at_measurement": 225.20999999999998,
+      "price_basis": "quote_mid",
+      "pct_change": -5.2,
+      "directionally_correct": false,
+      "measured_at": "2026-11-02T20:47:56.582985+00:00"
+    }
   },
   {
     "ticker": "PLTR",
@@ -19,7 +26,14 @@
     "reasoning": "Auto-applied: confidence 66.9 (technical=0.6697823881773632, sentiment=None, catalyst=0.6666666666666666, fundamental=None), sell_pressure=0.62 (position_pnl_pct=-4.99)",
     "reference_price": 186.43,
     "recorded_at": "2026-11-02T17:47:06.055030+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 186.43,
+      "price_at_measurement": 179.195,
+      "price_basis": "quote_mid",
+      "pct_change": -3.88,
+      "directionally_correct": true,
+      "measured_at": "2026-11-02T20:47:57.023146+00:00"
+    }
   },
   {
     "ticker": "XOM",
@@ -30,7 +44,14 @@
     "reasoning": "Auto-applied: confidence 87.6 (technical=0.8761967956320201, sentiment=1.0, catalyst=0.6666666666666666, fundamental=None)",
     "reference_price": 182.125,
     "recorded_at": "2026-11-02T17:47:13.741259+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 182.125,
+      "price_at_measurement": 180.375,
+      "price_basis": "quote_mid",
+      "pct_change": -0.96,
+      "directionally_correct": false,
+      "measured_at": "2026-11-02T20:47:57.351566+00:00"
+    }
   },
   {
     "ticker": "KO",
@@ -41,6 +62,13 @@
     "reasoning": "Auto-applied: confidence 85.4 (technical=0.802262985250524, sentiment=1.0, catalyst=None, fundamental=0.732)",
     "reference_price": 95.55000000000001,
     "recorded_at": "2026-11-02T17:47:40.659929+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 95.55000000000001,
+      "price_at_measurement": 96.14,
+      "price_basis": "quote_mid",
+      "pct_change": 0.62,
+      "directionally_correct": true,
+      "measured_at": "2026-11-02T20:47:57.674475+00:00"
+    }
   }
 ]

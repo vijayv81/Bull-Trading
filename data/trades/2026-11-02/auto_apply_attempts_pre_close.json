@@ -1,0 +1,38 @@
+[
+  {
+    "ticker": "KO",
+    "status": "deferred",
+    "reason": "Price $96.11 is 99% of the way up its 1-month range ($85.13-$96.25) and 3.0% above its 1-week average $93.18 \u2014 waiting for a pullback toward $93.18 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "MA",
+    "status": "deferred",
+    "reason": "Price $658.02 is 97% of the way up its 1-month range ($551.15-$661.34) and 4.2% above its 1-week average $630.40 \u2014 waiting for a pullback toward $630.40 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "V",
+    "status": "deferred",
+    "reason": "Price $425.26 is 98% of the way up its 1-month range ($359.05-$426.78) and 3.5% above its 1-week average $410.34 \u2014 waiting for a pullback toward $410.34 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "TXN",
+    "status": "refused",
+    "reason": "TXN would reach 7.93% of the 73,206.38 portfolio (5,807.68 incl. 3,654.48 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 7.14% of the 73,212.82 portfolio (5,224.26 incl. 3,471.12 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "XOM",
+    "status": "refused",
+    "reason": "XOM would reach 6.44% of the 73,214.83 portfolio (4,714.06 incl. 3,617.80 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  }
+]

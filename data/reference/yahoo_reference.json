@@ -416,6 +416,19 @@
     "trailingPE": 40.18547
    }
   },
+  "UNP": {
+   "at": "2026-11-02T20:47:41.218462+00:00",
+   "value": {
+    "debtToEquity": 141.303,
+    "forwardPE": 21.370535,
+    "marketCap": 182642294784,
+    "profitMargins": 0.28897,
+    "returnOnEquity": 0.38747,
+    "revenueGrowth": 0.153,
+    "totalRevenue": 26363000832,
+    "trailingPE": 23.981241
+   }
+  },
   "V": {
    "at": "2026-10-29T13:02:15.191596+00:00",
    "value": {

@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "TXN",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 7.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T20:47:13.628815+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T20:47:17.774024+00:00"
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T20:47:21.851688+00:00"
+  }
+]
