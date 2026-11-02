@@ -157,16 +157,16 @@
    }
   },
   "IBM": {
-   "at": "2026-10-26T12:49:51.758239+00:00",
+   "at": "2026-11-02T14:29:33.550638+00:00",
    "value": {
     "debtToEquity": 185.439,
-    "forwardPE": 19.157873,
-    "marketCap": 239644835840,
+    "forwardPE": 19.480824,
+    "marketCap": 243661602816,
     "profitMargins": 0.15989,
     "returnOnEquity": 0.34769002,
     "revenueGrowth": 0.047,
     "totalRevenue": 69868003328,
-    "trailingPE": 21.634811
+    "trailingPE": 21.99744
    }
   },
   "INTC": {
