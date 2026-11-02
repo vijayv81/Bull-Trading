@@ -1,0 +1,75 @@
+[
+  {
+    "ticker": "MA",
+    "status": "deferred",
+    "reason": "Price $653.89 is 98% of the way up its 1-month range ($551.15-$655.63) and 3.7% above its 1-week average $629.55 \u2014 waiting for a pullback toward $629.55 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "V",
+    "status": "deferred",
+    "reason": "Price $423.68 is 100% of the way up its 1-month range ($359.05-$423.80) and 3.2% above its 1-week average $410.04 \u2014 waiting for a pullback toward $410.04 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "XOM",
+    "status": "refused",
+    "reason": "XOM would reach 7.28% of the 73,683.98 portfolio (5,362.76 incl. 2,575.16 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 7.45% of the 73,680.89 portfolio (5,489.88 incl. 3,454.21 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "CVX",
+    "status": "submitted",
+    "qty": 7.0,
+    "order": {
+      "id": "18733e1f-4fb2-4d89-953a-9dc7e8731ff7",
+      "client_order_id": "5030fa2d-4d20-4f0f-aa66-1f2c522fd563",
+      "created_at": "2026-11-02T15:19:40.099319Z",
+      "updated_at": "2026-11-02T15:19:40.100535Z",
+      "submitted_at": "2026-11-02T15:19:40.099319Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-11-02T21:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "186997ab-b63c-439b-bf62-72275d1c4c27",
+      "symbol": "CVX",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "7",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "235.42",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null
+    },
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "LLY",
+    "status": "deferred",
+    "reason": "Price $1399.51 is 84% of the way up its 1-month range ($1131.21-$1449.68) and 3.4% above its 1-week average $1351.91 \u2014 waiting for a pullback toward $1351.91 would buy it cheaper.",
+    "checkpoint": "market_open"
+  }
+]

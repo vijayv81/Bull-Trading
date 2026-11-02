@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "CVX",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 90.2,
+    "reasoning": "Auto-applied: confidence 90.2 (technical=0.8789529562376097, sentiment=None, catalyst=1.0, fundamental=0.8591)",
+    "reference_price": 237.565,
+    "recorded_at": "2026-11-02T15:19:40.476752+00:00",
+    "outcome": null
+  }
+]

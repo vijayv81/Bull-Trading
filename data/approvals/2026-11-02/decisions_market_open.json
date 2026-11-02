@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "XOM",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 15.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T15:19:26.801289+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 7.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T15:19:30.655146+00:00"
+  },
+  {
+    "ticker": "CVX",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 7.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T15:19:34.391939+00:00"
+  }
+]
