@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "PLTR",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 15.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T17:47:04.838213+00:00"
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T17:47:06.773978+00:00"
+  },
+  {
+    "ticker": "KO",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-02T17:47:32.593774+00:00"
+  }
+]
