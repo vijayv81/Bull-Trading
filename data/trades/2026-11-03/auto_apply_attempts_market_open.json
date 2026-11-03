@@ -1,0 +1,74 @@
+[
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 6.23% of the 73,086.11 portfolio (4,555.82 incl. 2,589.56 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 7.14% of the 73,081.97 portfolio (5,220.30 incl. 3,468.00 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "CVX",
+    "status": "refused",
+    "reason": "CVX would reach 6.85% of the 73,082.31 portfolio (5,008.38 incl. 3,405.45 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "XOM",
+    "status": "refused",
+    "reason": "XOM would reach 6.65% of the 73,083.43 portfolio (4,857.68 incl. 3,589.00 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 5.16% of the 73,080.63 portfolio (3,769.15 incl. 3,346.64 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "LLY",
+    "status": "deferred",
+    "reason": "Price $1430.05 is 94% of the way up its 1-month range ($1131.21-$1449.68) and 3.2% above its 1-week average $1384.65 \u2014 waiting for a pullback toward $1384.65 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 6.22% of the 73,103.44 portfolio (4,549.24 incl. 2,588.50 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 7.14% of the 73,105.17 portfolio (5,220.06 incl. 3,468.48 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "CVX",
+    "status": "refused",
+    "reason": "CVX would reach 6.85% of the 73,107.73 portfolio (5,008.44 incl. 3,403.20 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "XOM",
+    "status": "refused",
+    "reason": "XOM would reach 6.64% of the 73,105.38 portfolio (4,854.32 incl. 3,586.20 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 5.16% of the 73,107.72 portfolio (3,770.94 incl. 3,348.08 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "LLY",
+    "status": "deferred",
+    "reason": "Price $1431.19 is 94% of the way up its 1-month range ($1131.21-$1449.68) and 3.3% above its 1-week average $1383.66 \u2014 waiting for a pullback toward $1383.66 would buy it cheaper.",
+    "checkpoint": "market_open"
+  }
+]

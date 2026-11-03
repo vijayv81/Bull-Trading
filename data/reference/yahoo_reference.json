@@ -182,6 +182,19 @@
     "trailingPE": null
    }
   },
+  "HON": {
+   "at": "2026-11-03T14:42:35.413968+00:00",
+   "value": {
+    "debtToEquity": null,
+    "forwardPE": null,
+    "marketCap": null,
+    "profitMargins": null,
+    "returnOnEquity": null,
+    "revenueGrowth": null,
+    "totalRevenue": null,
+    "trailingPE": null
+   }
+  },
   "IBM": {
    "at": "2026-11-02T14:29:33.550638+00:00",
    "value": {
@@ -232,6 +245,19 @@
     "revenueGrowth": -0.267,
     "totalRevenue": 707006976,
     "trailingPE": null
+   }
+  },
+  "IT": {
+   "at": "2026-11-03T14:43:37.386602+00:00",
+   "value": {
+    "debtToEquity": null,
+    "forwardPE": 11.671486,
+    "marketCap": 12076925952,
+    "profitMargins": 0.11996,
+    "returnOnEquity": 1.13581,
+    "revenueGrowth": -0.006,
+    "totalRevenue": 6463626240,
+    "trailingPE": 17.29159
    }
   },
   "KO": {
