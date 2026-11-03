@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 69.1 (technical=0.617014051483213, sentiment=None, catalyst=None, fundamental=0.8636), sell_pressure=0.54 (position_pnl_pct=-4.35)",
     "reference_price": 513.475,
     "recorded_at": "2026-11-03T13:46:45.061425+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 513.475,
+      "price_at_measurement": 521.4449999999999,
+      "price_basis": "quote_mid",
+      "pct_change": 1.55,
+      "directionally_correct": false,
+      "measured_at": "2026-11-03T20:48:22.721725+00:00"
+    }
   },
   {
     "ticker": "TXN",
@@ -19,7 +26,14 @@
     "reasoning": "Auto-applied: confidence 92.3 (technical=0.9225370475180285, sentiment=None, catalyst=None, fundamental=None), sell_pressure=0.52 (position_pnl_pct=8.38)",
     "reference_price": 313.885,
     "recorded_at": "2026-11-03T17:36:25.537935+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 313.885,
+      "price_at_measurement": 306.02,
+      "price_basis": "quote_mid",
+      "pct_change": -2.51,
+      "directionally_correct": true,
+      "measured_at": "2026-11-03T20:48:23.003864+00:00"
+    }
   },
   {
     "ticker": "LLY",
@@ -30,6 +44,49 @@
     "reasoning": "Auto-applied: confidence 93.5 (technical=1.0, sentiment=None, catalyst=None, fundamental=0.7839)",
     "reference_price": 1419.1,
     "recorded_at": "2026-11-03T17:37:04.093702+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1419.1,
+      "price_at_measurement": 1418.33,
+      "price_basis": "quote_mid",
+      "pct_change": -0.05,
+      "directionally_correct": false,
+      "measured_at": "2026-11-03T20:48:23.297802+00:00"
+    }
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 91.8,
+    "reasoning": "Auto-applied: confidence 91.8 (technical=0.9184784120517726, sentiment=None, catalyst=None, fundamental=None), sell_pressure=0.51 (position_pnl_pct=8.13)",
+    "reference_price": 306.02,
+    "recorded_at": "2026-11-03T20:47:29.388508+00:00",
+    "outcome": {
+      "price_at_decision": 306.02,
+      "price_at_measurement": 306.02,
+      "price_basis": "quote_mid",
+      "pct_change": 0.0,
+      "directionally_correct": false,
+      "measured_at": "2026-11-03T20:48:23.598586+00:00"
+    }
+  },
+  {
+    "ticker": "WMT",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 86.5,
+    "reasoning": "Auto-applied: confidence 86.5 (technical=0.9786183961811008, sentiment=None, catalyst=None, fundamental=0.6012)",
+    "reference_price": 124.745,
+    "recorded_at": "2026-11-03T20:48:08.875455+00:00",
+    "outcome": {
+      "price_at_decision": 124.745,
+      "price_at_measurement": 125.37,
+      "price_basis": "quote_mid",
+      "pct_change": 0.5,
+      "directionally_correct": true,
+      "measured_at": "2026-11-03T20:48:23.973577+00:00"
+    }
   }
 ]
