@@ -1,0 +1,12 @@
+[
+  {
+    "ticker": "MSFT",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-03T13:46:43.947464+00:00"
+  }
+]
