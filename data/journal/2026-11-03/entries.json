@@ -9,5 +9,27 @@
     "reference_price": 513.475,
     "recorded_at": "2026-11-03T13:46:45.061425+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 92.3,
+    "reasoning": "Auto-applied: confidence 92.3 (technical=0.9225370475180285, sentiment=None, catalyst=None, fundamental=None), sell_pressure=0.52 (position_pnl_pct=8.38)",
+    "reference_price": 313.885,
+    "recorded_at": "2026-11-03T17:36:25.537935+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "LLY",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 93.5,
+    "reasoning": "Auto-applied: confidence 93.5 (technical=1.0, sentiment=None, catalyst=None, fundamental=0.7839)",
+    "reference_price": 1419.1,
+    "recorded_at": "2026-11-03T17:37:04.093702+00:00",
+    "outcome": null
   }
 ]
