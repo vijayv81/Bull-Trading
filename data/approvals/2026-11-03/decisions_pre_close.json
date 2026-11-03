@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "TXN",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-03T20:47:28.260237+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-03T20:47:29.932304+00:00"
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-03T20:47:33.689439+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-03T20:47:38.885923+00:00"
+  },
+  {
+    "ticker": "WMT",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-03T20:48:01.390582+00:00"
+  }
+]
