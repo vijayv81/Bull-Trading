@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "CVX",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 72.9,
+    "reasoning": "Auto-applied: confidence 72.9 (technical=0.8237507894805476, sentiment=None, catalyst=0.3333333333333333, fundamental=0.9041), sell_pressure=0.52 (position_pnl_pct=-4.17)",
+    "reference_price": 214.26,
+    "recorded_at": "2026-11-04T13:46:40.060828+00:00",
+    "outcome": null
+  }
+]

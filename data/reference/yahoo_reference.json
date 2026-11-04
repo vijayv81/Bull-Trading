@@ -14,7 +14,7 @@
    }
   },
   "ABBV": {
-   "at": "2026-10-28T12:47:30.899587+00:00",
+   "at": "2026-11-04T13:46:22.687930+00:00",
    "value": {
     "debtToEquity": null,
     "forwardPE": null,
@@ -79,16 +79,16 @@
    }
   },
   "CVX": {
-   "at": "2026-10-28T12:47:54.607013+00:00",
+   "at": "2026-11-04T13:46:25.245911+00:00",
    "value": {
     "debtToEquity": 18.959,
-    "forwardPE": 14.522078,
-    "marketCap": 447696732160,
-    "profitMargins": 0.09834,
-    "returnOnEquity": 0.12231,
-    "revenueGrowth": 0.535,
-    "totalRevenue": 209383997440,
-    "trailingPE": 21.966312
+    "forwardPE": 13.771589,
+    "marketCap": 439501783040,
+    "profitMargins": 0.11919,
+    "returnOnEquity": null,
+    "revenueGrowth": 0.348,
+    "totalRevenue": 226326003712,
+    "trailingPE": 16.539648
    }
   },
   "DIS": {
@@ -365,16 +365,16 @@
    }
   },
   "PG": {
-   "at": "2026-10-28T12:48:10.684099+00:00",
+   "at": "2026-11-04T13:46:59.587991+00:00",
    "value": {
     "debtToEquity": 70.343,
-    "forwardPE": 21.5146,
-    "marketCap": 369060577280,
+    "forwardPE": 21.90142,
+    "marketCap": 375619911680,
     "profitMargins": 0.18229,
     "returnOnEquity": 0.29609,
     "revenueGrowth": 0.04,
     "totalRevenue": 87921999872,
-    "trailingPE": 23.980421
+    "trailingPE": 24.406626
    }
   },
   "PLTR": {
@@ -417,16 +417,16 @@
    }
   },
   "TSLA": {
-   "at": "2026-10-28T12:48:16.906458+00:00",
+   "at": "2026-11-04T13:47:01.314354+00:00",
    "value": {
     "debtToEquity": 18.295,
-    "forwardPE": 189.04938,
-    "marketCap": 1610579312640,
+    "forwardPE": 184.55739,
+    "marketCap": 1575163002880,
     "profitMargins": 0.031070001,
     "returnOnEquity": 0.03844,
     "revenueGrowth": -0.002,
     "totalRevenue": 103569997824,
-    "trailingPE": 447.7582
+    "trailingPE": 437.91208
    }
   },
   "TXN": {
@@ -469,16 +469,16 @@
    }
   },
   "WMT": {
-   "at": "2026-10-28T12:48:19.639819+00:00",
+   "at": "2026-11-04T13:46:35.088162+00:00",
    "value": {
     "debtToEquity": 71.653,
-    "forwardPE": 36.981365,
-    "marketCap": 949557985280,
+    "forwardPE": 38.69888,
+    "marketCap": 993645756416,
     "profitMargins": 0.03,
     "returnOnEquity": 0.22313999,
     "revenueGrowth": 0.059,
     "totalRevenue": 735839977472,
-    "trailingPE": 43.231884
+    "trailingPE": 45.239132
    }
   },
   "XOM": {
