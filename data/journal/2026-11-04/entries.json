@@ -42,5 +42,38 @@
     "reference_price": 30.475,
     "recorded_at": "2026-11-04T14:42:40.067454+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "LLY",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 94.4,
+    "reasoning": "Auto-applied: confidence 94.4 (technical=1.0, sentiment=None, catalyst=None, fundamental=0.8123)",
+    "reference_price": 1430.12,
+    "recorded_at": "2026-11-04T17:36:59.359986+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "PFE",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 87.7,
+    "reasoning": "Auto-applied: confidence 87.7 (technical=0.8398275445828907, sentiment=1.0, catalyst=1.0, fundamental=0.6352)",
+    "reference_price": 30.634999999999998,
+    "recorded_at": "2026-11-04T17:37:10.227112+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 88.1,
+    "reasoning": "Auto-applied: confidence 88.1 (technical=0.9035012268101573, sentiment=None, catalyst=None, fundamental=None)",
+    "reference_price": 312.225,
+    "recorded_at": "2026-11-04T17:37:38.231093+00:00",
+    "outcome": null
   }
 ]
