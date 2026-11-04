@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 72.9 (technical=0.8237507894805476, sentiment=None, catalyst=0.3333333333333333, fundamental=0.9041), sell_pressure=0.52 (position_pnl_pct=-4.17)",
     "reference_price": 214.26,
     "recorded_at": "2026-11-04T13:46:40.060828+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 214.26,
+      "price_at_measurement": 216.995,
+      "price_basis": "quote_mid",
+      "pct_change": 1.28,
+      "directionally_correct": false,
+      "measured_at": "2026-11-04T20:47:34.881514+00:00"
+    }
   },
   {
     "ticker": "XOM",
@@ -19,7 +26,14 @@
     "reasoning": "Auto-applied: confidence 61.7 (technical=0.7387370991698281, sentiment=None, catalyst=0.3333333333333333, fundamental=None), sell_pressure=0.75 (position_pnl_pct=-5.99)",
     "reference_price": 171.64,
     "recorded_at": "2026-11-04T14:41:54.718351+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 171.64,
+      "price_at_measurement": 169.71,
+      "price_basis": "quote_mid",
+      "pct_change": -1.12,
+      "directionally_correct": true,
+      "measured_at": "2026-11-04T20:47:35.258378+00:00"
+    }
   },
   {
     "ticker": "WMT",
@@ -30,7 +44,14 @@
     "reasoning": "Auto-applied: confidence 87.8 (technical=1.0, sentiment=None, catalyst=None, fundamental=0.5936)",
     "reference_price": 129.255,
     "recorded_at": "2026-11-04T14:42:11.696323+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 129.255,
+      "price_at_measurement": 130.32999999999998,
+      "price_basis": "quote_mid",
+      "pct_change": 0.83,
+      "directionally_correct": true,
+      "measured_at": "2026-11-04T20:47:35.491249+00:00"
+    }
   },
   {
     "ticker": "PFE",
@@ -41,7 +62,14 @@
     "reasoning": "Auto-applied: confidence 87.0 (technical=0.8227969012423532, sentiment=1.0, catalyst=1.0, fundamental=0.6352)",
     "reference_price": 30.475,
     "recorded_at": "2026-11-04T14:42:40.067454+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 30.475,
+      "price_at_measurement": 30.735,
+      "price_basis": "quote_mid",
+      "pct_change": 0.85,
+      "directionally_correct": true,
+      "measured_at": "2026-11-04T20:47:35.877581+00:00"
+    }
   },
   {
     "ticker": "LLY",
@@ -52,7 +80,14 @@
     "reasoning": "Auto-applied: confidence 94.4 (technical=1.0, sentiment=None, catalyst=None, fundamental=0.8123)",
     "reference_price": 1430.12,
     "recorded_at": "2026-11-04T17:36:59.359986+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1430.12,
+      "price_at_measurement": 1423.5,
+      "price_basis": "quote_mid",
+      "pct_change": -0.46,
+      "directionally_correct": false,
+      "measured_at": "2026-11-04T20:47:36.163282+00:00"
+    }
   },
   {
     "ticker": "PFE",
@@ -63,7 +98,14 @@
     "reasoning": "Auto-applied: confidence 87.7 (technical=0.8398275445828907, sentiment=1.0, catalyst=1.0, fundamental=0.6352)",
     "reference_price": 30.634999999999998,
     "recorded_at": "2026-11-04T17:37:10.227112+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 30.634999999999998,
+      "price_at_measurement": 30.735,
+      "price_basis": "quote_mid",
+      "pct_change": 0.33,
+      "directionally_correct": true,
+      "measured_at": "2026-11-04T20:47:36.506341+00:00"
+    }
   },
   {
     "ticker": "TXN",
@@ -74,6 +116,13 @@
     "reasoning": "Auto-applied: confidence 88.1 (technical=0.9035012268101573, sentiment=None, catalyst=None, fundamental=None)",
     "reference_price": 312.225,
     "recorded_at": "2026-11-04T17:37:38.231093+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 312.225,
+      "price_at_measurement": 309.95,
+      "price_basis": "quote_mid",
+      "pct_change": -0.73,
+      "directionally_correct": false,
+      "measured_at": "2026-11-04T20:47:36.919926+00:00"
+    }
   }
 ]
