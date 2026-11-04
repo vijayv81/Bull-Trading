@@ -1,0 +1,12 @@
+[
+  {
+    "ticker": "CVX",
+    "checkpoint": "pre_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 15.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-04T13:46:38.912298+00:00"
+  }
+]
