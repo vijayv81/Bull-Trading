@@ -1,0 +1,50 @@
+[
+  {
+    "ticker": "MA",
+    "status": "deferred",
+    "reason": "Price $671.56 is 98% of the way up its 1-month range ($567.00-$673.50) and 3.2% above its 1-week average $650.16 \u2014 waiting for a pullback toward $650.16 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "V",
+    "status": "deferred",
+    "reason": "Price $435.45 is 99% of the way up its 1-month range ($369.60-$435.97) and 3.3% above its 1-week average $421.08 \u2014 waiting for a pullback toward $421.08 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "WMT",
+    "status": "deferred",
+    "reason": "Price $130.53 is 98% of the way up its 1-month range ($107.40-$130.94) and 3.8% above its 1-week average $125.55 \u2014 waiting for a pullback toward $125.55 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "PFE",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "TXN",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "HD",
+    "status": "deferred",
+    "reason": "Price $354.90 is 98% of the way up its 1-month range ($282.84-$356.02) and 4.9% above its 1-week average $337.56 \u2014 waiting for a pullback toward $337.56 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "MCD",
+    "status": "deferred",
+    "reason": "Price $279.19 is 96% of the way up its 1-month range ($230.20-$281.14) and 5.2% above its 1-week average $264.68 \u2014 waiting for a pullback toward $264.68 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "COST",
+    "status": "capped",
+    "reason": "daily auto-apply cap reached (5 of 5 orders today)",
+    "checkpoint": "pre_close"
+  }
+]

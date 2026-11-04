@@ -377,6 +377,19 @@
     "trailingPE": 29.58273
    }
   },
+  "NEE": {
+   "at": "2026-11-04T20:47:03.862079+00:00",
+   "value": {
+    "debtToEquity": 153.254,
+    "forwardPE": 20.165613,
+    "marketCap": 185045319680,
+    "profitMargins": 0.40370998,
+    "returnOnEquity": 0.14064,
+    "revenueGrowth": 0.016,
+    "totalRevenue": 28824999936,
+    "trailingPE": 15.897297
+   }
+  },
   "NKE": {
    "at": "2026-11-04T14:42:26.229439+00:00",
    "value": {
@@ -479,6 +492,19 @@
     "revenueGrowth": null,
     "totalRevenue": null,
     "trailingPE": 40.18547
+   }
+  },
+  "UNH": {
+   "at": "2026-11-04T20:47:09.706038+00:00",
+   "value": {
+    "debtToEquity": 70.426,
+    "forwardPE": 17.714853,
+    "marketCap": 370266832896,
+    "profitMargins": 0.03529,
+    "returnOnEquity": 0.15773,
+    "revenueGrowth": -0.004,
+    "totalRevenue": 450059010048,
+    "trailingPE": 23.545092
    }
   },
   "UNP": {
