@@ -287,16 +287,16 @@
    }
   },
   "LLY": {
-   "at": "2026-10-28T13:46:54.831518+00:00",
+   "at": "2026-11-04T14:41:43.591007+00:00",
    "value": {
-    "debtToEquity": 162.071,
-    "forwardPE": 27.15812,
-    "marketCap": 1147635499008,
-    "profitMargins": 0.33528998,
-    "returnOnEquity": 1.02286,
-    "revenueGrowth": 0.477,
-    "totalRevenue": 79666003968,
-    "trailingPE": 43.201073
+    "debtToEquity": 122.925,
+    "forwardPE": 28.527502,
+    "marketCap": 1274411089920,
+    "profitMargins": 0.31898,
+    "returnOnEquity": 0.86024004,
+    "revenueGrowth": 0.386,
+    "totalRevenue": 86461997056,
+    "trailingPE": 46.437035
    }
   },
   "MA": {
@@ -310,6 +310,19 @@
     "revenueGrowth": 0.141,
     "totalRevenue": 35083001856,
     "trailingPE": 35.101852
+   }
+  },
+  "MCD": {
+   "at": "2026-11-04T14:42:23.018748+00:00",
+   "value": {
+    "debtToEquity": null,
+    "forwardPE": 19.890364,
+    "marketCap": 193242742784,
+    "profitMargins": 0.3172,
+    "returnOnEquity": null,
+    "revenueGrowth": 0.037,
+    "totalRevenue": 27701999616,
+    "trailingPE": 22.183588
    }
   },
   "META": {
@@ -349,6 +362,19 @@
     "revenueGrowth": 0.177,
     "totalRevenue": 331839012864,
     "trailingPE": 29.58273
+   }
+  },
+  "NKE": {
+   "at": "2026-11-04T14:42:26.229439+00:00",
+   "value": {
+    "debtToEquity": 73.095,
+    "forwardPE": 25.753498,
+    "marketCap": 59560882176,
+    "profitMargins": 0.0674,
+    "returnOnEquity": 0.21563,
+    "revenueGrowth": -0.043,
+    "totalRevenue": 45890998272,
+    "trailingPE": 19.278847
    }
   },
   "PFE": {
@@ -541,6 +567,10 @@
    "at": "2026-10-29T19:47:30.885018+00:00",
    "value": "Technology"
   },
+  "PFE": {
+   "at": "2026-11-04T14:42:38.543402+00:00",
+   "value": "Healthcare"
+  },
   "PLTR": {
    "at": "2026-10-23T13:43:45.865587+00:00",
    "value": "Technology"
@@ -556,6 +586,10 @@
   "V": {
    "at": "2026-10-30T16:34:06.024245+00:00",
    "value": "Financial Services"
+  },
+  "WMT": {
+   "at": "2026-11-04T14:42:09.877153+00:00",
+   "value": "Consumer Defensive"
   },
   "XOM": {
    "at": "2026-10-23T16:43:32.636146+00:00",

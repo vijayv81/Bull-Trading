@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "XOM",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 20.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-04T14:41:53.673181+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-04T14:41:55.462325+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-04T14:41:59.644175+00:00"
+  },
+  {
+    "ticker": "WMT",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 10.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-04T14:42:04.669070+00:00"
+  },
+  {
+    "ticker": "PFE",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 37.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-04T14:42:33.312255+00:00"
+  }
+]

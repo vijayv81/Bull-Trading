@@ -9,5 +9,38 @@
     "reference_price": 214.26,
     "recorded_at": "2026-11-04T13:46:40.060828+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "XOM",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 61.7,
+    "reasoning": "Auto-applied: confidence 61.7 (technical=0.7387370991698281, sentiment=None, catalyst=0.3333333333333333, fundamental=None), sell_pressure=0.75 (position_pnl_pct=-5.99)",
+    "reference_price": 171.64,
+    "recorded_at": "2026-11-04T14:41:54.718351+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "WMT",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 87.8,
+    "reasoning": "Auto-applied: confidence 87.8 (technical=1.0, sentiment=None, catalyst=None, fundamental=0.5936)",
+    "reference_price": 129.255,
+    "recorded_at": "2026-11-04T14:42:11.696323+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "PFE",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 87.0,
+    "reasoning": "Auto-applied: confidence 87.0 (technical=0.8227969012423532, sentiment=1.0, catalyst=1.0, fundamental=0.6352)",
+    "reference_price": 30.475,
+    "recorded_at": "2026-11-04T14:42:40.067454+00:00",
+    "outcome": null
   }
 ]
