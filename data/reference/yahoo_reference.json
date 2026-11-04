@@ -260,6 +260,19 @@
     "trailingPE": 17.29159
    }
   },
+  "KD": {
+   "at": "2026-11-04T17:37:20.881136+00:00",
+   "value": {
+    "debtToEquity": 422.451,
+    "forwardPE": 7.009912,
+    "marketCap": 3803520768,
+    "profitMargins": 0.0058099995,
+    "returnOnEquity": 0.069299996,
+    "revenueGrowth": -0.033,
+    "totalRevenue": 14967000064,
+    "trailingPE": 47.194324
+   }
+  },
   "KO": {
    "at": "2026-10-30T19:48:10.434834+00:00",
    "value": {
