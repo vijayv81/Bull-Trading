@@ -416,6 +416,19 @@
     "trailingPE": 19.278847
    }
   },
+  "PEP": {
+   "at": "2026-11-05T17:36:47.664890+00:00",
+   "value": {
+    "debtToEquity": 230.716,
+    "forwardPE": 16.501694,
+    "marketCap": 194265546752,
+    "profitMargins": 0.11091,
+    "returnOnEquity": 0.52187,
+    "revenueGrowth": 0.056,
+    "totalRevenue": 98241003520,
+    "trailingPE": 17.931446
+   }
+  },
   "PFE": {
    "at": "2026-10-30T16:33:51.387571+00:00",
    "value": {
@@ -533,6 +546,19 @@
     "trailingPE": 23.981241
    }
   },
+  "UVXY": {
+   "at": "2026-11-05T17:36:51.762198+00:00",
+   "value": {
+    "debtToEquity": null,
+    "forwardPE": null,
+    "marketCap": null,
+    "profitMargins": null,
+    "returnOnEquity": null,
+    "revenueGrowth": null,
+    "totalRevenue": null,
+    "trailingPE": null
+   }
+  },
   "V": {
    "at": "2026-11-05T13:48:05.498502+00:00",
    "value": {
@@ -594,6 +620,10 @@
   "AMD": {
    "at": "2026-10-23T13:43:36.784313+00:00",
    "value": "Technology"
+  },
+  "COST": {
+   "at": "2026-11-05T17:36:57.939798+00:00",
+   "value": "Consumer Defensive"
   },
   "CVX": {
    "at": "2026-10-30T16:34:15.373933+00:00",
