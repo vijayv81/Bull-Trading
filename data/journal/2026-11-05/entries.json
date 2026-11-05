@@ -9,5 +9,27 @@
     "reference_price": 130.845,
     "recorded_at": "2026-11-05T14:42:24.528729+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "TXN",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 65.0,
+    "reasoning": "Auto-applied: confidence 65.0 (technical=0.7025383277613508, sentiment=None, catalyst=0.3333333333333333, fundamental=0.8353), sell_pressure=0.32 (position_pnl_pct=-6.37)",
+    "reference_price": 292.67,
+    "recorded_at": "2026-11-05T17:36:20.001877+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 90.1,
+    "reasoning": "Auto-applied: confidence 90.1 (technical=0.9993794484263199, sentiment=None, catalyst=None, fundamental=0.6699)",
+    "reference_price": 1041.375,
+    "recorded_at": "2026-11-05T17:36:59.670498+00:00",
+    "outcome": null
   }
 ]
