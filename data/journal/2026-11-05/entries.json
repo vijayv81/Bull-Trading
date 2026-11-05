@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "WMT",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 87.8,
+    "reasoning": "Auto-applied: confidence 87.8 (technical=1.0, sentiment=None, catalyst=None, fundamental=0.5936)",
+    "reference_price": 130.845,
+    "recorded_at": "2026-11-05T14:42:24.528729+00:00",
+    "outcome": null
+  }
+]

@@ -1,0 +1,71 @@
+[
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 5.54% of the 73,543.37 portfolio (4,075.20 incl. 2,707.36 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "WMT",
+    "status": "submitted",
+    "qty": 9.0,
+    "order": {
+      "id": "f880d7a9-cdc3-4da0-b906-72b700990c8c",
+      "client_order_id": "a59d5dd3-999e-4c3c-9e8b-1fb8de8ee51f",
+      "created_at": "2026-11-05T14:42:24.123262Z",
+      "updated_at": "2026-11-05T14:42:24.124386Z",
+      "submitted_at": "2026-11-05T14:42:24.123262Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-11-05T21:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "3f3e0ff9-599f-4fec-8842-6bc53f5129a1",
+      "symbol": "WMT",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "9",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "132.21",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null,
+      "group_id": null,
+      "group_role": null
+    },
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "HD",
+    "status": "deferred",
+    "reason": "Price $358.92 is 96% of the way up its 1-month range ($282.84-$362.44) and 4.2% above its 1-week average $343.75 \u2014 waiting for a pullback toward $343.75 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "Opening PG would exceed the 10-position concurrent-positions cap (already holding 10: ABBV, KO, LLY, MA, MGLD, PFE, SPY, TXN, V, WMT).",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "Opening COST would exceed the 10-position concurrent-positions cap (already holding 10: ABBV, KO, LLY, MA, MGLD, PFE, SPY, TXN, V, WMT).",
+    "checkpoint": "market_open"
+  }
+]

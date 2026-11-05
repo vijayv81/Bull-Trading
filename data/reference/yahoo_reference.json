@@ -39,6 +39,19 @@
     "trailingPE": null
    }
   },
+  "AMZN": {
+   "at": "2026-11-05T14:42:26.532266+00:00",
+   "value": {
+    "debtToEquity": 49.681,
+    "forwardPE": 24.569056,
+    "marketCap": 2899921338368,
+    "profitMargins": 0.16900998,
+    "returnOnEquity": 0.27416,
+    "revenueGrowth": 0.121,
+    "totalRevenue": 797455024128,
+    "trailingPE": 21.680275
+   }
+  },
   "COST": {
    "at": "2026-10-30T16:33:34.221336+00:00",
    "value": {
@@ -313,16 +326,16 @@
    }
   },
   "MA": {
-   "at": "2026-10-29T14:04:04.602675+00:00",
+   "at": "2026-11-05T14:42:00.762911+00:00",
    "value": {
-    "debtToEquity": 439.583,
-    "forwardPE": 27.660997,
-    "marketCap": 559027191808,
-    "profitMargins": 0.46339,
-    "returnOnEquity": 2.41202,
-    "revenueGrowth": 0.141,
-    "totalRevenue": 35083001856,
-    "trailingPE": 35.101852
+    "debtToEquity": 355.163,
+    "forwardPE": 29.26247,
+    "marketCap": 590208761856,
+    "profitMargins": 0.46732,
+    "returnOnEquity": 2.31366,
+    "revenueGrowth": 0.14,
+    "totalRevenue": 36288000000,
+    "trailingPE": 35.451855
    }
   },
   "MCD": {

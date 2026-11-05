@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "MA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-05T14:42:13.064562+00:00"
+  },
+  {
+    "ticker": "WMT",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 9.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-05T14:42:17.290538+00:00"
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 12.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-05T14:42:46.402032+00:00"
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-05T14:42:51.013275+00:00"
+  }
+]
