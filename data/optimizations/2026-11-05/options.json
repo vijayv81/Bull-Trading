@@ -1,0 +1,23 @@
+[
+  {
+    "id": "2026-11-05-weights-historical_hitrate-to-fundamental",
+    "title": "Shift 0.05 of scoring weight from historical_hitrate to fundamental",
+    "why": "historical_hitrate has agreed with actual price direction 35% of the time over 17 measured calls, vs. fundamental's 67% over 36.",
+    "effect": "Confidence scores lean slightly more on fundamental and less on historical_hitrate.",
+    "loosens_guardrail": false,
+    "changes": [
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.historical_hitrate",
+        "from": 0.1,
+        "to": 0.05
+      },
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.fundamental",
+        "from": 0.15,
+        "to": 0.2
+      }
+    ]
+  }
+]
