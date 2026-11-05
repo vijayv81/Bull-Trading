@@ -144,16 +144,16 @@
    }
   },
   "GOOG": {
-   "at": "2026-10-29T13:01:54.348197+00:00",
+   "at": "2026-11-05T13:48:13.515330+00:00",
    "value": {
-    "debtToEquity": 18.859,
-    "forwardPE": 21.193428,
-    "marketCap": 3936694042624,
-    "profitMargins": 0.54771,
-    "returnOnEquity": 0.48676,
-    "revenueGrowth": 0.242,
-    "totalRevenue": 445865984000,
-    "trailingPE": 16.808878
+    "debtToEquity": 22.187,
+    "forwardPE": 18.543415,
+    "marketCap": 3532065865728,
+    "profitMargins": 0.50031,
+    "returnOnEquity": 0.44286,
+    "revenueGrowth": 0.247,
+    "totalRevenue": 471097999360,
+    "trailingPE": 15.00261
    }
   },
   "HD": {
@@ -170,11 +170,11 @@
    }
   },
   "HIMS": {
-   "at": "2026-10-29T13:01:57.342777+00:00",
+   "at": "2026-11-05T13:48:16.867143+00:00",
    "value": {
     "debtToEquity": 477.128,
-    "forwardPE": 39.768875,
-    "marketCap": 6840749056,
+    "forwardPE": 36.16092,
+    "marketCap": 6220135424,
     "profitMargins": -0.05509,
     "returnOnEquity": -0.32033002,
     "revenueGrowth": 0.382,
@@ -235,11 +235,11 @@
    }
   },
   "IREN": {
-   "at": "2026-10-29T13:02:00.244438+00:00",
+   "at": "2026-11-05T13:48:18.981432+00:00",
    "value": {
     "debtToEquity": 187.297,
-    "forwardPE": -7.241428,
-    "marketCap": 11669054464,
+    "forwardPE": -5.4511576,
+    "marketCap": 8784159744,
     "profitMargins": -0.9938,
     "returnOnEquity": -0.23409,
     "revenueGrowth": -0.267,
@@ -352,29 +352,29 @@
    }
   },
   "MGLD": {
-   "at": "2026-10-29T13:01:30.669423+00:00",
+   "at": "2026-11-05T13:47:59.925094+00:00",
    "value": {
-    "debtToEquity": null,
+    "debtToEquity": 2.434,
     "forwardPE": null,
-    "marketCap": null,
-    "profitMargins": null,
-    "returnOnEquity": null,
-    "revenueGrowth": null,
-    "totalRevenue": null,
+    "marketCap": 85195656,
+    "profitMargins": -0.17267999,
+    "returnOnEquity": -0.21452999,
+    "revenueGrowth": 0.257,
+    "totalRevenue": 25313000,
     "trailingPE": null
    }
   },
   "MSFT": {
-   "at": "2026-10-29T13:02:07.503519+00:00",
+   "at": "2026-11-05T13:48:23.928846+00:00",
    "value": {
-    "debtToEquity": 29.118,
-    "forwardPE": 22.415209,
-    "marketCap": 3943039238144,
-    "profitMargins": 0.40305,
-    "returnOnEquity": 0.34039003,
-    "revenueGrowth": 0.177,
-    "totalRevenue": 331839012864,
-    "trailingPE": 29.58273
+    "debtToEquity": 28.465,
+    "forwardPE": 22.986574,
+    "marketCap": 4127478775808,
+    "profitMargins": 0.41169998,
+    "returnOnEquity": 0.34221,
+    "revenueGrowth": 0.188,
+    "totalRevenue": 346444988416,
+    "trailingPE": 29.00835
    }
   },
   "NEE": {
@@ -482,16 +482,16 @@
    }
   },
   "TXN": {
-   "at": "2026-10-29T13:01:39.221404+00:00",
+   "at": "2026-11-05T13:48:03.625465+00:00",
    "value": {
-    "debtToEquity": null,
-    "forwardPE": 26.889036,
-    "marketCap": 283261337600,
-    "profitMargins": null,
-    "returnOnEquity": null,
-    "revenueGrowth": null,
-    "totalRevenue": null,
-    "trailingPE": 40.18547
+    "debtToEquity": 70.654,
+    "forwardPE": 26.936668,
+    "marketCap": 284778987520,
+    "profitMargins": 0.34252998,
+    "returnOnEquity": 0.39723998,
+    "revenueGrowth": 0.277,
+    "totalRevenue": 20765999104,
+    "trailingPE": 40.400776
    }
   },
   "UNH": {
@@ -521,16 +521,16 @@
    }
   },
   "V": {
-   "at": "2026-10-29T13:02:15.191596+00:00",
+   "at": "2026-11-05T13:48:05.498502+00:00",
    "value": {
     "debtToEquity": 61.12,
-    "forwardPE": 23.383389,
-    "marketCap": 748723765248,
+    "forwardPE": 25.490728,
+    "marketCap": 815951970304,
     "profitMargins": 0.51203996,
     "returnOnEquity": 0.63507,
     "revenueGrowth": 0.132,
-    "totalRevenue": null,
-    "trailingPE": 32.516235
+    "totalRevenue": 45902999552,
+    "trailingPE": 35.43588
    }
   },
   "WMT": {
