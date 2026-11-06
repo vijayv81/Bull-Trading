@@ -53,16 +53,16 @@
    }
   },
   "COST": {
-   "at": "2026-10-30T16:33:34.221336+00:00",
+   "at": "2026-11-06T17:36:59.930554+00:00",
    "value": {
     "debtToEquity": 28.436,
-    "forwardPE": 40.686764,
-    "marketCap": 451212017664,
+    "forwardPE": 42.32793,
+    "marketCap": 469440135168,
     "profitMargins": 0.03043,
     "returnOnEquity": 0.28402,
     "revenueGrowth": 0.111,
     "totalRevenue": 303154003968,
-    "trailingPE": 49.04817
+    "trailingPE": 51.029625
    }
   },
   "CROX": {
