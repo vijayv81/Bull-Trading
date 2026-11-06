@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "LLY",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-06T14:42:39.816254+00:00"
+  },
+  {
+    "ticker": "PFE",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 78.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-06T14:42:42.273495+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-06T14:42:44.128544+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-06T14:42:48.137079+00:00"
+  }
+]
