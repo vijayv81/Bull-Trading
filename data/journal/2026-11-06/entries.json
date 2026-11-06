@@ -1,0 +1,35 @@
+[
+  {
+    "ticker": "LLY",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 89.5,
+    "reasoning": "Auto-applied: confidence 89.5 (technical=0.9299547717167059, sentiment=None, catalyst=None, fundamental=0.8123), sell_pressure=0.57 (position_pnl_pct=-4.6)",
+    "reference_price": 1365.54,
+    "recorded_at": "2026-11-06T14:42:40.863466+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "PFE",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 61.1,
+    "reasoning": "Auto-applied: confidence 61.1 (technical=0.6006678419333774, sentiment=None, catalyst=None, fundamental=0.6352), sell_pressure=0.7 (position_pnl_pct=-5.64)",
+    "reference_price": 28.884999999999998,
+    "recorded_at": "2026-11-06T14:42:43.538004+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 87.2,
+    "reasoning": "Auto-applied: confidence 87.2 (technical=0.9670020456615326, sentiment=None, catalyst=None, fundamental=0.6499)",
+    "reference_price": 651.095,
+    "recorded_at": "2026-11-06T14:42:55.182575+00:00",
+    "outcome": null
+  }
+]
