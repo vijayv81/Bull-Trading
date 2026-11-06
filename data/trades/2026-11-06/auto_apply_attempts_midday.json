@@ -1,0 +1,20 @@
+[
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 7.67% of the 72,057.60 portfolio (5,527.16 incl. 3,478.26 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 6.41% of the 72,049.34 portfolio (4,621.60 incl. 3,291.80 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "WMT",
+    "status": "refused",
+    "reason": "WMT would reach 6.14% of the 72,055.11 portfolio (4,426.38 incl. 3,406.86 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  }
+]
