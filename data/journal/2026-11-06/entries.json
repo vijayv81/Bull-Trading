@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 89.5 (technical=0.9299547717167059, sentiment=None, catalyst=None, fundamental=0.8123), sell_pressure=0.57 (position_pnl_pct=-4.6)",
     "reference_price": 1365.54,
     "recorded_at": "2026-11-06T14:42:40.863466+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1365.54,
+      "price_at_measurement": 1363.545,
+      "price_basis": "quote_mid",
+      "pct_change": -0.15,
+      "directionally_correct": true,
+      "measured_at": "2026-11-06T20:47:44.415976+00:00"
+    }
   },
   {
     "ticker": "PFE",
@@ -19,7 +26,14 @@
     "reasoning": "Auto-applied: confidence 61.1 (technical=0.6006678419333774, sentiment=None, catalyst=None, fundamental=0.6352), sell_pressure=0.7 (position_pnl_pct=-5.64)",
     "reference_price": 28.884999999999998,
     "recorded_at": "2026-11-06T14:42:43.538004+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 28.884999999999998,
+      "price_at_measurement": 29.275,
+      "price_basis": "quote_mid",
+      "pct_change": 1.35,
+      "directionally_correct": false,
+      "measured_at": "2026-11-06T20:47:44.788670+00:00"
+    }
   },
   {
     "ticker": "MA",
@@ -30,6 +44,31 @@
     "reasoning": "Auto-applied: confidence 87.2 (technical=0.9670020456615326, sentiment=None, catalyst=None, fundamental=0.6499)",
     "reference_price": 651.095,
     "recorded_at": "2026-11-06T14:42:55.182575+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 651.095,
+      "price_at_measurement": 650.775,
+      "price_basis": "quote_mid",
+      "pct_change": -0.05,
+      "directionally_correct": false,
+      "measured_at": "2026-11-06T20:47:45.062005+00:00"
+    }
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 86.7,
+    "reasoning": "Auto-applied: confidence 86.7 (technical=0.9098589584756521, sentiment=None, catalyst=None, fundamental=0.7686)",
+    "reference_price": 165.645,
+    "recorded_at": "2026-11-06T20:47:35.221859+00:00",
+    "outcome": {
+      "price_at_decision": 165.645,
+      "price_at_measurement": 165.66,
+      "price_basis": "quote_mid",
+      "pct_change": 0.01,
+      "directionally_correct": true,
+      "measured_at": "2026-11-06T20:47:45.448068+00:00"
+    }
   }
 ]
