@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "PG",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 85.5,
+    "reasoning": "Auto-applied: confidence 85.5 (technical=0.8915738815797402, sentiment=None, catalyst=None, fundamental=0.7686)",
+    "reference_price": 164.315,
+    "recorded_at": "2026-11-09T14:43:03.714306+00:00",
+    "outcome": null
+  }
+]

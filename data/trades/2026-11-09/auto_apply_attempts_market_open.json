@@ -1,0 +1,53 @@
+[
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 7.27% of the 72,266.18 portfolio (5,253.96 incl. 3,490.44 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "PG",
+    "status": "submitted",
+    "qty": 4.0,
+    "order": {
+      "id": "675975dc-8f57-4e44-ae9d-473479a77077",
+      "client_order_id": "f36561e0-6a8a-4c18-94c5-13b66b41ce4d",
+      "created_at": "2026-11-09T14:43:03.366860Z",
+      "updated_at": "2026-11-09T14:43:03.367742Z",
+      "submitted_at": "2026-11-09T14:43:03.366860Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-11-09T21:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "f81a406b-a53c-4ea5-ab05-6fb92bfc6bd7",
+      "symbol": "PG",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "4",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "167.39",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null,
+      "group_id": null,
+      "group_role": null
+    },
+    "checkpoint": "market_open"
+  }
+]

@@ -1,16 +1,16 @@
 {
  "fundamentals": {
   "AAPL": {
-   "at": "2026-10-28T12:47:47.784764+00:00",
+   "at": "2026-11-09T14:43:06.248977+00:00",
    "value": {
-    "debtToEquity": null,
-    "forwardPE": 36.29823,
-    "marketCap": 5065640247296,
-    "profitMargins": null,
-    "returnOnEquity": null,
-    "revenueGrowth": null,
-    "totalRevenue": null,
-    "trailingPE": 39.805046
+    "debtToEquity": 84.286,
+    "forwardPE": 33.14689,
+    "marketCap": 5082776076288,
+    "profitMargins": 0.27604,
+    "returnOnEquity": 1.42257,
+    "revenueGrowth": 0.117,
+    "totalRevenue": 478833999872,
+    "trailingPE": 38.948776
    }
   },
   "ABBV": {

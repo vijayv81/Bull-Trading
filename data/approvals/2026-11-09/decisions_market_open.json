@@ -1,0 +1,22 @@
+[
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-09T14:42:53.699244+00:00"
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-09T14:42:57.289807+00:00"
+  }
+]
