@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 85.5 (technical=0.8915738815797402, sentiment=None, catalyst=None, fundamental=0.7686)",
     "reference_price": 164.315,
     "recorded_at": "2026-11-09T14:43:03.714306+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 164.315,
+      "price_at_measurement": 168.59,
+      "price_basis": "quote_mid",
+      "pct_change": 2.6,
+      "directionally_correct": true,
+      "measured_at": "2026-11-09T20:48:30.432768+00:00"
+    }
   },
   {
     "ticker": "PG",
@@ -19,6 +26,31 @@
     "reasoning": "Auto-applied: confidence 87.6 (technical=0.9221276165665383, sentiment=None, catalyst=None, fundamental=0.7686)",
     "reference_price": 167.325,
     "recorded_at": "2026-11-09T17:36:33.994672+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 167.325,
+      "price_at_measurement": 168.59,
+      "price_basis": "quote_mid",
+      "pct_change": 0.76,
+      "directionally_correct": true,
+      "measured_at": "2026-11-09T20:48:30.765835+00:00"
+    }
+  },
+  {
+    "ticker": "MSFT",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 90.6,
+    "reasoning": "Auto-applied: confidence 90.6 (technical=0.9240515203498364, sentiment=None, catalyst=None, fundamental=0.8654)",
+    "reference_price": 547.095,
+    "recorded_at": "2026-11-09T20:48:18.616057+00:00",
+    "outcome": {
+      "price_at_decision": 547.095,
+      "price_at_measurement": 547.085,
+      "price_basis": "quote_mid",
+      "pct_change": -0.0,
+      "directionally_correct": false,
+      "measured_at": "2026-11-09T20:48:31.162034+00:00"
+    }
   }
 ]
