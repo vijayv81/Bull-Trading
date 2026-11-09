@@ -9,5 +9,16 @@
     "reference_price": 164.315,
     "recorded_at": "2026-11-09T14:43:03.714306+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 87.6,
+    "reasoning": "Auto-applied: confidence 87.6 (technical=0.9221276165665383, sentiment=None, catalyst=None, fundamental=0.7686)",
+    "reference_price": 167.325,
+    "recorded_at": "2026-11-09T17:36:33.994672+00:00",
+    "outcome": null
   }
 ]
