@@ -105,16 +105,16 @@
    }
   },
   "DIS": {
-   "at": "2026-11-02T15:19:45.077203+00:00",
+   "at": "2026-11-09T17:36:42.117995+00:00",
    "value": {
-    "debtToEquity": null,
-    "forwardPE": 15.143615,
-    "marketCap": 196065296384,
-    "profitMargins": null,
-    "returnOnEquity": null,
-    "revenueGrowth": null,
-    "totalRevenue": null,
-    "trailingPE": 23.412373
+    "debtToEquity": 39.404,
+    "forwardPE": 15.737731,
+    "marketCap": 203800854528,
+    "profitMargins": 0.086990006,
+    "returnOnEquity": 0.0801,
+    "revenueGrowth": 0.068,
+    "totalRevenue": 98860998656,
+    "trailingPE": 24.336082
    }
   },
   "EWZS": {
@@ -170,16 +170,16 @@
    }
   },
   "HD": {
-   "at": "2026-11-02T15:19:47.845737+00:00",
+   "at": "2026-11-09T17:36:45.527585+00:00",
    "value": {
     "debtToEquity": 380.261,
-    "forwardPE": 21.034855,
-    "marketCap": 335133933568,
+    "forwardPE": 22.14709,
+    "marketCap": 352393920512,
     "profitMargins": 0.0841,
     "returnOnEquity": 1.0429599,
     "revenueGrowth": 0.057,
     "totalRevenue": 169176006656,
-    "trailingPE": 23.506649
+    "trailingPE": 24.717285
    }
   },
   "HIMS": {

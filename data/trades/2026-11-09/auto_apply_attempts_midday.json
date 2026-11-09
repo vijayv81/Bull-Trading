@@ -1,0 +1,65 @@
+[
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 7.69% of the 72,595.36 portfolio (5,580.10 incl. 3,511.32 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 7.03% of the 72,594.12 portfolio (5,103.84 incl. 3,391.28 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "PG",
+    "status": "submitted",
+    "qty": 7.0,
+    "order": {
+      "id": "b780fdf0-bddb-40b7-adf0-be19d5a8e520",
+      "client_order_id": "c7eed95e-3759-47e4-b1a2-3053fb589f5b",
+      "created_at": "2026-11-09T17:36:33.663402Z",
+      "updated_at": "2026-11-09T17:36:33.664291Z",
+      "submitted_at": "2026-11-09T17:36:33.663402Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-11-09T21:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "f81a406b-a53c-4ea5-ab05-6fb92bfc6bd7",
+      "symbol": "PG",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "7",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "169.05",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null,
+      "group_id": null,
+      "group_role": null
+    },
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 5.45% of the 72,593.48 portfolio (3,956.86 incl. 3,291.90 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  }
+]
