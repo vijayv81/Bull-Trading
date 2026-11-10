@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "ABBV",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 10.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T17:38:32.477510+00:00"
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 12.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T17:38:36.009316+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T17:38:39.572903+00:00"
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T17:38:43.023398+00:00"
+  },
+  {
+    "ticker": "HD",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T17:39:07.628487+00:00"
+  },
+  {
+    "ticker": "AAPL",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T17:39:11.681081+00:00"
+  }
+]
