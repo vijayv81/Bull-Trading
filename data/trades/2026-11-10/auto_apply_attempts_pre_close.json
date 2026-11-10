@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 8.96% of the 72,540.68 portfolio (6,500.78 incl. 3,529.68 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 7.62% of the 72,540.96 portfolio (5,524.09 incl. 3,386.24 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "PG would reach 6.54% of the 72,543.78 portfolio (4,747.90 incl. 2,871.30 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 5.90% of the 72,548.47 portfolio (4,279.08 incl. 3,201.36 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "HD",
+    "status": "refused",
+    "reason": "Opening HD would exceed the 10-position concurrent-positions cap (already holding 10: ABBV, COST, KO, MA, MGLD, MSFT, PG, SPY, V, WMT).",
+    "checkpoint": "pre_close"
+  }
+]
