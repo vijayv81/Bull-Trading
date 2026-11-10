@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 9.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T14:43:09.904453+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T14:43:13.867248+00:00"
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 11.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T14:43:17.809227+00:00"
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T14:43:21.542264+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-10T14:43:28.545625+00:00"
+  }
+]
