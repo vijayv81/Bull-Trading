@@ -9,5 +9,16 @@
     "reference_price": 1036.7649999999999,
     "recorded_at": "2026-11-10T14:43:28.003358+00:00",
     "outcome": null
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 89.3,
+    "reasoning": "Auto-applied: confidence 89.3 (technical=0.9923888897674429, sentiment=None, catalyst=None, fundamental=0.6626)",
+    "reference_price": 1065.77,
+    "recorded_at": "2026-11-10T17:38:48.444176+00:00",
+    "outcome": null
   }
 ]

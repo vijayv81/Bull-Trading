@@ -1,0 +1,77 @@
+[
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 8.97% of the 72,428.70 portfolio (6,497.62 incl. 3,528.12 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "PG would reach 6.82% of the 72,427.44 portfolio (4,940.54 incl. 2,884.22 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 7.64% of the 72,419.58 portfolio (5,531.25 incl. 3,390.80 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "COST",
+    "status": "submitted",
+    "qty": 1.0,
+    "order": {
+      "id": "d098a9b1-60ac-4472-b7af-0713202471dd",
+      "client_order_id": "7b55eb70-f825-456e-985e-6ef7c1850e68",
+      "created_at": "2026-11-10T17:38:48.231698Z",
+      "updated_at": "2026-11-10T17:38:48.232564Z",
+      "submitted_at": "2026-11-10T17:38:48.231698Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-11-10T21:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "1f888138-e413-4939-b16b-bdd08bb4debd",
+      "symbol": "COST",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "1",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "1077.69",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null,
+      "group_id": null,
+      "group_role": null
+    },
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "HD",
+    "status": "refused",
+    "reason": "Buying HD would take the active (non-SPY) positions to 35.6% of the 72,429.91 portfolio (25,795.17), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "AAPL",
+    "status": "refused",
+    "reason": "Opening AAPL would exceed the 10-position concurrent-positions cap (already holding 10: ABBV, COST, KO, MA, MGLD, MSFT, PG, SPY, V, WMT).",
+    "checkpoint": "midday"
+  }
+]
