@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 89.2 (technical=0.9899910834842607, sentiment=None, catalyst=None, fundamental=0.6626)",
     "reference_price": 1036.7649999999999,
     "recorded_at": "2026-11-10T14:43:28.003358+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1036.7649999999999,
+      "price_at_measurement": 1066.14,
+      "price_basis": "close",
+      "pct_change": 2.83,
+      "directionally_correct": true,
+      "measured_at": "2026-11-10T21:44:43.734324+00:00"
+    }
   },
   {
     "ticker": "COST",
@@ -19,6 +26,13 @@
     "reasoning": "Auto-applied: confidence 89.3 (technical=0.9923888897674429, sentiment=None, catalyst=None, fundamental=0.6626)",
     "reference_price": 1065.77,
     "recorded_at": "2026-11-10T17:38:48.444176+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1065.77,
+      "price_at_measurement": 1066.14,
+      "price_basis": "close",
+      "pct_change": 0.03,
+      "directionally_correct": true,
+      "measured_at": "2026-11-10T21:44:44.063592+00:00"
+    }
   }
 ]
