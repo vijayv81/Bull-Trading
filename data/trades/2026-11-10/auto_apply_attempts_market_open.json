@@ -1,0 +1,71 @@
+[
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 8.53% of the 72,476.64 portfolio (6,184.68 incl. 3,518.88 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 7.01% of the 72,481.21 portfolio (5,083.88 incl. 3,378.00 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "PG would reach 6.53% of the 72,484.94 portfolio (4,735.27 incl. 2,863.74 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "COST",
+    "status": "submitted",
+    "qty": 1.0,
+    "order": {
+      "id": "6a54269e-e09f-4fb3-9fcf-b43f675bc1bf",
+      "client_order_id": "8f8e2d44-53ce-4994-b707-3699d40143d1",
+      "created_at": "2026-11-10T14:43:27.774104Z",
+      "updated_at": "2026-11-10T14:43:27.778605Z",
+      "submitted_at": "2026-11-10T14:43:27.774104Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-11-10T21:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "1f888138-e413-4939-b16b-bdd08bb4debd",
+      "symbol": "COST",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "1",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "1076.29",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null,
+      "group_id": null,
+      "group_role": null
+    },
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 6.35% of the 72,476.48 portfolio (4,603.99 incl. 3,279.25 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  }
+]
