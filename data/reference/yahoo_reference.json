@@ -209,16 +209,16 @@
    }
   },
   "IBM": {
-   "at": "2026-11-02T14:29:33.550638+00:00",
+   "at": "2026-11-11T14:42:13.818035+00:00",
    "value": {
     "debtToEquity": 185.439,
-    "forwardPE": 19.480824,
-    "marketCap": 243661602816,
+    "forwardPE": 18.373837,
+    "marketCap": 229815664640,
     "profitMargins": 0.15989,
     "returnOnEquity": 0.34769002,
     "revenueGrowth": 0.047,
     "totalRevenue": 69868003328,
-    "trailingPE": 21.99744
+    "trailingPE": 20.747448
    }
   },
   "INTC": {
@@ -313,16 +313,16 @@
    }
   },
   "LLY": {
-   "at": "2026-11-04T14:41:43.591007+00:00",
+   "at": "2026-11-11T14:42:18.296575+00:00",
    "value": {
     "debtToEquity": 122.925,
-    "forwardPE": 28.527502,
-    "marketCap": 1274411089920,
+    "forwardPE": 28.154976,
+    "marketCap": 1267458899968,
     "profitMargins": 0.31898,
     "returnOnEquity": 0.86024004,
     "revenueGrowth": 0.386,
     "totalRevenue": 86461997056,
-    "trailingPE": 46.437035
+    "trailingPE": 46.18371
    }
   },
   "MA": {
@@ -586,16 +586,16 @@
    }
   },
   "XOM": {
-   "at": "2026-10-29T14:03:21.585317+00:00",
+   "at": "2026-11-11T14:42:27.458544+00:00",
    "value": {
-    "debtToEquity": null,
-    "forwardPE": null,
-    "marketCap": null,
-    "profitMargins": null,
-    "returnOnEquity": null,
-    "revenueGrowth": null,
-    "totalRevenue": null,
-    "trailingPE": null
+    "debtToEquity": 12.568,
+    "forwardPE": 13.251212,
+    "marketCap": 673010548736,
+    "profitMargins": 0.10463,
+    "returnOnEquity": 0.15528,
+    "revenueGrowth": 0.326,
+    "totalRevenue": 388231987200,
+    "trailingPE": 16.973764
    }
   },
   "XP": {
