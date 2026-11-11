@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 58.2 (technical=0.5674581675850645, sentiment=None, catalyst=0.3333333333333333, fundamental=0.8654), sell_pressure=0.59 (position_pnl_pct=-4.7)",
     "reference_price": 521.565,
     "recorded_at": "2026-11-11T17:40:59.964061+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 521.565,
+      "price_at_measurement": 521.125,
+      "price_basis": "close",
+      "pct_change": -0.08,
+      "directionally_correct": true,
+      "measured_at": "2026-11-11T21:44:18.660144+00:00"
+    }
   },
   {
     "ticker": "PG",
@@ -19,6 +26,13 @@
     "reasoning": "Auto-applied: confidence 85.2 (technical=0.8899556885929014, sentiment=None, catalyst=None, fundamental=0.7646)",
     "reference_price": 167.10000000000002,
     "recorded_at": "2026-11-11T20:47:13.877943+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 167.10000000000002,
+      "price_at_measurement": 167.67,
+      "price_basis": "close",
+      "pct_change": 0.34,
+      "directionally_correct": true,
+      "measured_at": "2026-11-11T21:44:19.181484+00:00"
+    }
   }
 ]
