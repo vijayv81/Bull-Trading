@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "COST",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-11T20:46:57.409691+00:00"
+  },
+  {
+    "ticker": "WMT",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 11.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-11T20:47:00.968600+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-11T20:47:04.812480+00:00"
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-11T20:47:08.212337+00:00"
+  }
+]
