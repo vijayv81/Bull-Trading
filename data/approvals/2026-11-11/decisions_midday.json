@@ -1,0 +1,22 @@
+[
+  {
+    "ticker": "MSFT",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-11T17:40:58.895640+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-11T17:41:00.798348+00:00"
+  }
+]

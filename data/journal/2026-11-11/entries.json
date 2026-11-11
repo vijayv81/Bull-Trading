@@ -1,0 +1,13 @@
+[
+  {
+    "ticker": "MSFT",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 58.2,
+    "reasoning": "Auto-applied: confidence 58.2 (technical=0.5674581675850645, sentiment=None, catalyst=0.3333333333333333, fundamental=0.8654), sell_pressure=0.59 (position_pnl_pct=-4.7)",
+    "reference_price": 521.565,
+    "recorded_at": "2026-11-11T17:40:59.964061+00:00",
+    "outcome": null
+  }
+]
