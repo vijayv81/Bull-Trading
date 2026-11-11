@@ -1,0 +1,71 @@
+[
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 5.96% of the 72,905.53 portfolio (4,343.10 incl. 3,249.06 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "WMT",
+    "status": "refused",
+    "reason": "WMT would reach 6.55% of the 72,906.91 portfolio (4,775.35 incl. 3,382.97 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 6.43% of the 72,906.68 portfolio (4,688.90 incl. 3,400.88 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "PG",
+    "status": "submitted",
+    "qty": 4.0,
+    "order": {
+      "id": "a1e5132d-b2f9-43ee-9c04-356b0ebebd1a",
+      "client_order_id": "5088488b-79e8-475f-9fcc-e76e916d2012",
+      "created_at": "2026-11-11T20:47:13.551385Z",
+      "updated_at": "2026-11-11T20:47:13.552469Z",
+      "submitted_at": "2026-11-11T20:47:13.551385Z",
+      "filled_at": null,
+      "expired_at": null,
+      "expires_at": "2026-11-11T21:00:00Z",
+      "canceled_at": null,
+      "failed_at": null,
+      "replaced_at": null,
+      "replaced_by": null,
+      "replaces": null,
+      "asset_id": "f81a406b-a53c-4ea5-ab05-6fb92bfc6bd7",
+      "symbol": "PG",
+      "asset_class": "us_equity",
+      "notional": null,
+      "qty": "4",
+      "filled_qty": "0",
+      "filled_avg_price": null,
+      "order_class": "simple",
+      "order_type": "limit",
+      "type": "limit",
+      "side": "buy",
+      "time_in_force": "day",
+      "limit_price": "169.35",
+      "stop_price": null,
+      "status": "pending_new",
+      "extended_hours": false,
+      "legs": null,
+      "trail_percent": null,
+      "trail_price": null,
+      "hwm": null,
+      "position_intent": "buy_to_open",
+      "ratio_qty": null,
+      "group_id": null,
+      "group_role": null
+    },
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "TXN",
+    "status": "deferred",
+    "reason": "Price $310.17 is 85% of the way up its 1-month range ($271.23-$317.20) and 5.7% above its 1-week average $292.37 \u2014 waiting for a pullback toward $292.37 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  }
+]
