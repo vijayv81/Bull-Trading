@@ -1,0 +1,23 @@
+[
+  {
+    "option_id": "2026-11-05-weights-historical_hitrate-to-fundamental",
+    "title": "Shift 0.05 of scoring weight from historical_hitrate to fundamental",
+    "changes": [
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.historical_hitrate",
+        "from": 0.1,
+        "to": 0.05
+      },
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.fundamental",
+        "from": 0.15,
+        "to": 0.2
+      }
+    ],
+    "loosens_guardrail": false,
+    "decided_by": "daily-pr",
+    "applied_at": "2026-11-05T21:44:37.254780+00:00"
+  }
+]
