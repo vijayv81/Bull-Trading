@@ -14,16 +14,16 @@
    }
   },
   "ABBV": {
-   "at": "2026-11-04T13:46:22.687930+00:00",
+   "at": "2026-11-11T13:46:52.649089+00:00",
    "value": {
     "debtToEquity": null,
-    "forwardPE": null,
-    "marketCap": null,
-    "profitMargins": null,
+    "forwardPE": 18.143679,
+    "marketCap": 519484768256,
+    "profitMargins": 0.15666,
     "returnOnEquity": null,
-    "revenueGrowth": null,
-    "totalRevenue": null,
-    "trailingPE": null
+    "revenueGrowth": 0.103,
+    "totalRevenue": 66013999104,
+    "trailingPE": 50.496563
    }
   },
   "AMD": {
@@ -443,16 +443,16 @@
    }
   },
   "PG": {
-   "at": "2026-11-04T13:46:59.587991+00:00",
+   "at": "2026-11-11T13:47:02.589488+00:00",
    "value": {
     "debtToEquity": 70.343,
-    "forwardPE": 21.90142,
-    "marketCap": 375619911680,
+    "forwardPE": 22.792877,
+    "marketCap": 390917292032,
     "profitMargins": 0.18229,
     "returnOnEquity": 0.29609,
     "revenueGrowth": 0.04,
     "totalRevenue": 87921999872,
-    "trailingPE": 24.406626
+    "trailingPE": 25.400604
    }
   },
   "PLTR": {
@@ -495,16 +495,16 @@
    }
   },
   "TSLA": {
-   "at": "2026-11-04T13:47:01.314354+00:00",
+   "at": "2026-11-11T13:47:27.753481+00:00",
    "value": {
     "debtToEquity": 18.295,
-    "forwardPE": 184.55739,
-    "marketCap": 1575163002880,
+    "forwardPE": 175.88759,
+    "marketCap": 1501178494976,
     "profitMargins": 0.031070001,
     "returnOnEquity": 0.03844,
     "revenueGrowth": -0.002,
     "totalRevenue": 103569997824,
-    "trailingPE": 437.91208
+    "trailingPE": 417.34064
    }
   },
   "TXN": {
@@ -573,16 +573,16 @@
    }
   },
   "WMT": {
-   "at": "2026-11-04T13:46:35.088162+00:00",
+   "at": "2026-11-11T13:47:06.349704+00:00",
    "value": {
     "debtToEquity": 71.653,
-    "forwardPE": 38.69888,
-    "marketCap": 993645756416,
+    "forwardPE": 38.939774,
+    "marketCap": 999136821248,
     "profitMargins": 0.03,
     "returnOnEquity": 0.22313999,
     "revenueGrowth": 0.059,
     "totalRevenue": 735839977472,
-    "trailingPE": 45.239132
+    "trailingPE": 45.489132
    }
   },
   "XOM": {
