@@ -157,16 +157,16 @@
    }
   },
   "GOOG": {
-   "at": "2026-11-05T13:48:13.515330+00:00",
+   "at": "2026-11-12T14:42:41.076822+00:00",
    "value": {
     "debtToEquity": 22.187,
-    "forwardPE": 18.543415,
-    "marketCap": 3532065865728,
+    "forwardPE": 18.888754,
+    "marketCap": 3584315359232,
     "profitMargins": 0.50031,
     "returnOnEquity": 0.44286,
     "revenueGrowth": 0.247,
     "totalRevenue": 471097999360,
-    "trailingPE": 15.00261
+    "trailingPE": 15.224543
    }
   },
   "HD": {
@@ -183,15 +183,15 @@
    }
   },
   "HIMS": {
-   "at": "2026-11-05T13:48:16.867143+00:00",
+   "at": "2026-11-12T14:42:44.688817+00:00",
    "value": {
-    "debtToEquity": 477.128,
-    "forwardPE": 36.16092,
-    "marketCap": 6220135424,
-    "profitMargins": -0.05509,
-    "returnOnEquity": -0.32033002,
-    "revenueGrowth": 0.382,
-    "totalRevenue": 2578112000,
+    "debtToEquity": 439.282,
+    "forwardPE": 33.80911,
+    "marketCap": 4630817280,
+    "profitMargins": -0.06651,
+    "returnOnEquity": -0.40765998,
+    "revenueGrowth": 0.486,
+    "totalRevenue": 2869509120,
     "trailingPE": null
    }
   },
@@ -248,15 +248,15 @@
    }
   },
   "IREN": {
-   "at": "2026-11-05T13:48:18.981432+00:00",
+   "at": "2026-11-12T14:42:49.375470+00:00",
    "value": {
-    "debtToEquity": 187.297,
-    "forwardPE": -5.4511576,
-    "marketCap": 8784159744,
-    "profitMargins": -0.9938,
-    "returnOnEquity": -0.23409,
-    "revenueGrowth": -0.267,
-    "totalRevenue": 707006976,
+    "debtToEquity": 199.668,
+    "forwardPE": 71.81185,
+    "marketCap": 8227950080,
+    "profitMargins": -1.94332,
+    "returnOnEquity": -0.33799,
+    "revenueGrowth": -0.05,
+    "totalRevenue": 695006976,
     "trailingPE": null
    }
   },
@@ -326,16 +326,16 @@
    }
   },
   "MA": {
-   "at": "2026-11-05T14:42:00.762911+00:00",
+   "at": "2026-11-12T14:42:18.155263+00:00",
    "value": {
     "debtToEquity": 355.163,
-    "forwardPE": 29.26247,
-    "marketCap": 590208761856,
+    "forwardPE": 28.510714,
+    "marketCap": 575363940352,
     "profitMargins": 0.46732,
     "returnOnEquity": 2.31366,
     "revenueGrowth": 0.14,
     "totalRevenue": 36288000000,
-    "trailingPE": 35.451855
+    "trailingPE": 34.560177
    }
   },
   "MCD": {
@@ -365,11 +365,11 @@
    }
   },
   "MGLD": {
-   "at": "2026-11-05T13:47:59.925094+00:00",
+   "at": "2026-11-12T14:42:21.453711+00:00",
    "value": {
     "debtToEquity": 2.434,
     "forwardPE": null,
-    "marketCap": 85195656,
+    "marketCap": 84976984,
     "profitMargins": -0.17267999,
     "returnOnEquity": -0.21452999,
     "revenueGrowth": 0.257,
@@ -508,16 +508,16 @@
    }
   },
   "TXN": {
-   "at": "2026-11-05T13:48:03.625465+00:00",
+   "at": "2026-11-12T14:42:57.741849+00:00",
    "value": {
     "debtToEquity": 70.654,
-    "forwardPE": 26.936668,
-    "marketCap": 284778987520,
+    "forwardPE": 26.888676,
+    "marketCap": 284123168768,
     "profitMargins": 0.34252998,
     "returnOnEquity": 0.39723998,
     "revenueGrowth": 0.277,
     "totalRevenue": 20765999104,
-    "trailingPE": 40.400776
+    "trailingPE": 40.328793
    }
   },
   "UNH": {
@@ -534,16 +534,16 @@
    }
   },
   "UNP": {
-   "at": "2026-11-02T20:47:41.218462+00:00",
+   "at": "2026-11-12T14:43:01.544185+00:00",
    "value": {
     "debtToEquity": 141.303,
-    "forwardPE": 21.370535,
-    "marketCap": 182642294784,
+    "forwardPE": 21.164288,
+    "marketCap": 181032468480,
     "profitMargins": 0.28897,
     "returnOnEquity": 0.38747,
     "revenueGrowth": 0.153,
     "totalRevenue": 26363000832,
-    "trailingPE": 23.981241
+    "trailingPE": 23.762873
    }
   },
   "UVXY": {
@@ -560,16 +560,16 @@
    }
   },
   "V": {
-   "at": "2026-11-05T13:48:05.498502+00:00",
+   "at": "2026-11-12T14:42:24.838922+00:00",
    "value": {
-    "debtToEquity": 61.12,
-    "forwardPE": 25.490728,
-    "marketCap": 815951970304,
+    "debtToEquity": 63.568,
+    "forwardPE": 24.827293,
+    "marketCap": 793991184384,
     "profitMargins": 0.51203996,
     "returnOnEquity": 0.63507,
     "revenueGrowth": 0.132,
     "totalRevenue": 45902999552,
-    "trailingPE": 35.43588
+    "trailingPE": 34.541397
    }
   },
   "WMT": {
