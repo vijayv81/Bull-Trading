@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "LLY",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-12T20:47:14.734744+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-12T20:47:18.891909+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-12T20:47:22.776446+00:00"
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-12T20:47:26.319323+00:00"
+  },
+  {
+    "ticker": "UNH",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-12T20:47:50.220908+00:00"
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "ticker": "LLY",
+    "status": "refused",
+    "reason": "Buying LLY would take the active (non-SPY) positions to 36.8% of the 72,799.54 portfolio (26,788.46), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 6.97% of the 72,799.62 portfolio (5,073.24 incl. 3,370.88 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 5.40% of the 72,800.39 portfolio (3,931.55 incl. 3,270.65 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "PG would reach 6.02% of the 72,797.67 portfolio (4,383.77 incl. 3,533.78 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "TXN",
+    "status": "deferred",
+    "reason": "Price $311.59 is 88% of the way up its 1-month range ($271.23-$317.20) and 4.0% above its 1-week average $299.03 \u2014 waiting for a pullback toward $299.03 would buy it cheaper.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "UNH",
+    "status": "refused",
+    "reason": "Buying UNH would take the active (non-SPY) positions to 35.9% of the 72,794.60 portfolio (26,154.05), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "pre_close"
+  }
+]
