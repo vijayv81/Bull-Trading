@@ -92,16 +92,16 @@
    }
   },
   "CVX": {
-   "at": "2026-11-04T13:46:25.245911+00:00",
+   "at": "2026-11-12T20:47:31.783392+00:00",
    "value": {
-    "debtToEquity": 18.959,
-    "forwardPE": 13.771589,
-    "marketCap": 439501783040,
-    "profitMargins": 0.11919,
-    "returnOnEquity": null,
+    "debtToEquity": 16.769,
+    "forwardPE": 13.100431,
+    "marketCap": 423480557568,
+    "profitMargins": 0.11923,
+    "returnOnEquity": 0.13853,
     "revenueGrowth": 0.348,
-    "totalRevenue": 226326003712,
-    "trailingPE": 16.539648
+    "totalRevenue": 226256994304,
+    "trailingPE": 15.934655
    }
   },
   "DIS": {
