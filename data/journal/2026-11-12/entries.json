@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 85.6 (technical=0.9104810524449657, sentiment=None, catalyst=None, fundamental=0.7297)",
     "reference_price": 98.285,
     "recorded_at": "2026-11-12T17:38:20.357052+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 98.285,
+      "price_at_measurement": 97.44,
+      "price_basis": "close",
+      "pct_change": -0.86,
+      "directionally_correct": false,
+      "measured_at": "2026-11-12T21:44:24.955721+00:00"
+    }
   },
   {
     "ticker": "LLY",
@@ -19,6 +26,13 @@
     "reasoning": "Auto-applied: confidence 91.3 (technical=1.0, sentiment=1.0, catalyst=0.6666666666666666, fundamental=0.8139)",
     "reference_price": 1448.33,
     "recorded_at": "2026-11-12T17:38:47.585911+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1448.33,
+      "price_at_measurement": 1427.28,
+      "price_basis": "close",
+      "pct_change": -1.45,
+      "directionally_correct": false,
+      "measured_at": "2026-11-12T21:44:25.316352+00:00"
+    }
   }
 ]
