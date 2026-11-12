@@ -1,0 +1,26 @@
+[
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 7.62% of the 72,917.27 portfolio (5,552.69 incl. 3,404.64 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 6.36% of the 72,912.67 portfolio (4,638.91 incl. 3,303.05 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "PG would reach 6.52% of the 72,916.95 portfolio (4,754.33 incl. 3,557.61 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "TXN",
+    "status": "deferred",
+    "reason": "Price $310.58 is 86% of the way up its 1-month range ($271.23-$317.20) and 3.9% above its 1-week average $298.57 \u2014 waiting for a pullback toward $298.57 would buy it cheaper.",
+    "checkpoint": "market_open"
+  }
+]
