@@ -417,16 +417,16 @@
    }
   },
   "PEP": {
-   "at": "2026-11-05T17:36:47.664890+00:00",
+   "at": "2026-11-13T17:36:58.083835+00:00",
    "value": {
     "debtToEquity": 230.716,
-    "forwardPE": 16.501694,
-    "marketCap": 194265546752,
+    "forwardPE": 16.745552,
+    "marketCap": 196759371776,
     "profitMargins": 0.11091,
     "returnOnEquity": 0.52187,
     "revenueGrowth": 0.056,
     "totalRevenue": 98241003520,
-    "trailingPE": 17.931446
+    "trailingPE": 18.161634
    }
   },
   "PFE": {

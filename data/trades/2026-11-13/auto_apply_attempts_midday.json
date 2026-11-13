@@ -1,0 +1,26 @@
+[
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 7.64% of the 72,863.43 portfolio (5,568.06 incl. 3,413.56 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "WMT",
+    "status": "refused",
+    "reason": "WMT would reach 6.35% of the 72,867.94 portfolio (4,624.29 incl. 3,459.51 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "KO",
+    "status": "refused",
+    "reason": "Buying KO would take the active (non-SPY) positions to 36.6% of the 72,870.61 portfolio (26,673.69), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "CVX",
+    "status": "refused",
+    "reason": "Buying CVX would take the active (non-SPY) positions to 36.9% of the 72,868.90 portfolio (26,897.85), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  }
+]
