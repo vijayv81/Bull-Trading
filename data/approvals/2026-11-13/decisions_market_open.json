@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "LLY",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-13T15:23:36.874980+00:00"
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-13T15:23:41.472354+00:00"
+  },
+  {
+    "ticker": "WMT",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-13T15:23:46.750155+00:00"
+  },
+  {
+    "ticker": "KO",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 9.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-13T15:23:50.527141+00:00"
+  }
+]
