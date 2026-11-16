@@ -1,0 +1,62 @@
+[
+  {
+    "ticker": "COST",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T20:46:21.902359+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T20:46:25.926907+00:00"
+  },
+  {
+    "ticker": "KO",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 11.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T20:46:29.793917+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T20:46:34.713746+00:00"
+  },
+  {
+    "ticker": "CVX",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T20:47:00.939438+00:00"
+  },
+  {
+    "ticker": "UNP",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T20:47:05.789928+00:00"
+  }
+]
