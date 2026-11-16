@@ -1,0 +1,72 @@
+[
+  {
+    "ticker": "PG",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 10.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T14:42:05.596839+00:00"
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T14:42:10.021330+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T14:42:14.273924+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T14:42:18.746952+00:00"
+  },
+  {
+    "ticker": "KO",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 14.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T14:42:23.119318+00:00"
+  },
+  {
+    "ticker": "CVX",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T14:42:47.488533+00:00"
+  },
+  {
+    "ticker": "HD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-16T14:42:52.587217+00:00"
+  }
+]
