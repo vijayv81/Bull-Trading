@@ -1,0 +1,44 @@
+[
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 6.15% of the 72,502.79 portfolio (4,456.74 incl. 3,334.28 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 6.41% of the 72,504.57 portfolio (4,648.73 incl. 3,311.07 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "KO",
+    "status": "refused",
+    "reason": "Buying KO would take the active (non-SPY) positions to 36.9% of the 72,505.92 portfolio (26,741.63), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 5.69% of the 72,504.75 portfolio (4,129.04 incl. 3,534.12 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "CVX",
+    "status": "refused",
+    "reason": "Buying CVX would take the active (non-SPY) positions to 36.9% of the 72,501.42 portfolio (26,738.80), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "UNP",
+    "status": "refused",
+    "reason": "Buying UNP would take the active (non-SPY) positions to 36.2% of the 72,507.00 portfolio (26,255.99), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "pre_close"
+  }
+]
