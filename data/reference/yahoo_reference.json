@@ -287,29 +287,29 @@
    }
   },
   "KO": {
-   "at": "2026-11-06T20:46:50.353568+00:00",
+   "at": "2026-11-16T13:47:34.390182+00:00",
    "value": {
     "debtToEquity": 107.449,
-    "forwardPE": 27.18274,
-    "marketCap": 412530900992,
+    "forwardPE": 28.124514,
+    "marketCap": 426963795968,
     "profitMargins": 0.28654,
     "returnOnEquity": 0.40592998,
     "revenueGrowth": 0.074,
     "totalRevenue": 51053998080,
-    "trailingPE": 28.28761
+    "trailingPE": 29.277285
    }
   },
   "LIN": {
-   "at": "2026-11-06T20:47:18.125403+00:00",
+   "at": "2026-11-16T13:48:00.156161+00:00",
    "value": {
     "debtToEquity": 65.135,
-    "forwardPE": 26.454458,
-    "marketCap": 237346308096,
+    "forwardPE": 26.913727,
+    "marketCap": 241505615872,
     "profitMargins": 0.19336,
     "returnOnEquity": 0.17723,
     "revenueGrowth": 0.092,
     "totalRevenue": 36238000128,
-    "trailingPE": 34.32935
+    "trailingPE": 34.930943
    }
   },
   "LLY": {
