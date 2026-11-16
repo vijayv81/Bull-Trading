@@ -1,0 +1,50 @@
+[
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "PG would reach 7.63% of the 72,732.97 portfolio (5,550.88 incl. 3,630.16 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 6.12% of the 72,734.82 portfolio (4,454.20 incl. 3,332.32 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 6.43% of the 72,736.43 portfolio (4,677.81 incl. 3,331.82 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 6.55% of the 72,738.26 portfolio (4,764.00 incl. 3,564.24 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "KO",
+    "status": "refused",
+    "reason": "Buying KO would take the active (non-SPY) positions to 36.9% of the 72,739.75 portfolio (26,831.52), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "CVX",
+    "status": "refused",
+    "reason": "Buying CVX would take the active (non-SPY) positions to 36.9% of the 72,740.30 portfolio (26,828.08), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "TXN",
+    "status": "refused",
+    "reason": "Buying TXN would take the active (non-SPY) positions to 37.0% of the 72,740.28 portfolio (26,929.41), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  }
+]
