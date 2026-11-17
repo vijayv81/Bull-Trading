@@ -1,0 +1,44 @@
+[
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 7.05% of the 72,414.12 portfolio (5,101.84 incl. 3,389.88 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 6.18% of the 72,419.62 portfolio (4,475.00 incl. 3,348.39 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "PG would reach 7.14% of the 72,426.52 portfolio (5,170.68 incl. 3,608.64 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "WMT",
+    "status": "refused",
+    "reason": "WMT would reach 6.40% of the 72,427.15 portfolio (4,636.98 incl. 3,468.42 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 5.45% of the 72,403.66 portfolio (3,944.59 incl. 3,281.40 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "KO",
+    "status": "refused",
+    "reason": "Buying KO would take the active (non-SPY) positions to 36.2% of the 72,400.77 portfolio (26,226.80), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  }
+]
