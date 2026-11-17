@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "V",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-17T17:35:58.866319+00:00"
+  },
+  {
+    "ticker": "KO",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 9.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-17T17:36:02.978017+00:00"
+  },
+  {
+    "ticker": "DIS",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 10.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-17T17:36:28.295409+00:00"
+  }
+]

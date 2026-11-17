@@ -404,16 +404,16 @@
    }
   },
   "NEE": {
-   "at": "2026-11-04T20:47:03.862079+00:00",
+   "at": "2026-11-17T17:36:20.686401+00:00",
    "value": {
     "debtToEquity": 153.254,
-    "forwardPE": 20.165613,
-    "marketCap": 185045319680,
+    "forwardPE": 19.425087,
+    "marketCap": 178250039296,
     "profitMargins": 0.40370998,
     "returnOnEquity": 0.14064,
     "revenueGrowth": 0.016,
     "totalRevenue": 28824999936,
-    "trailingPE": 15.897297
+    "trailingPE": 15.313513
    }
   },
   "NKE": {
