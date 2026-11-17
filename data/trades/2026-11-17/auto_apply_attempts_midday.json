@@ -1,0 +1,20 @@
+[
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 6.42% of the 72,148.67 portfolio (4,634.99 incl. 3,361.76 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "KO",
+    "status": "refused",
+    "reason": "Buying KO would take the active (non-SPY) positions to 36.6% of the 72,148.88 portfolio (26,382.74), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 37.0% of the 72,131.14 portfolio (26,688.57), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  }
+]
