@@ -208,6 +208,19 @@
     "trailingPE": 11.316297
    }
   },
+  "HZN": {
+   "at": "2026-11-17T13:47:12.553000+00:00",
+   "value": {
+    "debtToEquity": null,
+    "forwardPE": null,
+    "marketCap": null,
+    "profitMargins": null,
+    "returnOnEquity": null,
+    "revenueGrowth": null,
+    "totalRevenue": null,
+    "trailingPE": null
+   }
+  },
   "IBM": {
    "at": "2026-11-11T14:42:13.818035+00:00",
    "value": {
