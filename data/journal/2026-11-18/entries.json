@@ -1,0 +1,24 @@
+[
+  {
+    "ticker": "LLY",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "SELL",
+    "confidence": 100.0,
+    "reasoning": "Auto-applied: confidence 100.0 (technical=1.0, sentiment=None, catalyst=None, fundamental=None), sell_pressure=0.52 (position_pnl_pct=-4.18)",
+    "reference_price": 1388.18,
+    "recorded_at": "2026-11-18T20:46:53.409030+00:00",
+    "outcome": null
+  },
+  {
+    "ticker": "MCD",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "action": "BUY",
+    "confidence": 86.4,
+    "reasoning": "Auto-applied: confidence 86.4 (technical=0.81799697730047, sentiment=1.0, catalyst=None, fundamental=0.746)",
+    "reference_price": 274.52,
+    "recorded_at": "2026-11-18T20:47:28.353493+00:00",
+    "outcome": null
+  }
+]
