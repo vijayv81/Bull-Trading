@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "LLY",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-18T17:36:00.771155+00:00"
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-18T17:36:04.975722+00:00"
+  },
+  {
+    "ticker": "PG",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-18T17:36:09.443010+00:00"
+  },
+  {
+    "ticker": "MCD",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-18T17:36:34.305524+00:00"
+  }
+]

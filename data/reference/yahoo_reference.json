@@ -196,16 +196,16 @@
    }
   },
   "HON": {
-   "at": "2026-11-10T14:43:40.721816+00:00",
+   "at": "2026-11-18T17:36:20.852861+00:00",
    "value": {
-    "debtToEquity": 76.101,
-    "forwardPE": 23.112324,
-    "marketCap": 72341454848,
-    "profitMargins": 0.18684,
-    "returnOnEquity": 0.44387,
-    "revenueGrowth": 0.013,
-    "totalRevenue": 37743001600,
-    "trailingPE": 11.316297
+    "debtToEquity": null,
+    "forwardPE": 22.612135,
+    "marketCap": 70869336064,
+    "profitMargins": null,
+    "returnOnEquity": null,
+    "revenueGrowth": null,
+    "totalRevenue": null,
+    "trailingPE": 11.071393
    }
   },
   "HZN": {
@@ -339,16 +339,16 @@
    }
   },
   "LLY": {
-   "at": "2026-11-11T14:42:18.296575+00:00",
+   "at": "2026-11-18T17:35:52.274595+00:00",
    "value": {
-    "debtToEquity": 122.925,
-    "forwardPE": 28.154976,
-    "marketCap": 1267458899968,
-    "profitMargins": 0.31898,
-    "returnOnEquity": 0.86024004,
-    "revenueGrowth": 0.386,
-    "totalRevenue": 86461997056,
-    "trailingPE": 46.18371
+    "debtToEquity": null,
+    "forwardPE": null,
+    "marketCap": null,
+    "profitMargins": null,
+    "returnOnEquity": null,
+    "revenueGrowth": null,
+    "totalRevenue": null,
+    "trailingPE": null
    }
   },
   "MA": {
