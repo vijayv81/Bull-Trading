@@ -1,0 +1,26 @@
+[
+  {
+    "ticker": "LLY",
+    "status": "refused",
+    "reason": "LLY would reach 5.84% of the 71,919.75 portfolio (4,200.94 incl. 1,391.04 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 7.75% of the 71,917.84 portfolio (5,573.35 incl. 3,330.51 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "PG",
+    "status": "refused",
+    "reason": "PG would reach 6.90% of the 71,912.56 portfolio (4,963.88 incl. 3,584.59 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "MCD",
+    "status": "refused",
+    "reason": "Buying MCD would take the active (non-SPY) positions to 36.3% of the 71,902.10 portfolio (26,083.72), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  }
+]
