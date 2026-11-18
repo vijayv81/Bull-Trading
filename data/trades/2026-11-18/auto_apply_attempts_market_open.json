@@ -1,0 +1,26 @@
+[
+  {
+    "ticker": "LLY",
+    "status": "refused",
+    "reason": "Buying LLY would take the active (non-SPY) positions to 37.1% of the 71,842.71 portfolio (26,681.01), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 6.16% of the 71,837.47 portfolio (4,425.39 incl. 3,310.22 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "MCD",
+    "status": "refused",
+    "reason": "Buying MCD would take the active (non-SPY) positions to 36.3% of the 71,882.09 portfolio (26,103.29), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "HD",
+    "status": "refused",
+    "reason": "Buying HD would take the active (non-SPY) positions to 36.1% of the 71,889.31 portfolio (25,963.08), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  }
+]
