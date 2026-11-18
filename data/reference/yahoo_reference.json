@@ -365,16 +365,16 @@
    }
   },
   "MCD": {
-   "at": "2026-11-11T17:41:18.653825+00:00",
+   "at": "2026-11-18T20:47:14.183658+00:00",
    "value": {
     "debtToEquity": null,
-    "forwardPE": 20.19059,
-    "marketCap": 194696511488,
+    "forwardPE": 20.109907,
+    "marketCap": 193783791616,
     "profitMargins": 0.32377,
     "returnOnEquity": null,
     "revenueGrowth": 0.011,
     "totalRevenue": 27782000640,
-    "trailingPE": 21.824223
+    "trailingPE": 21.721914
    }
   },
   "META": {
@@ -666,6 +666,10 @@
   "MA": {
    "at": "2026-10-30T16:34:24.392094+00:00",
    "value": "Financial Services"
+  },
+  "MCD": {
+   "at": "2026-11-18T20:47:26.515630+00:00",
+   "value": "Consumer Cyclical"
   },
   "MGLD": {
    "at": "2026-10-23T13:43:38.479496+00:00",
