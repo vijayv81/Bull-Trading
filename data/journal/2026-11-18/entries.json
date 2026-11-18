@@ -8,7 +8,14 @@
     "reasoning": "Auto-applied: confidence 100.0 (technical=1.0, sentiment=None, catalyst=None, fundamental=None), sell_pressure=0.52 (position_pnl_pct=-4.18)",
     "reference_price": 1388.18,
     "recorded_at": "2026-11-18T20:46:53.409030+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 1388.18,
+      "price_at_measurement": 1382.75,
+      "price_basis": "close",
+      "pct_change": -0.39,
+      "directionally_correct": true,
+      "measured_at": "2026-11-18T21:44:22.209083+00:00"
+    }
   },
   {
     "ticker": "MCD",
@@ -19,6 +26,13 @@
     "reasoning": "Auto-applied: confidence 86.4 (technical=0.81799697730047, sentiment=1.0, catalyst=None, fundamental=0.746)",
     "reference_price": 274.52,
     "recorded_at": "2026-11-18T20:47:28.353493+00:00",
-    "outcome": null
+    "outcome": {
+      "price_at_decision": 274.52,
+      "price_at_measurement": 274.03,
+      "price_basis": "close",
+      "pct_change": -0.18,
+      "directionally_correct": false,
+      "measured_at": "2026-11-18T21:44:22.539609+00:00"
+    }
   }
 ]
