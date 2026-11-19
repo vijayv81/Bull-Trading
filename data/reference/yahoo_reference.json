@@ -40,16 +40,16 @@
    }
   },
   "AMZN": {
-   "at": "2026-11-05T14:42:26.532266+00:00",
+   "at": "2026-11-19T14:42:26.747755+00:00",
    "value": {
     "debtToEquity": 49.681,
-    "forwardPE": 24.569056,
-    "marketCap": 2899921338368,
+    "forwardPE": 24.879921,
+    "marketCap": 2939443478528,
     "profitMargins": 0.16900998,
     "returnOnEquity": 0.27416,
     "revenueGrowth": 0.121,
     "totalRevenue": 797455024128,
-    "trailingPE": 21.680275
+    "trailingPE": 21.975748
    }
   },
   "COST": {
