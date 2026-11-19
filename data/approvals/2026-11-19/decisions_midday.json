@@ -1,0 +1,12 @@
+[
+  {
+    "ticker": "DIS",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 7.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-19T17:36:42.544928+00:00"
+  }
+]

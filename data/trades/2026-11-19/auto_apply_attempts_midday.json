@@ -1,0 +1,20 @@
+[
+  {
+    "ticker": "COST",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 35.3% of the 71,241.67 portfolio (25,128.50), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  }
+]
