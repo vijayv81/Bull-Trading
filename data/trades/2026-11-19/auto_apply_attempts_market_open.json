@@ -1,0 +1,20 @@
+[
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 6.10% of the 71,629.32 portfolio (4,372.05 incl. 3,270.86 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 36.6% of the 71,642.99 portfolio (26,225.12), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "market_open"
+  }
+]
