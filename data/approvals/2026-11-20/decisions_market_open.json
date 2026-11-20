@@ -1,0 +1,12 @@
+[
+  {
+    "ticker": "LLY",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-20T14:41:43.554426+00:00"
+  }
+]
