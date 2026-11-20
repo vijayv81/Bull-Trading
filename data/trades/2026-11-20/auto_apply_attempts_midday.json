@@ -1,0 +1,14 @@
+[
+  {
+    "ticker": "COST",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "midday"
+  }
+]
