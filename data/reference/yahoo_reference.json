@@ -66,16 +66,16 @@
    }
   },
   "COST": {
-   "at": "2026-11-13T20:46:28.162693+00:00",
+   "at": "2026-11-20T20:46:29.907384+00:00",
    "value": {
     "debtToEquity": 28.436,
-    "forwardPE": 44.111023,
-    "marketCap": 489454108672,
+    "forwardPE": 44.08616,
+    "marketCap": 489245802496,
     "profitMargins": 0.03043,
     "returnOnEquity": 0.28402,
     "revenueGrowth": 0.111,
     "totalRevenue": 303154003968,
-    "trailingPE": 53.205204
+    "trailingPE": 53.18256
    }
   },
   "CROX": {
@@ -456,16 +456,16 @@
    }
   },
   "PEP": {
-   "at": "2026-11-13T17:36:58.083835+00:00",
+   "at": "2026-11-20T20:46:56.030026+00:00",
    "value": {
     "debtToEquity": 230.716,
-    "forwardPE": 16.745552,
-    "marketCap": 196759371776,
+    "forwardPE": 16.354118,
+    "marketCap": 191526453248,
     "profitMargins": 0.11091,
     "returnOnEquity": 0.52187,
     "revenueGrowth": 0.056,
     "totalRevenue": 98241003520,
-    "trailingPE": 18.161634
+    "trailingPE": 17.678617
    }
   },
   "PFE": {

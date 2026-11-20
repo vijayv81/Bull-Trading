@@ -1,0 +1,8 @@
+[
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "pre_close"
+  }
+]
