@@ -1,0 +1,20 @@
+[
+  {
+    "ticker": "WMT",
+    "status": "refused",
+    "reason": "WMT would reach 6.72% of the 71,492.48 portfolio (4,804.13 incl. 3,496.23 already held), over the 5.0% cap.",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "LLY",
+    "status": "refused",
+    "reason": "Buying LLY would take the active (non-SPY) positions to 36.3% of the 71,503.14 portfolio (25,946.16), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "pre_close"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 36.2% of the 71,500.18 portfolio (25,905.21), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "pre_close"
+  }
+]

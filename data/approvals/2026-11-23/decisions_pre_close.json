@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "WMT",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 10.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-23T20:46:47.641534+00:00"
+  },
+  {
+    "ticker": "LLY",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-23T20:47:10.730519+00:00"
+  },
+  {
+    "ticker": "DIS",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 11.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-23T20:47:15.326841+00:00"
+  }
+]
