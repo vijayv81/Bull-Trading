@@ -143,6 +143,19 @@
     "trailingPE": 8.208381
    }
   },
+  "GE": {
+   "at": "2026-11-23T14:41:59.375761+00:00",
+   "value": {
+    "debtToEquity": 115.989,
+    "forwardPE": 33.989937,
+    "marketCap": 326699384832,
+    "profitMargins": 0.17313999,
+    "returnOnEquity": 0.50165004,
+    "revenueGrowth": 0.159,
+    "totalRevenue": 52576002048,
+    "trailingPE": 36.132
+   }
+  },
   "GKOS": {
    "at": "2026-10-29T14:03:51.135770+00:00",
    "value": {
@@ -326,29 +339,29 @@
    }
   },
   "KO": {
-   "at": "2026-11-16T13:47:34.390182+00:00",
+   "at": "2026-11-23T14:41:46.849183+00:00",
    "value": {
     "debtToEquity": 107.449,
-    "forwardPE": 28.124514,
-    "marketCap": 426963795968,
+    "forwardPE": 27.18019,
+    "marketCap": 413176201216,
     "profitMargins": 0.28654,
     "returnOnEquity": 0.40592998,
     "revenueGrowth": 0.074,
     "totalRevenue": 51053998080,
-    "trailingPE": 29.277285
+    "trailingPE": 28.331858
    }
   },
   "LIN": {
-   "at": "2026-11-16T13:48:00.156161+00:00",
+   "at": "2026-11-23T14:42:08.487948+00:00",
    "value": {
     "debtToEquity": 65.135,
-    "forwardPE": 26.913727,
-    "marketCap": 241505615872,
+    "forwardPE": 25.97624,
+    "marketCap": 233285713920,
     "profitMargins": 0.19336,
     "returnOnEquity": 0.17723,
     "revenueGrowth": 0.092,
     "totalRevenue": 36238000128,
-    "trailingPE": 34.930943
+    "trailingPE": 33.74203
    }
   },
   "LLY": {
