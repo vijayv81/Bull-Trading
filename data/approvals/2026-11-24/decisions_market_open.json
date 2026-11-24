@@ -1,0 +1,12 @@
+[
+  {
+    "ticker": "DIS",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 18.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-24T14:42:34.571462+00:00"
+  }
+]

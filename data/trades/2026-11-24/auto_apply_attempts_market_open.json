@@ -1,0 +1,14 @@
+[
+  {
+    "ticker": "ANF",
+    "status": "deferred",
+    "reason": "Price $170.00 is 92% of the way up its 1-month range ($136.29-$172.80) and 13.7% above its 1-week average $146.76 \u2014 waiting for a pullback toward $146.76 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 37.7% of the 71,379.72 portfolio (26,897.00), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  }
+]
