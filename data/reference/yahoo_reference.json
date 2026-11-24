@@ -52,6 +52,19 @@
     "trailingPE": 21.975748
    }
   },
+  "ANF": {
+   "at": "2026-11-24T14:42:15.800755+00:00",
+   "value": {
+    "debtToEquity": 93.997,
+    "forwardPE": 13.286211,
+    "marketCap": 7252034560,
+    "profitMargins": 0.10035,
+    "returnOnEquity": 0.40609002,
+    "revenueGrowth": 0.048,
+    "totalRevenue": 5340931072,
+    "trailingPE": 14.7582035
+   }
+  },
   "AXP": {
    "at": "2026-11-20T14:41:28.358015+00:00",
    "value": {
