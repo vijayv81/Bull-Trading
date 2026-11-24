@@ -1,0 +1,14 @@
+[
+  {
+    "ticker": "HD",
+    "status": "deferred",
+    "reason": "Price $353.54 is 81% of the way up its 1-month range ($316.15-$362.44) and 3.1% above its 1-week average $342.59 \u2014 waiting for a pullback toward $342.59 would buy it cheaper.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 39.3% of the 71,753.13 portfolio (28,197.58), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  }
+]
