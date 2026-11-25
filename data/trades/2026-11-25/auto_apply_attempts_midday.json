@@ -1,0 +1,44 @@
+[
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 7.10% of the 71,557.46 portfolio (5,081.84 incl. 3,376.68 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 6.43% of the 71,548.34 portfolio (4,599.52 incl. 3,276.30 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "KO",
+    "status": "refused",
+    "reason": "Buying KO would take the active (non-SPY) positions to 36.6% of the 71,554.07 portfolio (26,196.47), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 6.25% of the 71,554.86 portfolio (4,469.64 incl. 3,568.32 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "HD",
+    "status": "deferred",
+    "reason": "Price $360.64 is 96% of the way up its 1-month range ($316.15-$362.44) and 3.7% above its 1-week average $347.22 \u2014 waiting for a pullback toward $347.22 would buy it cheaper.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 38.4% of the 71,575.82 portfolio (27,487.79), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "LLY",
+    "status": "skipped",
+    "reason": "computed qty is 0",
+    "checkpoint": "midday"
+  }
+]

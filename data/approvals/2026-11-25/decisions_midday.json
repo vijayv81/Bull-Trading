@@ -1,0 +1,52 @@
+[
+  {
+    "ticker": "V",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T17:36:15.239360+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T17:36:19.130751+00:00"
+  },
+  {
+    "ticker": "KO",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 11.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T17:36:23.467076+00:00"
+  },
+  {
+    "ticker": "ABBV",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T17:36:28.148314+00:00"
+  },
+  {
+    "ticker": "DIS",
+    "checkpoint": "midday",
+    "decision": "approve",
+    "terms": {
+      "qty": 19.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T17:36:52.761689+00:00"
+  }
+]
