@@ -1,0 +1,44 @@
+[
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 6.44% of the 71,021.05 portfolio (4,575.03 incl. 3,318.00 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 6.17% of the 71,015.75 portfolio (4,379.03 incl. 3,275.85 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "MA",
+    "status": "refused",
+    "reason": "MA would reach 5.43% of the 71,012.38 portfolio (3,858.62 incl. 3,209.65 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "KO",
+    "status": "refused",
+    "reason": "Buying KO would take the active (non-SPY) positions to 36.5% of the 71,007.86 portfolio (25,935.24), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "LLY",
+    "status": "refused",
+    "reason": "Buying LLY would take the active (non-SPY) positions to 37.1% of the 70,997.74 portfolio (26,335.45), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 36.8% of the 70,994.30 portfolio (26,160.18), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "HD",
+    "status": "refused",
+    "reason": "Buying HD would take the active (non-SPY) positions to 36.1% of the 70,984.51 portfolio (25,646.44), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  }
+]

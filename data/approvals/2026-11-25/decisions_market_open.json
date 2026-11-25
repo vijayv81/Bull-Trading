@@ -1,0 +1,72 @@
+[
+  {
+    "ticker": "V",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 3.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T14:42:20.081121+00:00"
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T14:42:23.897201+00:00"
+  },
+  {
+    "ticker": "MA",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T14:42:27.818716+00:00"
+  },
+  {
+    "ticker": "KO",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 10.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T14:42:31.703549+00:00"
+  },
+  {
+    "ticker": "LLY",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T14:42:56.794186+00:00"
+  },
+  {
+    "ticker": "DIS",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 10.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T14:43:01.321212+00:00"
+  },
+  {
+    "ticker": "HD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-25T14:43:06.263341+00:00"
+  }
+]
