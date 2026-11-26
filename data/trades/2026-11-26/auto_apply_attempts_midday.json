@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "MCD",
+    "status": "refused",
+    "reason": "Buying MCD would take the active (non-SPY) positions to 37.3% of the 71,721.07 portfolio (26,755.90), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "COST",
+    "status": "refused",
+    "reason": "COST would reach 6.16% of the 71,721.07 portfolio (4,420.09 incl. 3,260.43 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 6.62% of the 71,721.07 portfolio (4,744.85 incl. 3,395.12 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "ABBV",
+    "status": "refused",
+    "reason": "ABBV would reach 5.76% of the 71,721.07 portfolio (4,129.66 incl. 3,533.76 already held), over the 5.0% cap.",
+    "checkpoint": "midday"
+  },
+  {
+    "ticker": "DIS",
+    "status": "refused",
+    "reason": "Buying DIS would take the active (non-SPY) positions to 39.6% of the 71,721.07 portfolio (28,376.66), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "midday"
+  }
+]
