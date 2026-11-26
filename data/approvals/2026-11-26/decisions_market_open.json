@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "V",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 4.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-26T14:41:44.338980+00:00"
+  },
+  {
+    "ticker": "COST",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-26T14:41:49.591625+00:00"
+  },
+  {
+    "ticker": "DIS",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 26.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-26T14:42:19.129971+00:00"
+  },
+  {
+    "ticker": "LLY",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-26T14:42:25.143317+00:00"
+  }
+]
