@@ -404,16 +404,16 @@
    }
   },
   "MCD": {
-   "at": "2026-11-18T20:47:14.183658+00:00",
+   "at": "2026-11-26T13:46:15.967566+00:00",
    "value": {
     "debtToEquity": null,
-    "forwardPE": 20.109907,
-    "marketCap": 193783791616,
+    "forwardPE": 20.764332,
+    "marketCap": 200089976832,
     "profitMargins": 0.32377,
     "returnOnEquity": null,
     "revenueGrowth": 0.011,
     "totalRevenue": 27782000640,
-    "trailingPE": 21.721914
+    "trailingPE": 22.428797
    }
   },
   "META": {
