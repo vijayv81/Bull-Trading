@@ -469,16 +469,16 @@
    }
   },
   "NKE": {
-   "at": "2026-11-17T14:42:50.477955+00:00",
+   "at": "2026-11-27T14:42:15.243964+00:00",
    "value": {
     "debtToEquity": 73.095,
-    "forwardPE": 26.027773,
-    "marketCap": 59130146816,
+    "forwardPE": 26.73581,
+    "marketCap": 54408347648,
     "profitMargins": 0.0674,
     "returnOnEquity": 0.21563,
     "revenueGrowth": -0.043,
     "totalRevenue": 45890998272,
-    "trailingPE": 19.139425
+    "trailingPE": 17.61106
    }
   },
   "PEP": {

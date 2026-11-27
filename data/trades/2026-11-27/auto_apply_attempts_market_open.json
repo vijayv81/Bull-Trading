@@ -1,0 +1,26 @@
+[
+  {
+    "ticker": "MCD",
+    "status": "refused",
+    "reason": "Buying MCD would take the active (non-SPY) positions to 37.2% of the 71,855.27 portfolio (26,715.83), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "V",
+    "status": "refused",
+    "reason": "V would reach 5.94% of the 71,856.95 portfolio (4,269.76 incl. 3,408.80 already held), over the 5.0% cap.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "DIS",
+    "status": "deferred",
+    "reason": "Price $126.55 is 99% of the way up its 1-month range ($109.55-$126.78) and 3.1% above its 1-week average $122.59 \u2014 waiting for a pullback toward $122.59 would buy it cheaper.",
+    "checkpoint": "market_open"
+  },
+  {
+    "ticker": "LLY",
+    "status": "refused",
+    "reason": "Buying LLY would take the active (non-SPY) positions to 36.8% of the 71,838.24 portfolio (26,409.90), over the 35.0% satellite cap (risk_limits.yaml -> core.satellite_max_pct_of_portfolio).",
+    "checkpoint": "market_open"
+  }
+]
