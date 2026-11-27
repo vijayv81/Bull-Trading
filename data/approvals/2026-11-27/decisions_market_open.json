@@ -1,0 +1,32 @@
+[
+  {
+    "ticker": "MCD",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-27T14:41:51.580275+00:00"
+  },
+  {
+    "ticker": "V",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 2.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-27T14:41:56.226050+00:00"
+  },
+  {
+    "ticker": "LLY",
+    "checkpoint": "market_open",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-27T14:42:21.174315+00:00"
+  }
+]
