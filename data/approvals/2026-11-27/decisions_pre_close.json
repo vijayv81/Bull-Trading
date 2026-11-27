@@ -1,0 +1,42 @@
+[
+  {
+    "ticker": "V",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 5.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-27T20:46:23.634476+00:00"
+  },
+  {
+    "ticker": "MCD",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 6.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-27T20:46:28.517140+00:00"
+  },
+  {
+    "ticker": "LLY",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 1.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-27T20:46:57.753326+00:00"
+  },
+  {
+    "ticker": "DIS",
+    "checkpoint": "pre_close",
+    "decision": "approve",
+    "terms": {
+      "qty": 8.0,
+      "source": "auto"
+    },
+    "timestamp": "2026-11-27T20:47:03.055033+00:00"
+  }
+]
