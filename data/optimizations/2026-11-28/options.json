@@ -1,0 +1,39 @@
+[
+  {
+    "id": "2026-11-28-weights-sentiment-to-fundamental",
+    "title": "Shift 0.05 of scoring weight from sentiment to fundamental",
+    "why": "sentiment has agreed with actual price direction 35% of the time over 34 measured calls, vs. fundamental's 62% over 50.",
+    "effect": "Confidence scores lean slightly more on fundamental and less on sentiment.",
+    "loosens_guardrail": false,
+    "changes": [
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.sentiment",
+        "from": 0.25,
+        "to": 0.2
+      },
+      {
+        "file": "agent_config.yaml",
+        "path": "scoring_weights.fundamental",
+        "from": 0.2,
+        "to": 0.25
+      }
+    ]
+  },
+  {
+    "id": "2026-11-28-approval-expiry-3h",
+    "title": "Keep recommendations approvable for 3h instead of 2h",
+    "why": "14 actionable recommendations over the last 30 days expired with no decision recorded.",
+    "effect": "More time to approve or reject from the email before a recommendation lapses.",
+    "loosens_guardrail": true,
+    "risk": "An older approval can still execute; the stale-price re-check at submission is what limits how far the market can have moved.",
+    "changes": [
+      {
+        "file": "risk_limits.yaml",
+        "path": "operational.approval_expiry_hours",
+        "from": 2,
+        "to": 3
+      }
+    ]
+  }
+]
